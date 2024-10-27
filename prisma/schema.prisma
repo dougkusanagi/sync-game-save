@@ -1,0 +1,39 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Game {
+  id          Int       @id @default(autoincrement())
+  name        String
+  exePath     String
+  backupPath  String
+  saveFiles   SaveFile[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SaveFile {
+  id        Int       @id @default(autoincrement())
+  path      String
+  type      String    // "dir" or "file"
+  gameId    Int
+  game      Game      @relation(fields: [gameId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model BackupHistory {
+  id        Int       @id @default(autoincrement())
+  gameId    Int
+  path      String
+  success   Boolean
+  error     String?
+  createdAt DateTime  @default(now())
+}
