@@ -8,7 +8,7 @@ export async function listFiles(
     const {
         cwd = process.cwd(),
         absolute = true,
-        ignoreCase = false
+        nocase = false
     } = options;
 
     try {
@@ -19,7 +19,7 @@ export async function listFiles(
             cwd,
             nodir: false, // Only match files, not directories
             absolute,
-            nocase: ignoreCase,
+            nocase,
             windowsPathsNoEscape: true // Handles Windows paths better
         });
 
