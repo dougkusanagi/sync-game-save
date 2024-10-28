@@ -1,11 +1,10 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
-import { join, dirname, basename } from 'node:path'
-import { statSync } from 'node:fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { type ChildProcess, type ExecException, execFile } from 'node:child_process'
-import { cp, copyFile } from "node:fs/promises";
-import { glob } from 'glob'
+import { copyFile, mkdir } from "node:fs/promises";
+import { join, dirname, basename } from 'node:path'
+import { statSync, existsSync } from 'node:fs'
 import { listFiles, safeAwait } from './utils'
 
 function createWindow(): void {
@@ -40,12 +39,19 @@ function createWindow(): void {
   }
 }
 
-async function copyDirectory(source, destination) {
-  try {
-    await cp(source, destination, { recursive: true });
-    console.log('Directory copied successfully!');
-  } catch (error) {
-    console.error('Error copying directory:', error);
+async function copyDir(src: string, dest: string): Promise<void> {
+  await mkdir(dest, { recursive: true });
+  const entries = await import('node:fs').then(fs => fs.promises.readdir(src, { withFileTypes: true }));
+
+  for (const entry of entries) {
+    const srcPath = join(src, entry.name);
+    const destPath = join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDir(srcPath, destPath);
+    } else {
+      await copyFile(srcPath, destPath);
+    }
   }
 }
 
@@ -62,163 +68,126 @@ interface SavePath {
 }
 
 class GameService {
-  game_info: Game;
-  destiny_path: string;
-  child_process: ChildProcess | null;
+  private game_info: Game;
+  private destiny_path: string;
+  private child_process: ChildProcess | null;
 
   constructor(game_info: Game, destiny_path: string) {
     this.game_info = game_info;
     this.destiny_path = destiny_path;
     this.child_process = null;
-  }
 
-  exec() {
-    this.child_process = execFile(this.game_info.exe);
-
-    // this.child_process.stdout?.on("data", (data: string) => {
-    //   console.log(data);
-    // });
-
-    // this.child_process.stderr?.on("data", (data: string) => {
-    //   console.log(`stderr: ${data}`);
-    // });
-
-    // Handle errors
-    this.child_process.on("error", (error: ExecException) => {
-      console.log(`error: ${error.message}`);
-    });
-
-    // Handle process completion
-    this.child_process.on("close", (code: number) => {
-      // console.log(`child process exited with code ${code}`);
-
-      this.backupSaveFiles();
-
-      if (code === 0) {
-        // console.log('success');
-      } else {
-        console.log(`Process exited with code ${code}`);
-      }
-    });
-  }
-
-  async backupSaveFiles() {
-    for (const save_file of this.game_info.save_files) {
-      await this.backupFile(save_file);
+    // Ensure destiny_path exists
+    if (!existsSync(this.destiny_path)) {
+      mkdir(this.destiny_path, { recursive: true })
+        .catch(err => console.error('Failed to create destiny path:', err));
     }
-
-    console.log("Save files backed up");
   }
 
-  // async backupFile(save_path: SavePath) {
-  //   let paths = [];
+  exec(): void {
+    try {
+      this.child_process = execFile(this.game_info.exe);
 
-  //   if (save_path.type === "pattern") {
-  //     paths.push(...this.listPathsPattern(save_path))
-  //   } else {
-  //     paths.push(save_path.path)
-  //   }
+      this.child_process.on("error", (error: ExecException) => {
+        console.error(`Failed to start game: ${error.message}`);
+      });
 
-  //   for (const path of paths) {
-  //     if (save_path.type === "file") {
-  //       await copyFile(save_path.path, this.destiny_path);
-  //     } else if (save_path.type === "dir") {
-  //       await cp(save_path.path, this.destiny_path);
-  //     }
-  //   }
-  // }
+      this.child_process.on("close", async (code: number) => {
+        console.log(`Game process ended with code ${code}`);
+        if (code === 0) {
+          await this.backupSaveFiles();
+        }
+      });
+    } catch (error) {
+      console.error('Failed to execute game:', error);
+    }
+  }
 
-  async backupFile(save_path: SavePath): Promise<void> {
-    if (!this.destiny_path) {
+  private async backupSaveFiles(): Promise<void> {
+    try {
+      for (const save_file of this.game_info.save_files) {
+        await this.backupFile(save_file);
+      }
+      console.log("Save files backup completed");
+    } catch (error) {
+      console.error("Failed to backup save files:", error);
+    }
+  }
+
+  private async backupFile(save_path: SavePath): Promise<void> {
+    try {
+      if (!this.destiny_path) {
         throw new Error('Destination path is not set');
-    }
-
-    const paths: string[] = [];
-    
-    if (save_path.type === "pattern") {
-        const patternPaths = await this.listPathsPattern(save_path);
-
-        if (!patternPaths.length) {
-            console.warn('No files found matching pattern:', save_path.path);
-            return;
-        }
-
-        paths.push(...patternPaths);
-    } else {
-        paths.push(save_path.path);
-    }
-
-    // console.log("\ntype")
-    // console.log(save_path.type);
-    // console.log("\npaths");
-    // console.log(paths);
-    // console.log();
-    // return;
-
-    for (const path of paths) {
-      // switch (save_path.type) {
-      //     case "file":
-      //         await copyFile(path, this.destiny_path);
-      //         break;
-      //     case "dir":
-      //         await cp(path, this.destiny_path, { recursive: true });
-      //         break;
-      //     default:
-      //         throw new Error(`Unsupported save path type: ${save_path.type}`);
-      // }
-
-      const filename = basename(path)
-
-      if (statSync(path).isDirectory()) {
-        const [res, error] = await safeAwait(
-          cp(
-            path,
-            join(this.destiny_path, filename),
-            { recursive: true })
-        );
-
-        if (error) {
-          console.warn(error);
-        }
-
-        return;
       }
 
-      const [res, error] = await safeAwait(copyFile(path, this.destiny_path));
+      const paths: string[] = await this.resolvePaths(save_path);
+
+      for (const path of paths) {
+        const sourcePath = this.resolveSourcePath(path, save_path.same_dir);
+        if (!existsSync(sourcePath)) {
+          console.warn(`Source path does not exist: ${sourcePath}`);
+          continue;
+        }
+
+        const filename = basename(path);
+        const destPath = join(this.destiny_path, filename);
+
+        const stats = statSync(sourcePath);
+
+        if (stats.isDirectory()) {
+          const [, error] = await safeAwait(
+            copyDir(sourcePath, destPath)
+          );
+          if (error) {
+            console.error(`Failed to copy directory: ${error.message}`);
+          }
+        } else {
+          const [, error] = await safeAwait(
+            copyFile(sourcePath, destPath)
+          );
+          if (error) {
+            console.error(`Failed to copy file: ${error.message}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in backupFile:', error);
+    }
+  }
+
+  private async resolvePaths(save_path: SavePath): Promise<string[]> {
+    if (save_path.type === "pattern") {
+      const basePath = save_path.same_dir ? dirname(this.game_info.exe) : dirname(save_path.path);
+      const pattern = save_path.same_dir ? save_path.path : basename(save_path.path);
+      return this.listPathsPattern({ ...save_path, path: pattern }, basePath);
+    }
+    return [save_path.path];
+  }
+
+  private resolveSourcePath(path: string, same_dir: boolean): string {
+    if (same_dir) {
+      return join(dirname(this.game_info.exe), path);
+    }
+    return path;
+  }
+
+  private async listPathsPattern(save_path: SavePath, cwd: string): Promise<string[]> {
+    try {
+      const [pattern_paths, error] = await safeAwait(
+        listFiles(save_path.path, { cwd })
+      );
 
       if (error) {
-        console.warn(error);
+        console.error('Error listing pattern paths:', error);
+        return [];
       }
+
+      return pattern_paths || [];
+    } catch (error) {
+      console.error('Error in listPathsPattern:', error);
+      return [];
     }
-}
-
-  async listPathsPattern(save_path: SavePath) {
-    const paths: string[] = [];
-    const relative_path = dirname(save_path.path)
-    const cwd = save_path.same_dir ? dirname(save_path.exe) : relative_path;
-    const [pattern_paths, error] = await safeAwait(listFiles(save_path.path, { cwd }));
-
-    if (error) {
-        console.error(error);
-    } else if (pattern_paths) {
-        paths.push(...pattern_paths);
-    }
-
-    return paths;
   }
-
-  // async uploadFile(path: string) {
-  //   const file = await uploadFile(path);
-  //   console.log(file);
-  // }
-
-  // async restoreSaveFiles() {
-  //   const save_files = this.save_files;
-  //   for (const save_file of save_files) {
-  //     const file = await uploadFile(save_file.path);
-  //     console.log(file);
-  //   }
-  // }
 }
 
 class GameRepository {
@@ -226,12 +195,10 @@ class GameRepository {
     const games: Game[] = [
       {
         name: "Aggelos",
-        exe: "C:/Windows/System32/notepad.exe",
+        exe: "C:/Games/Aggelos.v1.065/LAUNCHER_x64.exe",
         save_files: [
-          { path: "D:/Douglas/dev/fake_save_files/curseur.ini", same_dir: false, type: "file" },
-          { path: "D:/Douglas/dev/fake_save_files/de", same_dir: false, type: "dir" },
-          { path: "D:/Douglas/dev/fake_save_files/sauvegarde*.ini", same_dir: false, type: "pattern" },
-          { path: "D:/Douglas/dev/fake_save_files/ab*", same_dir: false, type: "pattern" },
+          { path: "curseur.ini", same_dir: true, type: "file" },
+          { path: "sauvegarde*.ini", same_dir: true, type: "pattern" },
         ],
       }
     ]
@@ -262,8 +229,8 @@ app.whenReady().then(() => {
 
     const games_repository = new GameRepository();
     const games = games_repository.all();
-    const backup_dir = "D:/Douglas/dev/fake_bkp_save";
-    const game = new GameService(games[0], backup_dir);
+    const destiny_path = "D:/fake_bkp_save_files";
+    const game = new GameService(games[0], destiny_path);
 
     game.exec();
   })
