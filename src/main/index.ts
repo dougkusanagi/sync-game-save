@@ -4,7 +4,7 @@ import icon from "../../resources/icon.png?asset";
 import { join } from "node:path";
 import { GameService } from "./GameService";
 import { GameRepository } from "./GameRepository";
-import { bkpFiles, listFiles, safeAwait } from "./utils";
+import { backupFiles, listFiles, safeAwait } from "./utils";
 
 function createWindow(): void {
 	// Create the browser window.
@@ -60,11 +60,11 @@ app.whenReady().then(() => {
 
 		const games_repository = new GameRepository();
 		const games = games_repository.all();
-		const destiny_path = "D:/fake_bkp_save_files";
-		// const game = new GameService(games[0], destiny_path);
-		// game.exec();
+		const destiny_path = "D:/fake_game_files/bkp_save_files";
+		const game = new GameService(games[0], destiny_path);
+		game.exec();
 
-		await bkpFiles(games[0], destiny_path);
+		// await backupFiles(games[0], destiny_path);
 	});
 
 	createWindow();
