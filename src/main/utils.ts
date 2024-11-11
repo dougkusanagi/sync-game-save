@@ -1,7 +1,7 @@
 import { glob } from "glob";
 import { basename, dirname, join } from "node:path";
 import { copyFile, mkdir, lstat } from "node:fs/promises";
-// import { lstat } from "node:fs";
+import type { Game, SavePath } from "../types/types";
 
 export async function listPathsPattern(
 	save_path: SavePath,
@@ -57,14 +57,12 @@ export async function backupFiles(game_info: Game, destiny_path: string) {
 			listFiles(save_path.path, { cwd: dirname(game_info.exe) }),
 		);
 
-		// console.log(paths);
-
 		if (error) {
 			console.error("Error listing pattern paths:", error);
 		}
 
 		if (!paths) {
-			console.log("No paths found for", save_path.path);
+			console.error("No paths found for", save_path.path);
 			continue;
 		}
 
@@ -105,6 +103,26 @@ export async function copyDir(src: string, dest: string): Promise<void> {
 	}
 }
 
+export function replaceEnvVariables(_pattern: string): string {
+	const envMap: { [key: string]: string | undefined } = {
+		"%userprofile%": process.env.USERPROFILE,
+		"%appdata%": process.env.APPDATA,
+		"%localappdata%": process.env.LOCALAPPDATA,
+		"%programfiles%": process.env.PROGRAMFILES,
+		"%temp%": process.env.TEMP,
+	};
+
+	let pattern = _pattern;
+
+	for (const key in envMap) {
+		if (envMap[key]) {
+			pattern = pattern.replace(key, envMap[key]);
+		}
+	}
+
+	return pattern;
+}
+
 export async function listFiles(
 	pattern: string,
 	options: { cwd?: string; absolute?: boolean; nocase?: boolean } = {},
@@ -113,7 +131,7 @@ export async function listFiles(
 
 	try {
 		// Normalize backslashes to forward slashes for glob
-		const normalizedPattern = pattern.replace(/\\/g, "/");
+		const normalizedPattern = replaceEnvVariables(pattern).replace(/\\/g, "/");
 
 		const files = await glob(normalizedPattern, {
 			cwd,
