@@ -51,7 +51,7 @@ async function isFile(path: string): Promise<boolean> {
 // 	});
 // }
 
-export async function bkpFiles(game_info: Game, destiny_path: string) {
+export async function backupFiles(game_info: Game, destiny_path: string) {
 	for (const save_path of game_info.save_files) {
 		const [paths, error] = await safeAwait(
 			listFiles(save_path.path, { cwd: dirname(game_info.exe) }),
