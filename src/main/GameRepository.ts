@@ -4,7 +4,7 @@ export default class GameRepository {
 	all(): Game[] {
 		const games: Game[] = [
 			{
-				id: 1,
+				id: 813230,
 				name: "Animal Well",
 				exe: "C:/Games/ANIMAL WELL/Animal Well.exe",
 				save_files: [
@@ -15,7 +15,7 @@ export default class GameRepository {
 				],
 			},
 			{
-				id: 2,
+				id: 717310,
 				name: "Aggelos",
 				exe: "C:/Games/Aggelos/LAUNCHER_x64.exe",
 				save_files: [

@@ -18,7 +18,7 @@ async function chooseDestinyPath() {
         <input class="bg-gray-900 text-white py-1 px-2 rounded w-full border border-gray-700" v-model="destiny_path"
           placeholder="Escolha a pasta de destino" />
 
-        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2 w-48"
+        <button class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded ml-2 w-48"
           @click="chooseDestinyPath">
           Escolher Pasta
         </button>
