@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from "electron";
+import { app, shell, BrowserWindow, ipcMain, dialog } from "electron";
 import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
 import { join } from "node:path";
@@ -60,14 +60,24 @@ app.whenReady().then(() => {
 		return games_repository.all();
 	});
 
+	ipcMain.handle("dialog-directory:destiny-path", async () => {
+		const { canceled, filePaths } = await dialog.showOpenDialog({
+			properties: ["openDirectory"],
+		});
+
+		if (canceled) {
+			return "";
+		}
+
+		return filePaths[0];
+	});
+
 	ipcMain.on("open-game", async (_event, game_info: Game) => {
 		console.log("Opening game...");
 
 		const destiny_path = "D:/fake_game_files/bkp_save_files";
 		const game = new GameService(game_info, destiny_path);
 		game.exec();
-
-		// await backupFiles(games[0], destiny_path);
 	});
 
 	createWindow();
