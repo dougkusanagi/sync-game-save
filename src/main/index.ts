@@ -3,8 +3,8 @@ import { electronApp, optimizer, is } from "@electron-toolkit/utils";
 import icon from "../../resources/icon.png?asset";
 import { join } from "node:path";
 import { GameService } from "./GameService";
-import { GameRepository } from "./GameRepository";
-import { backupFiles, listFiles, safeAwait } from "./utils";
+import GameRepository from "./GameRepository";
+import type { Game } from "../types/types";
 
 function createWindow(): void {
 	// Create the browser window.
@@ -55,13 +55,16 @@ app.whenReady().then(() => {
 	// IPC test
 	ipcMain.on("ping", () => console.log("pong"));
 
-	ipcMain.on("open-game", async () => {
+	ipcMain.handle("game-list", async () => {
+		const games_repository = new GameRepository();
+		return games_repository.all();
+	});
+
+	ipcMain.on("open-game", async (_event, game_info: Game) => {
 		console.log("Opening game...");
 
-		const games_repository = new GameRepository();
-		const games = games_repository.all();
 		const destiny_path = "D:/fake_game_files/bkp_save_files";
-		const game = new GameService(games[0], destiny_path);
+		const game = new GameService(game_info, destiny_path);
 		game.exec();
 
 		// await backupFiles(games[0], destiny_path);

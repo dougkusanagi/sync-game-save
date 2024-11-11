@@ -1,13 +1,28 @@
-export class GameRepository {
+import type { Game } from "../types/types";
+
+export default class GameRepository {
 	all(): Game[] {
 		const games: Game[] = [
 			{
-				name: "Fake",
-				exe: "D:/fake_game_files/sync_files_test/fake_exe_folder/notepad.exe",
+				id: 1,
+				name: "Animal Well",
+				exe: "C:/Games/ANIMAL WELL/Animal Well.exe",
 				save_files: [
-					{ path: "abc.ini", same_dir: true },
-					{ path: "aa*", same_dir: true },
-					{ path: "sub*", same_dir: true },
+					{
+						path: "%userprofile%/AppData/LocalLow/Billy Basso/Animal Well/*",
+						same_dir: false,
+					},
+				],
+			},
+			{
+				id: 2,
+				name: "Aggelos",
+				exe: "C:/Games/Aggelos/LAUNCHER_x64.exe",
+				save_files: [
+					{
+						path: "*.ini",
+						same_dir: true,
+					},
 				],
 			},
 		];
