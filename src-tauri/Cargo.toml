@@ -24,6 +24,7 @@ sgs-service = { version = "0.1.0", path = "crates/sgs-service" }
 sgs-library = { version = "0.1.0", path = "crates/sgs-library" }
 sgs-catalog = { version = "0.1.0", path = "crates/sgs-catalog" }
 tauri-plugin-notification = "2"
+gilrs = "0.11.2"
 
 [profile.release]
 codegen-units = 1

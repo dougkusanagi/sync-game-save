@@ -100,3 +100,9 @@ export function textoDoErro(e: unknown): string {
   if (e instanceof Error) return e.message;
   return "Algo deu errado. Tente de novo.";
 }
+
+/** Ações do controle lidas no Rust (só chegam com a janela visível e focada). */
+export function aoUsarControle(fn: (acao: string, dispositivo: string) => void): Promise<() => void> {
+  if (noTauri) return Promise.resolve(() => {});
+  return listen<{ acao: string; dispositivo: string }>("controle-acao", (e) => fn(e.payload.acao, e.payload.dispositivo));
+}

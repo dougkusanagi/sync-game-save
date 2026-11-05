@@ -52,7 +52,8 @@ const REPEATS = new Set(["up", "down", "left", "right", "pageUp", "pageDown"]);
 const FIRST_DELAY = 350;
 const REPEAT_EVERY = 80;
 
-export function initInput({ onAction, onDevice }) {
+// `gamepad: false` desliga a leitura do controle pelo navegador (no app, o Rust lê o controle).
+export function initInput({ onAction, onDevice, gamepad = true }) {
 	document.addEventListener("keydown", (e) => {
 		const inInput = e.target.matches?.("input, textarea");
 		let action = null;
@@ -120,7 +121,7 @@ export function initInput({ onAction, onDevice }) {
 		for (const a of [...held.keys()]) if (!active.has(a)) held.delete(a);
 		requestAnimationFrame(loop);
 	}
-	requestAnimationFrame(loop);
+	if (gamepad) requestAnimationFrame(loop);
 }
 
 // Rótulos de cada ação por dispositivo.

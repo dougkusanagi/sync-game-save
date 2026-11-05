@@ -1,5 +1,7 @@
 //! Camada fina do Tauri: cada comando chama o `sgs-service`. Nada de regra de negócio aqui.
 
+mod controle;
+
 use serde::{Deserialize, Serialize};
 use sgs_catalog::recognize::{Recognition, ScanResult};
 use sgs_library::{Game, NewGame};
@@ -208,6 +210,7 @@ pub fn run() {
             let dir = app.path().app_data_dir()?;
             let svc = Service::open(&dir).map_err(|e| e.to_string())?;
             app.manage(Arc::new(svc));
+            controle::iniciar(app.handle().clone());
 
             let abrir = MenuItem::with_id(app, "abrir", "Abrir Sync Game Save", true, None::<&str>)?;
             let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, aoMudarEstadoDoJogo, textoDoErro, type Estado, type Game, type OpcoesJogar } from "./api";
+import { api, aoMudarEstadoDoJogo, aoUsarControle, noTauri, textoDoErro, type Estado, type Game, type OpcoesJogar } from "./api";
 import * as focus from "./nav/focus.js";
 import { initInput } from "./nav/input.js";
 import { voltar } from "./voltar";
@@ -55,14 +55,14 @@ export default function App() {
     if (!raiz.current || entradaIniciada) return;
     entradaIniciada = true;
     focus.init(raiz.current);
-    initInput({
-      onDevice: () => {},
-      onAction: (acao: string) => {
-        if (acao === "up" || acao === "down" || acao === "left" || acao === "right") focus.move(acao);
-        else if (acao === "confirm") (focus.current() as HTMLElement | null)?.click();
-        else if (acao === "back") voltar();
-      },
-    });
+    const tratar = (acao: string) => {
+      if (acao === "up" || acao === "down" || acao === "left" || acao === "right") focus.move(acao);
+      else if (acao === "confirm") (focus.current() as HTMLElement | null)?.click();
+      else if (acao === "back") voltar();
+    };
+    // No app, o controle é lido no Rust (funciona mesmo sem foco no WebView); no navegador, pela Gamepad API.
+    initInput({ onDevice: () => {}, onAction: tratar, gamepad: noTauri });
+    void aoUsarControle((acao) => tratar(acao));
   }, []);
 
   // Foco inicial depois que a tela muda.

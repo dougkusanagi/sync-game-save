@@ -535,7 +535,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 ### Fase 3 — Interface final
 
 - [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Falta o visual completo do protótipo (arte de fundo, faixa de jogos, busca, filtros, central rápida), que é P1; a interface atual é a do MVP.
-- [ ] Controle lido no Rust (`gilrs`) + motor de foco.
+- [x] Controle lido no Rust (`gilrs`) + motor de foco. A lógica (botões, zona morta do analógico, repetição, só com a janela focada) tem testes. **Não testado com um controle de verdade**: nenhum estava conectado quando verifiquei.
 - [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações, primeiro uso, adicionar jogo e "Sobre" (nome e versão; o número do build ainda não existe). Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
 - [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 11 testes: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, remover, teclado, layout no celular). Rodam com dados simulados; ainda não rodam dentro do app Tauri real.
 - [x] `.github/preview.png` e README atualizados. A miniatura está em tema escuro porque o app só tem tema escuro (a regra global pede claro; o tema claro é P2).
