@@ -1,6 +1,6 @@
 # 0002. Catálogo de jogos: manifesto do Ludusavi indexado em SQLite FTS5
 
-- Status: Proposto
+- Status: Aceito
 - Data: 2026-11-05
 
 ## Contexto

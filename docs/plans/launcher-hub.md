@@ -505,7 +505,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Criar o protótipo em `prototype/` conforme a seção de interface.
 - [ ] Revisar o protótipo com controle real (Xbox e PlayStation) e teclado; ajustar.
 - [ ] Prototipar o assistente de primeiro uso e a tela de resultado da varredura de pastas.
-- [ ] Confirmar o ADR 0002 (catálogo).
+- [x] Confirmar o ADR 0002 (catálogo) (aprovado pelo usuário em 2026-11-05).
 - [x] Registrar o layout da pasta da nuvem em `docs/adr/0003-formato-da-pasta-da-nuvem.md`.
 
 ### Fase 1 — Núcleo de sync (`sgs-core` + `sgs-cli`)
@@ -565,6 +565,6 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Faltam só duas coisas que dependem do usuário: o uso real por 1–2 semanas pela CLI e a confirmação do ADR 0002. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo e a confirmação do ADR 0002.
+Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Faltam só duas coisas que dependem do usuário: o uso real por 1–2 semanas pela CLI. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo.
 
 Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
