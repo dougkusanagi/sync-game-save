@@ -511,7 +511,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 ### Fase 1 — Núcleo de sync (`sgs-core` + `sgs-cli`)
 
 - [x] Remover todo o código Electron (autorizado), inclusive o `css.postcss` do protótipo.
-- [ ] Iniciar o projeto Tauri 2 + React + TypeScript com bun.
+- [x] Iniciar o projeto Tauri 2 + React + TypeScript com bun (tela mínima com nome e versão; os ícones ainda são os do modelo do Tauri e precisam ser trocados).
 - [x] Montar o `catalog.db` a partir do manifesto do Ludusavi (download com ETag, troca atômica) e medir tempos (`sgs-catalog`; números no ADR 0002).
 - [x] Caminhos lógicos: resolver/converter marcadores (`paths`). Falta: preencher `Env` com as pastas reais do Windows/Linux.
 - [x] Índice de arquivos com SHA-256; comparação em três vias (`sgs-core`: `index`, `sync`).
@@ -565,6 +565,6 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 em andamento (branch `feat/fase1-nucleo-sync`). Feito: `src-tauri/crates/sgs-core` com índice, snapshots, restauração com backup e decisão em três vias (12 testes), `lock.json`, caminhos lógicos e o fluxo abrir/fechar (`engine`: conflito, trava, backup, fechar com erro). Falta: `Env` real do SO, journal, catálogo, CLI, os demais cenários de teste e o projeto Tauri + React. Ainda vale o texto abaixo para a revisão do protótipo e o ADR 0002.
+Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Falta da Fase 1 só o uso real por 1–2 semanas pela CLI, que depende do usuário. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo e a confirmação do ADR 0002.
 
 Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
