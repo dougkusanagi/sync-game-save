@@ -247,3 +247,16 @@ fn heartbeat_da_trava_avanca_enquanto_o_jogo_roda() {
     assert!(beats.len() >= 2, "o heartbeat deveria mudar durante o jogo: {beats:?}");
     assert!(sgs_core::lock::read(&game_dir).unwrap().is_none(), "trava solta ao fechar");
 }
+
+#[test]
+fn tempo_de_jogo_e_registrado_com_e_sem_sync() {
+    let (_t, a, _b, ia, _ib) = setup_two_pcs();
+    a.play(ia, &opts("Start-Sleep -Seconds 2"), &silent).unwrap();
+    let g = &a.games().unwrap()[0];
+    assert!(g.playtime_secs >= 2 && g.last_played_at.is_some(), "{g:?}");
+    let before = g.playtime_secs;
+    let mut o = opts("Start-Sleep -Seconds 2");
+    o.skip_sync = true;
+    a.play(ia, &o, &silent).unwrap();
+    assert!(a.games().unwrap()[0].playtime_secs >= before + 2);
+}

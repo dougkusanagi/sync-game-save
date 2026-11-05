@@ -292,9 +292,14 @@ impl Service {
         let game = self.lib().get(id)?;
         let launch = |args: &[String], beat: &mut dyn FnMut()| -> Result<i32> {
             on_state("jogando");
-            sgs_core::process::run_with_beat(&game.exe, args, None, Duration::from_secs(opts.quiet_secs), opts.heartbeat_every(), beat).map_err(|m| {
+            let started = std::time::Instant::now();
+            let r = sgs_core::process::run_with_beat(&game.exe, args, None, Duration::from_secs(opts.quiet_secs), opts.heartbeat_every(), beat).map_err(|m| {
                 Error::Other(format!("Não consegui abrir o jogo: {m}. Confira o caminho do executável."))
-            })
+            });
+            // O tempo conta mesmo se o jogo caiu; a espera final por processos restantes não entra.
+            let secs = started.elapsed().as_secs().saturating_sub(opts.quiet_secs) as i64;
+            let _ = self.lib().add_playtime(id, secs, (self.now)() as i64);
+            r
         };
         if opts.skip_sync {
             let code = launch(&opts.args, &mut || {})?;

@@ -44,6 +44,8 @@ const MIGRATIONS: &[&str] = &[
         last_sync_at INTEGER
      );
      CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);",
+    "ALTER TABLE games ADD COLUMN playtime_secs INTEGER NOT NULL DEFAULT 0;
+     ALTER TABLE games ADD COLUMN last_played_at INTEGER;",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +68,8 @@ pub struct Game {
     pub save_paths: Vec<String>,
     pub base_digest: Option<String>,
     pub last_sync_at: Option<i64>,
+    pub playtime_secs: i64,
+    pub last_played_at: Option<i64>,
 }
 
 pub struct Library(Connection);
@@ -130,7 +134,7 @@ impl Library {
     pub fn get(&self, id: i64) -> Result<Game> {
         self.0
             .query_row(
-                "SELECT g.id,g.name,g.exe,g.install_dir,g.catalog_id,s.base_digest,s.last_sync_at
+                "SELECT g.id,g.name,g.exe,g.install_dir,g.catalog_id,s.base_digest,s.last_sync_at,g.playtime_secs,g.last_played_at
                  FROM games g LEFT JOIN sync_state s ON s.game_id=g.id WHERE g.id=?",
                 [id],
                 |r| {
@@ -143,6 +147,8 @@ impl Library {
                         save_paths: vec![],
                         base_digest: r.get(5)?,
                         last_sync_at: r.get(6)?,
+                        playtime_secs: r.get(7)?,
+                        last_played_at: r.get(8)?,
                     })
                 },
             )
@@ -210,6 +216,20 @@ impl Library {
             params![digest, now, id],
         )?;
         Ok(())
+    }
+
+    /// Soma uma sessão ao tempo de jogo. Sessões de 0 segundo não contam.
+    pub fn add_playtime(&mut self, id: i64, secs: i64, now: i64) -> Result<()> {
+        if secs <= 0 {
+            return Ok(());
+        }
+        match self.0.execute(
+            "UPDATE games SET playtime_secs = playtime_secs + ?, last_played_at = ? WHERE id=?",
+            params![secs, now, id],
+        )? {
+            0 => Err(Error::NotFound),
+            _ => Ok(()),
+        }
     }
 
     pub fn setting(&self, key: &str) -> Result<Option<String>> {

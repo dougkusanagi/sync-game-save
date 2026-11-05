@@ -527,7 +527,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] SQLite local (`library.db`) com migrações (`sgs-library`: jogos, caminhos de save, estado do sync, configurações).
 - [x] Backend do assistente de primeiro uso (`sgs-service`: verificar a pasta, registrar este PC sem apagar outros, detectar dados de outro PC). Falta a tela e o bloqueio do uso até concluir (Fase 3).
 - [x] Reconhecimento pela pasta do jogo e varredura de pastas (`sgs-catalog::recognize`; testado com o Rogue Legacy real). Falta: a tela do assistente de adicionar jogo (Fase 3) e a detecção de save por mudança.
-- [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Falta: Job Object e tempo de jogo. Heartbeat da trava durante o jogo feito (a cada 2 min).
+- [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Tempo de jogo feito (`library.db` esquema 2). Falta: Job Object. Heartbeat da trava durante o jogo feito (a cada 2 min).
 - [x] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface (comandos Tauri sobre o `sgs-service`; evento `jogo-estado`).
 - [ ] Arte (Steam CDN + SteamGridDB) com cache.
 - [ ] Bandeja e notificações.
