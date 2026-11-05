@@ -11,7 +11,11 @@ pub enum Action {
 
 pub fn decide(base: Option<&str>, local: &Index, cloud: Option<&str>) -> Action {
     let local_d = local.digest();
-    let local_changed = Some(local_d.as_str()) != base;
+    // Sem base (PC novo), um save local vazio conta como "não mudou".
+    let local_changed = match base {
+        None => !local.files.is_empty(),
+        Some(b) => b != local_d,
+    };
     let cloud_changed = cloud != base;
     match (local_changed, cloud_changed) {
         (false, false) => Action::Nothing,

@@ -1,6 +1,7 @@
 //! Núcleo do Sync Game Save: índice de arquivos, snapshots imutáveis,
 //! comparação em três vias e restauração com backup.
 
+pub mod engine;
 pub mod index;
 pub mod lock;
 pub mod paths;

@@ -565,6 +565,6 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 em andamento (branch `feat/fase1-nucleo-sync`). Feito: `src-tauri/crates/sgs-core` com índice, snapshots, restauração com backup e decisão em três vias (8 testes), `lock.json` e caminhos lógicos. Falta: `Env` real do SO, journal, catálogo, CLI, os demais cenários de teste e o projeto Tauri + React. Ainda vale o texto abaixo para a revisão do protótipo e o ADR 0002.
+Fase 1 em andamento (branch `feat/fase1-nucleo-sync`). Feito: `src-tauri/crates/sgs-core` com índice, snapshots, restauração com backup e decisão em três vias (12 testes), `lock.json`, caminhos lógicos e o fluxo abrir/fechar (`engine`: conflito, trava, backup, fechar com erro). Falta: `Env` real do SO, journal, catálogo, CLI, os demais cenários de teste e o projeto Tauri + React. Ainda vale o texto abaixo para a revisão do protótipo e o ADR 0002.
 
 Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
