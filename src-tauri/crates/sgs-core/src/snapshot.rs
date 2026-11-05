@@ -1,4 +1,4 @@
-use crate::index::{hash_file, scan, Index};
+use crate::index::{hash_file, locate, scan_roots, Index, Root};
 use crate::{Error, IoCtx, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -32,12 +32,18 @@ fn copy_into(src: &Path, dst: &Path) -> Result<()> {
 /// Ordem: copia os arquivos, grava `index.json`, relê e confere os hashes e
 /// só então atualiza `head.json`. Uma falha antes disso deixa o `head` intacto.
 pub fn create(game_dir: &Path, save_dir: &Path, id: &str, device: &str) -> Result<Head> {
-    let index = scan(save_dir)?;
+    create_roots(game_dir, &[(String::new(), save_dir.to_path_buf())], id, device)
+}
+
+/// Igual a `create`, para várias pastas de save.
+pub fn create_roots(game_dir: &Path, roots: &[Root], id: &str, device: &str) -> Result<Head> {
+    let index = scan_roots(roots)?;
     let snap = game_dir.join("snapshots").join(id);
     let files = snap.join("files");
     std::fs::create_dir_all(&files).ctx(&files)?;
     for rel in index.files.keys() {
-        copy_into(&save_dir.join(rel), &files.join(rel))?;
+        let src = locate(roots, rel).expect("toda chave vem de uma pasta");
+        copy_into(&src, &files.join(rel))?;
     }
     let idx_path = snap.join("index.json");
     std::fs::write(&idx_path, serde_json::to_vec_pretty(&index)?).ctx(&idx_path)?;
@@ -70,17 +76,24 @@ pub fn verify(snap: &Path) -> Result<Index> {
 /// Restaura um snapshot em `save_dir`. Antes, copia o save atual para `backup_dir`.
 /// Se o backup falhar, nada é sobrescrito.
 pub fn restore(snap: &Path, save_dir: &Path, backup_dir: &Path) -> Result<()> {
+    restore_roots(snap, &[(String::new(), save_dir.to_path_buf())], backup_dir)
+}
+
+/// Igual a `restore`, para várias pastas de save.
+pub fn restore_roots(snap: &Path, roots: &[Root], backup_dir: &Path) -> Result<()> {
     let index = verify(snap)?;
-    let current = scan(save_dir)?;
+    let current = scan_roots(roots)?;
     for rel in current.files.keys() {
-        copy_into(&save_dir.join(rel), &backup_dir.join(rel))?;
+        let src = locate(roots, rel).expect("toda chave vem de uma pasta");
+        copy_into(&src, &backup_dir.join(rel))?;
     }
     for rel in current.files.keys().filter(|r| !index.files.contains_key(*r)) {
-        let p = save_dir.join(rel);
+        let p = locate(roots, rel).expect("toda chave vem de uma pasta");
         std::fs::remove_file(&p).ctx(&p)?;
     }
     for rel in index.files.keys() {
-        copy_into(&snap.join("files").join(rel), &save_dir.join(rel))?;
+        let Some(dst) = locate(roots, rel) else { continue };
+        copy_into(&snap.join("files").join(rel), &dst)?;
     }
     Ok(())
 }

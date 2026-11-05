@@ -1,7 +1,7 @@
 //! Fluxo de abrir/fechar um jogo: junta trava, comparação em três vias,
 //! snapshots e backups. Não abre processos; quem chama cuida disso.
 
-use crate::index::scan;
+use crate::index::{scan_roots, Root};
 use crate::lock::{self, LockState};
 use crate::snapshot::{self, Head};
 use crate::sync::{decide, Action};
@@ -12,8 +12,8 @@ use std::path::PathBuf;
 pub struct Ctx {
     /// Pasta do jogo na nuvem (`head.json`, `lock.json`, `snapshots/`).
     pub game_dir: PathBuf,
-    /// Pasta do save neste PC.
-    pub save_dir: PathBuf,
+    /// Pastas de save neste PC (rótulo lógico + caminho). Rótulo vazio = pasta única.
+    pub roots: Vec<Root>,
     /// Estado local, fora da nuvem (`base.json`, `backups/`).
     pub state_dir: PathBuf,
     pub device: String,
@@ -45,6 +45,11 @@ struct Base {
 }
 
 impl Ctx {
+    /// Atalho para um jogo com uma só pasta de save.
+    pub fn single(game_dir: PathBuf, save_dir: PathBuf, state_dir: PathBuf, device: &str, now: u64) -> Self {
+        Ctx { game_dir, roots: vec![(String::new(), save_dir)], state_dir, device: device.into(), now }
+    }
+
     fn base_path(&self) -> PathBuf {
         self.state_dir.join("base.json")
     }
@@ -74,14 +79,14 @@ impl Ctx {
     }
 
     fn upload(&self) -> Result<Head> {
-        let head = snapshot::create(&self.game_dir, &self.save_dir, &self.snapshot_id(), &self.device)?;
+        let head = snapshot::create_roots(&self.game_dir, &self.roots, &self.snapshot_id(), &self.device)?;
         self.set_base(&head.index_digest)?;
         Ok(head)
     }
 
     fn restore_cloud(&self, head: &Head, reason: &str) -> Result<()> {
         let snap = self.game_dir.join("snapshots").join(&head.snapshot);
-        snapshot::restore(&snap, &self.save_dir, &self.backup_dir(reason))?;
+        snapshot::restore_roots(&snap, &self.roots, &self.backup_dir(reason))?;
         self.set_base(&head.index_digest)
     }
 
@@ -93,7 +98,7 @@ impl Ctx {
             }
         }
         let head = snapshot::read_head(&self.game_dir)?;
-        let local = scan(&self.save_dir)?;
+        let local = scan_roots(&self.roots)?;
         let cloud = head.as_ref().map(|h| h.index_digest.as_str());
         let result = match decide(self.base()?.as_deref(), &local, cloud) {
             Action::Nothing => {
@@ -140,7 +145,7 @@ impl Ctx {
     /// Passo depois de o jogo fechar (qualquer código de saída).
     /// Devolve `true` se criou um snapshot novo.
     pub fn after_exit(&self) -> Result<bool> {
-        let local = scan(&self.save_dir)?;
+        let local = scan_roots(&self.roots)?;
         let changed = self.base()?.as_deref() != Some(local.digest().as_str());
         let created = if changed && !local.files.is_empty() {
             self.upload()?;

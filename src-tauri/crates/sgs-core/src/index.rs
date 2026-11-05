@@ -66,3 +66,42 @@ fn walk(root: &Path, dir: &Path, index: &mut Index) -> Result<()> {
     }
     Ok(())
 }
+
+/// Uma pasta de save: o rótulo é o caminho lógico (`<winDocuments>/SavedGames/Jogo`) e vira
+/// o prefixo dos arquivos no snapshot, o que o torna portátil entre PCs.
+/// Rótulo vazio = pasta única, sem prefixo.
+pub type Root = (String, std::path::PathBuf);
+
+/// Prefixo seguro para nome de pasta (o Windows não aceita `<`, `>`, `:` etc.).
+pub fn prefix(label: &str) -> String {
+    label.chars().filter(|c| !"<>:\"|?*\\".contains(*c)).collect::<String>().trim_matches('/').to_string()
+}
+
+/// Indexa várias pastas de save num só índice, com o prefixo de cada uma nas chaves.
+pub fn scan_roots(roots: &[Root]) -> Result<Index> {
+    let mut all = Index::default();
+    for (label, path) in roots {
+        let pre = prefix(label);
+        for (rel, entry) in scan(path)?.files {
+            let key = if pre.is_empty() { rel } else { format!("{pre}/{rel}") };
+            all.files.insert(key, entry);
+        }
+    }
+    Ok(all)
+}
+
+/// Caminho real de uma chave do índice, pela pasta de prefixo mais longo.
+pub fn locate(roots: &[Root], key: &str) -> Option<std::path::PathBuf> {
+    roots
+        .iter()
+        .filter_map(|(label, path)| {
+            let pre = prefix(label);
+            if pre.is_empty() {
+                Some((0, path.join(key)))
+            } else {
+                key.strip_prefix(&format!("{pre}/")).map(|rel| (pre.len(), path.join(rel)))
+            }
+        })
+        .max_by_key(|(len, _)| *len)
+        .map(|(_, p)| p)
+}

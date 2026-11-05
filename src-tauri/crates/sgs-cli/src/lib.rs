@@ -137,7 +137,7 @@ fn context(o: &Opts) -> Result<Ctx, String> {
     };
     Ok(Ctx {
         game_dir: o.sync_dir.join("SyncGameSave").join("games").join(&game),
-        save_dir: resolve_save_dir(&o.save_dir)?,
+        roots: vec![(String::new(), resolve_save_dir(&o.save_dir)?)],
         state_dir,
         device: o.device.clone().unwrap_or_else(device_name),
         now: o.now.unwrap_or_else(unix_now),
@@ -193,7 +193,7 @@ pub fn exec(args: Vec<String>, out: &mut impl Write, input: &mut impl BufRead) -
             let snap = ctx.game_dir.join("snapshots").join(&id);
             let backup = ctx.state_dir.join("backups").join(format!("{}_restaurar", ctx.now));
             journal::begin(&jdir, &o.game, "restore", ctx.now).map_err(e)?;
-            snapshot::restore(&snap, &ctx.save_dir, &backup).map_err(e)?;
+            snapshot::restore_roots(&snap, &ctx.roots, &backup).map_err(e)?;
             journal::end(&jdir, &o.game).map_err(e)?;
             writeln!(out, "Snapshot {id} restaurado. O save anterior está em {}.", backup.display()).map_err(e)?;
             Ok(0)
@@ -206,7 +206,7 @@ pub fn exec(args: Vec<String>, out: &mut impl Write, input: &mut impl BufRead) -
 fn status(ctx: &Ctx, o: &Opts, out: &mut impl Write) -> Result<i32, String> {
     let head = snapshot::read_head(&ctx.game_dir).map_err(e)?;
     let lk = lock::state(&ctx.game_dir, &ctx.device, ctx.now).map_err(e)?;
-    let local = sgs_core::index::scan(&ctx.save_dir).map_err(e)?;
+    let local = sgs_core::index::scan_roots(&ctx.roots).map_err(e)?;
     let lock_txt = match &lk {
         lock::LockState::Free => "livre".to_string(),
         lock::LockState::Own => "deste PC".to_string(),

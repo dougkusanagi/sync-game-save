@@ -6,7 +6,7 @@ use std::path::Path;
 fn pc(root: &Path, name: &str, now: u64) -> Ctx {
     Ctx {
         game_dir: root.join("cloud/jogo"),
-        save_dir: root.join(name).join("save"),
+        roots: vec![(String::new(), root.join(name).join("save"))],
         state_dir: root.join(name).join("state"),
         device: name.to_string(),
         now,
@@ -14,12 +14,12 @@ fn pc(root: &Path, name: &str, now: u64) -> Ctx {
 }
 
 fn put(c: &Ctx, body: &str) {
-    fs::create_dir_all(&c.save_dir).unwrap();
-    fs::write(c.save_dir.join("s.sav"), body).unwrap();
+    fs::create_dir_all(&c.roots[0].1).unwrap();
+    fs::write(c.roots[0].1.join("s.sav"), body).unwrap();
 }
 
 fn get(c: &Ctx) -> String {
-    fs::read_to_string(c.save_dir.join("s.sav")).unwrap()
+    fs::read_to_string(c.roots[0].1.join("s.sav")).unwrap()
 }
 
 #[test]

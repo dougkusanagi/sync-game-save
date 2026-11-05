@@ -15,7 +15,7 @@ fn write(dir: &Path, rel: &str, body: &str) {
 fn ctx(root: &Path, pc: &str, now: u64) -> Ctx {
     Ctx {
         game_dir: root.join("nuvem/jogo"),
-        save_dir: root.join(pc).join("save"),
+        roots: vec![(String::new(), root.join(pc).join("save"))],
         state_dir: root.join(pc).join("state"),
         device: pc.into(),
         now,
@@ -26,23 +26,23 @@ fn ctx(root: &Path, pc: &str, now: u64) -> Ctx {
 fn nuvem_parcialmente_sincronizada_nao_toca_no_save_local() {
     let t = tempfile::tempdir().unwrap();
     let a = ctx(t.path(), "A", 1000);
-    write(&a.save_dir, "s.sav", "v1");
+    write(&a.roots[0].1, "s.sav", "v1");
     a.before_launch(false).unwrap();
     a.after_exit().unwrap();
     // O arquivo chega pela metade no PC B (hash não bate).
     fs::write(a.game_dir.join("snapshots/1000_A/files/s.sav"), "v").unwrap();
     let b = ctx(t.path(), "B", 2000);
-    write(&b.save_dir, "s.sav", "do B");
+    write(&b.roots[0].1, "s.sav", "do B");
     let r = b.before_launch(false);
     // Sem base no B e dois lados diferentes: conflito ou erro, mas nunca sobrescreve.
     assert!(matches!(r, Ok(Before::Conflict) | Err(_)));
-    assert_eq!(fs::read_to_string(b.save_dir.join("s.sav")).unwrap(), "do B");
+    assert_eq!(fs::read_to_string(b.roots[0].1.join("s.sav")).unwrap(), "do B");
 
     // PC novo sem save: a restauração falha na verificação e nada é criado.
     let c = ctx(t.path(), "C", 3000);
-    fs::create_dir_all(&c.save_dir).unwrap();
+    fs::create_dir_all(&c.roots[0].1).unwrap();
     assert!(c.before_launch(false).is_err());
-    assert!(scan(&c.save_dir).unwrap().files.is_empty());
+    assert!(scan(&c.roots[0].1).unwrap().files.is_empty());
     assert!(!a.game_dir.join("lock.json").exists() || fs::read_to_string(a.game_dir.join("lock.json")).unwrap().contains("\"A\""));
 }
 
@@ -89,11 +89,11 @@ fn arquivos_apagados_entre_sessoes_voltam_na_restauracao() {
 fn save_vazio_ou_ausente_nao_gera_snapshot_nem_apaga_a_nuvem() {
     let t = tempfile::tempdir().unwrap();
     let a = ctx(t.path(), "A", 1000);
-    write(&a.save_dir, "s.sav", "v1");
+    write(&a.roots[0].1, "s.sav", "v1");
     a.before_launch(false).unwrap();
     a.after_exit().unwrap();
     // O save some do PC (pasta ausente): não cria snapshot vazio por cima.
-    fs::remove_dir_all(&a.save_dir).unwrap();
+    fs::remove_dir_all(&a.roots[0].1).unwrap();
     let a2 = ctx(t.path(), "A", 2000);
     a2.before_launch(false).unwrap();
     assert!(!a2.after_exit().unwrap());
@@ -136,4 +136,29 @@ fn arquivo_preso_para_sempre_da_erro_sem_mexer_no_head() {
     let _held = fs::OpenOptions::new().read(true).share_mode(0).open(save.join("s.sav")).unwrap();
     assert!(create(&cloud, &save, "1_A", "A").is_err());
     assert!(!cloud.join("head.json").exists());
+}
+
+#[test]
+fn varias_pastas_de_save_e_restauracao_em_outro_pc() {
+    use sgs_core::snapshot::{create_roots, restore_roots};
+    let t = tempfile::tempdir().unwrap();
+    let cloud = t.path().join("cloud");
+    let pc1 = vec![
+        ("<winDocuments>/SavedGames/Jogo".to_string(), t.path().join("pc1/docs/Jogo")),
+        ("<winAppData>/Jogo".to_string(), t.path().join("pc1/appdata/Jogo")),
+    ];
+    write(&pc1[0].1, "slot1.sav", "docs");
+    write(&pc1[1].1, "config/opcoes.dat", "appdata");
+    create_roots(&cloud, &pc1, "1_A", "A").unwrap();
+    // O snapshot não usa "<" nem ">" nos nomes de pasta (inválidos no Windows).
+    assert!(cloud.join("snapshots/1_A/files/winDocuments/SavedGames/Jogo/slot1.sav").exists());
+
+    // Outro PC, outro usuário e outras pastas reais para os mesmos marcadores.
+    let pc2 = vec![
+        ("<winDocuments>/SavedGames/Jogo".to_string(), t.path().join("beto/Documentos/Jogo")),
+        ("<winAppData>/Jogo".to_string(), t.path().join("beto/Roaming/Jogo")),
+    ];
+    restore_roots(&cloud.join("snapshots/1_A"), &pc2, &t.path().join("bkp")).unwrap();
+    assert_eq!(fs::read_to_string(pc2[0].1.join("slot1.sav")).unwrap(), "docs");
+    assert_eq!(fs::read_to_string(pc2[1].1.join("config/opcoes.dat")).unwrap(), "appdata");
 }
