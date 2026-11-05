@@ -78,6 +78,14 @@ pub struct PlayOptions {
     pub quiet_secs: u64,
     /// Joga sem tocar na pasta de sync.
     pub skip_sync: bool,
+    /// Intervalo do heartbeat da trava; 0 usa o padrão (2 minutos).
+    pub heartbeat_secs: u64,
+}
+
+impl PlayOptions {
+    fn heartbeat_every(&self) -> Duration {
+        Duration::from_secs(if self.heartbeat_secs == 0 { 120 } else { self.heartbeat_secs })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -282,14 +290,14 @@ impl Service {
     /// Bloqueia até o jogo fechar; chame de uma thread, não da interface.
     pub fn play(&self, id: i64, opts: &PlayOptions, on_state: &dyn Fn(&str)) -> Result<Play> {
         let game = self.lib().get(id)?;
-        let launch = |args: &[String]| -> Result<i32> {
+        let launch = |args: &[String], beat: &mut dyn FnMut()| -> Result<i32> {
             on_state("jogando");
-            sgs_core::process::run(&game.exe, args, None, Duration::from_secs(opts.quiet_secs)).map_err(|m| {
+            sgs_core::process::run_with_beat(&game.exe, args, None, Duration::from_secs(opts.quiet_secs), opts.heartbeat_every(), beat).map_err(|m| {
                 Error::Other(format!("Não consegui abrir o jogo: {m}. Confira o caminho do executável."))
             })
         };
         if opts.skip_sync {
-            let code = launch(&opts.args)?;
+            let code = launch(&opts.args, &mut || {})?;
             return Ok(Play::Finished { exit_code: code, synced: false, notice: "Jogo fechado. O save não foi sincronizado.".into() });
         }
         let ctx = self.ctx(&game)?;
@@ -309,7 +317,11 @@ impl Service {
             Before::LockedByOther(pc) => return Ok(Play::Locked { pc }),
             _ => {}
         }
-        let result = launch(&opts.args);
+        let game_dir = ctx.game_dir.clone();
+        let device = ctx.device.clone();
+        let result = launch(&opts.args, &mut || {
+            let _ = lock::heartbeat(&game_dir, &device, (self.now)());
+        });
         // Mesmo se o jogo nem abriu ou caiu, o save é conferido e a trava solta.
         on_state("salvando");
         journal::begin(&jdir, &game.name, "fechar", ctx.now)?;

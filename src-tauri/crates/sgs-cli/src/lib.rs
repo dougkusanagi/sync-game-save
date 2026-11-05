@@ -39,6 +39,7 @@ struct Opts {
     now: Option<u64>,
     quiet_secs: u64,
     cwd: Option<PathBuf>,
+    heartbeat_secs: u64,
 }
 
 fn parse(args: Vec<String>) -> Result<Opts, String> {
@@ -60,6 +61,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
         now: None,
         quiet_secs: 5,
         cwd: None,
+        heartbeat_secs: 120,
     };
     while let Some(a) = it.next() {
         let mut val = |name: &str| it.next().ok_or(format!("falta o valor de {name}"));
@@ -73,6 +75,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
             "--on-conflict" => o.on_conflict = Some(val(&a)?),
             "--now" => o.now = Some(val(&a)?.parse().map_err(|_| "--now precisa ser um número")?),
             "--quiet-secs" => o.quiet_secs = val(&a)?.parse().map_err(|_| "--quiet-secs precisa ser um número")?,
+            "--heartbeat-secs" => o.heartbeat_secs = val(&a)?.parse().map_err(|_| "--heartbeat-secs precisa ser um número")?,
             "--cwd" => o.cwd = Some(PathBuf::from(val(&a)?)),
             "--force" => o.force = true,
             "--json" => o.json = true,
@@ -281,7 +284,17 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
     }
     .map_err(e)?;
 
-    let status = sgs_core::process::run(prog, rest, o.cwd.as_deref(), std::time::Duration::from_secs(o.quiet_secs));
+    let (gd, dev) = (ctx.game_dir.clone(), ctx.device.clone());
+    let status = sgs_core::process::run_with_beat(
+        prog,
+        rest,
+        o.cwd.as_deref(),
+        std::time::Duration::from_secs(o.quiet_secs),
+        std::time::Duration::from_secs(o.heartbeat_secs),
+        &mut || {
+            let _ = lock::heartbeat(&gd, &dev, o.now.unwrap_or_else(unix_now));
+        },
+    );
     // Mesmo se o programa nem abriu ou saiu com erro, o save é conferido e a trava solta.
     journal::begin(jdir, &o.game, "fechar", ctx.now).map_err(e)?;
     let created = ctx.after_exit().map_err(e)?;

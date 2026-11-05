@@ -136,6 +136,7 @@ async fn jogar(app: AppHandle, svc: Svc<'_>, id: i64, opcoes: Option<OpcoesJogar
         args: vec![],
         quiet_secs: 5,
         skip_sync: o.sem_sincronizar,
+        heartbeat_secs: 0,
     };
     let result = blocking(&svc, move |s| {
         let emit = |estado: &str| {

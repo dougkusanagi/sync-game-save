@@ -222,3 +222,28 @@ fn capa_usa_o_cache_e_nao_quebra_sem_catalogo() {
     assert_eq!(s.game_art(id).unwrap(), Some(cached.join(format!("{id}.jpg"))));
     assert_eq!(sgs_service::steam_header_url(241600), "https://cdn.cloudflare.steamstatic.com/steam/apps/241600/header.jpg");
 }
+
+#[test]
+fn heartbeat_da_trava_avanca_enquanto_o_jogo_roda() {
+    let (t, a, _b, ia, _ib) = setup_two_pcs();
+    let game_dir = t.path().join("nuvem/SyncGameSave/games/Jogo_ Teste");
+    let mut o = opts("Start-Sleep -Seconds 4");
+    o.heartbeat_secs = 1;
+    let beats = std::thread::scope(|sc| {
+        let watcher = sc.spawn(|| {
+            let mut seen = std::collections::BTreeSet::new();
+            for _ in 0..40 {
+                if let Ok(Some(l)) = sgs_core::lock::read(&game_dir) {
+                    seen.insert(l.heartbeat);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(150));
+            }
+            seen
+        });
+        let r = a.play(ia, &o, &silent).unwrap();
+        assert!(matches!(r, Play::Finished { .. }));
+        watcher.join().unwrap()
+    });
+    assert!(beats.len() >= 2, "o heartbeat deveria mudar durante o jogo: {beats:?}");
+    assert!(sgs_core::lock::read(&game_dir).unwrap().is_none(), "trava solta ao fechar");
+}
