@@ -89,3 +89,24 @@ fn erros_claros() {
     assert!(sgs(&["voar", "--sync-dir", "x", "--game", "g", "--save-dir", "s"], "").0.unwrap_err().contains("desconhecido"));
     assert_eq!(sgs(&["help"], "").0.unwrap(), 0);
 }
+
+/// O launcher abre o jogo em outro processo e fecha na hora; o save só é gravado 2 s depois.
+#[cfg(windows)]
+#[test]
+fn run_espera_o_jogo_aberto_por_launcher_intermediario() {
+    let t = tempfile::tempdir().unwrap();
+    let a = base(t.path(), "A", "1000");
+    fs::create_dir_all(t.path().join("A/save")).unwrap();
+    fs::create_dir_all(t.path().join("nuvem")).unwrap();
+    let file = t.path().join("A/save/slot.sav");
+    let inner = format!("Start-Sleep -Seconds 2; Set-Content -Path '{}' -Value tardio", file.display());
+    let launcher = format!(
+        "Start-Process powershell -ArgumentList '-NoProfile','-Command',\"{}\" -WindowStyle Hidden",
+        inner.replace('"', "'")
+    );
+    let extra = ["--quiet-secs", "1", "--", "powershell", "-NoProfile", "-Command", launcher.as_str()];
+    let (r, out) = call("run", &extra, &a, "");
+    assert_eq!(r.unwrap(), 0, "{out}");
+    assert!(out.contains("Save enviado para a nuvem"), "o save tardio ficou de fora: {out}");
+    assert!(fs::read_to_string(&file).unwrap().contains("tardio"));
+}

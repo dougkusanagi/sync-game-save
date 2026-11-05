@@ -20,6 +20,7 @@ Comandos:
 Opções:
   --state-dir <pasta>  Estado local (padrão: %LOCALAPPDATA%/SyncGameSave/<jogo>)
   --device <nome>      Nome deste PC (padrão: nome do computador)
+  --quiet-secs <n>     Segundos sem nenhum processo do jogo para considerar fechado (padrão: 5)
 ";
 
 struct Opts {
@@ -35,6 +36,7 @@ struct Opts {
     json: bool,
     program: Vec<String>,
     now: Option<u64>,
+    quiet_secs: u64,
 }
 
 fn parse(args: Vec<String>) -> Result<Opts, String> {
@@ -54,6 +56,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
         json: false,
         program: vec![],
         now: None,
+        quiet_secs: 5,
     };
     while let Some(a) = it.next() {
         let mut val = |name: &str| it.next().ok_or(format!("falta o valor de {name}"));
@@ -66,6 +69,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
             "--snapshot" => o.snapshot = Some(val(&a)?),
             "--on-conflict" => o.on_conflict = Some(val(&a)?),
             "--now" => o.now = Some(val(&a)?.parse().map_err(|_| "--now precisa ser um número")?),
+            "--quiet-secs" => o.quiet_secs = val(&a)?.parse().map_err(|_| "--quiet-secs precisa ser um número")?,
             "--force" => o.force = true,
             "--json" => o.json = true,
             "--" => {
@@ -263,7 +267,19 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
     }
     .map_err(e)?;
 
-    let status = std::process::Command::new(prog).args(rest).status();
+    let status = match std::process::Command::new(prog).args(rest).spawn() {
+        Ok(mut child) => {
+            let pid = child.id();
+            // Segue o programa e os processos que ele abriu, mesmo se ele fechar logo (launcher).
+            let mut tracker = Tracker::new(pid);
+            let st = child.wait();
+            if let Some(t) = tracker.as_mut() {
+                t.wait_until_gone(std::time::Duration::from_secs(o.quiet_secs));
+            }
+            st
+        }
+        Err(x) => Err(x),
+    };
     // Mesmo se o programa nem abriu ou saiu com erro, o save é conferido e a trava solta.
     journal::begin(jdir, &o.game, "fechar", ctx.now).map_err(e)?;
     let created = ctx.after_exit().map_err(e)?;
@@ -271,4 +287,54 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
     writeln!(out, "{}", if created { "Save enviado para a nuvem." } else { "Save sem mudanças." }).map_err(e)?;
     let status = status.map_err(|x| format!("não consegui abrir {prog}: {x}"))?;
     Ok(status.code().unwrap_or(1))
+}
+
+/// Acompanha um processo e todos os descendentes que ele abriu.
+struct Tracker {
+    sys: sysinfo::System,
+    pids: std::collections::HashSet<u32>,
+}
+
+impl Tracker {
+    fn new(root: u32) -> Option<Self> {
+        // Sem acesso à lista de processos, só se espera o programa que foi aberto.
+        Some(Tracker { sys: sysinfo::System::new().ok()?, pids: [root].into() })
+    }
+
+    /// Atualiza a lista; devolve se ainda há algum processo do grupo vivo.
+    fn refresh(&mut self) -> bool {
+        use sysinfo::{ProcessRefreshKind, ProcessesToUpdate};
+        self.sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
+        // Um filho novo entra no grupo se o pai (mesmo já encerrado) está no grupo.
+        loop {
+            let new: Vec<u32> = self
+                .sys
+                .processes()
+                .iter()
+                .filter(|(pid, p)| !self.pids.contains(&pid.as_u32()) && p.parent().is_some_and(|pp| self.pids.contains(&pp.as_u32())))
+                .map(|(pid, _)| pid.as_u32())
+                .collect();
+            if new.is_empty() {
+                break;
+            }
+            self.pids.extend(new);
+        }
+        self.pids.iter().any(|p| self.sys.process(sysinfo::Pid::from_u32(*p)).is_some())
+    }
+
+    /// Espera até nenhum processo do grupo existir por `quiet` seguido.
+    fn wait_until_gone(&mut self, quiet: std::time::Duration) {
+        let mut gone_since: Option<std::time::Instant> = None;
+        loop {
+            if self.refresh() {
+                gone_since = None;
+            } else {
+                let t = *gone_since.get_or_insert_with(std::time::Instant::now);
+                if t.elapsed() >= quiet {
+                    return;
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+    }
 }

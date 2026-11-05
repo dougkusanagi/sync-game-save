@@ -519,7 +519,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Backups locais (`engine`) e journal de operações (`journal`).
 - [x] `lock.json` com heartbeat (`lock`).
 - [x] CLI `sgs run|backup|restore|status|list` com saída JSON opcional (`sgs-cli`).
-- [x] Cenários de teste do sync passando com `cargo test` (exceto "jogo aberto por launcher intermediário", que depende do rastreio de processos da Fase 2).
+- [x] Cenários de teste do sync passando com `cargo test`, inclusive jogo aberto por launcher intermediário (a CLI acompanha o programa e os processos descendentes; `--quiet-secs`, padrão 5). O Job Object do Windows e a busca por pasta de instalação ficam para a Fase 2.
 - [ ] Uso real por 1–2 semanas pela CLI com atalhos da Steam, nos jogos atuais.
 
 ### Fase 2 — App e biblioteca
@@ -565,6 +565,6 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Falta da Fase 1 só o uso real por 1–2 semanas pela CLI, que depende do usuário. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo e a confirmação do ADR 0002.
+Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Faltam só duas coisas que dependem do usuário: o uso real por 1–2 semanas pela CLI e a confirmação do ADR 0002. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo e a confirmação do ADR 0002.
 
 Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
