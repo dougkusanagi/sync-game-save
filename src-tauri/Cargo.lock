@@ -3073,6 +3073,7 @@ dependencies = [
  "sgs-library",
  "tempfile",
  "thiserror 2.0.21",
+ "ureq",
 ]
 
 [[package]]

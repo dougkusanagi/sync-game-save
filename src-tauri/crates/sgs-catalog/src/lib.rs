@@ -2,7 +2,7 @@
 
 pub mod recognize;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -211,6 +211,12 @@ impl Catalog {
             Ok(SavePath { path: r.get(0)?, tags: r.get(1)?, os: r.get(2)?, store: r.get(3)? })
         })?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
+    }
+
+    /// Id do jogo na Steam, se o catálogo tiver.
+    pub fn steam_id(&self, game_id: i64) -> Result<Option<u64>> {
+        let id: Option<i64> = self.0.query_row("SELECT steam_id FROM games WHERE id=?", [game_id], |r| r.get(0)).optional()?.flatten();
+        Ok(id.map(|i| i as u64))
     }
 
     pub fn launch_paths(&self, game_id: i64) -> Result<Vec<String>> {

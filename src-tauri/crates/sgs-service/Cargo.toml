@@ -10,6 +10,7 @@ sgs-catalog = { version = "0.1.0", path = "../sgs-catalog" }
 sgs-core = { version = "0.1.0", path = "../sgs-core" }
 sgs-library = { version = "0.1.0", path = "../sgs-library" }
 thiserror = "2.0.21"
+ureq = "3.5.1"
 
 [dev-dependencies]
 tempfile = "3.27.0"

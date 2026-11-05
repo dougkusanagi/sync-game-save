@@ -236,6 +236,21 @@ impl Service {
         Ok(self.lib().remove_game(id)?)
     }
 
+    // ---- Arte ----
+
+    /// Capa do jogo no cache local. Baixa da Steam na primeira vez; offline ou sem id, devolve `None`
+    /// e a interface mostra um espaço reservado.
+    pub fn game_art(&self, id: i64) -> Result<Option<PathBuf>> {
+        let game = self.lib().get(id)?;
+        let cached = self.data_dir.join("art").join(format!("{id}.jpg"));
+        if cached.is_file() {
+            return Ok(Some(cached));
+        }
+        let (Some(cat_id), true) = (game.catalog_id, self.catalog_path().exists()) else { return Ok(None) };
+        let Some(steam) = self.catalog()?.steam_id(cat_id)? else { return Ok(None) };
+        Ok(download_art(&steam_header_url(steam), &cached))
+    }
+
     // ---- Jogar ----
 
     fn roots(&self, game: &Game) -> Result<Vec<Root>> {
@@ -352,3 +367,25 @@ fn unix_now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
+
+pub fn steam_header_url(steam_id: u64) -> String {
+    format!("https://cdn.cloudflare.steamstatic.com/steam/apps/{steam_id}/header.jpg")
+}
+
+/// Baixa uma imagem para o cache. Só guarda se for mesmo uma imagem (JPEG/PNG) e de tamanho razoável.
+fn download_art(url: &str, dest: &Path) -> Option<PathBuf> {
+    let mut resp = ureq::get(url).config().http_status_as_error(false).timeout_global(Some(Duration::from_secs(10))).build().call().ok()?;
+    if resp.status().as_u16() != 200 {
+        return None;
+    }
+    let body = resp.body_mut().with_config().limit(5 * 1024 * 1024).read_to_vec().ok()?;
+    let is_image = body.starts_with(&[0xFF, 0xD8, 0xFF]) || body.starts_with(&[0x89, b'P', b'N', b'G']);
+    if !is_image {
+        return None;
+    }
+    std::fs::create_dir_all(dest.parent()?).ok()?;
+    let tmp = dest.with_extension("tmp");
+    std::fs::write(&tmp, body).ok()?;
+    std::fs::rename(&tmp, dest).ok()?;
+    Some(dest.to_path_buf())
+}

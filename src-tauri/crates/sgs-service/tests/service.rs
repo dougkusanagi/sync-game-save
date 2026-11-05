@@ -207,3 +207,18 @@ fn restaurar_versao_antiga_com_backup_e_remover_nao_apaga_saves() {
     assert_eq!(read(t.path(), "A", "Jogo/s.sav"), "v1");
     assert!(t.path().join("nuvem/SyncGameSave/games/Jogo_ Teste/head.json").exists());
 }
+
+#[test]
+fn capa_usa_o_cache_e_nao_quebra_sem_catalogo() {
+    let t = tempfile::tempdir().unwrap();
+    let s = pc(t.path(), "A", &clock());
+    let id = s.add_game(&game()).unwrap();
+    // Sem catálogo nem cache: nada de erro, só sem capa.
+    assert_eq!(s.game_art(id).unwrap(), None);
+    // Com uma capa já em cache, devolve o arquivo sem ir à rede.
+    let cached = t.path().join("A/dados/art");
+    fs::create_dir_all(&cached).unwrap();
+    fs::write(cached.join(format!("{id}.jpg")), [0xFF, 0xD8, 0xFF]).unwrap();
+    assert_eq!(s.game_art(id).unwrap(), Some(cached.join(format!("{id}.jpg"))));
+    assert_eq!(sgs_service::steam_header_url(241600), "https://cdn.cloudflare.steamstatic.com/steam/apps/241600/header.jpg");
+}

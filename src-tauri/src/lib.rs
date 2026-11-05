@@ -149,6 +149,12 @@ async fn jogar(app: AppHandle, svc: Svc<'_>, id: i64, opcoes: Option<OpcoesJogar
     result
 }
 
+/// Caminho da capa em cache (ou nada). A interface carrega por `convertFileSrc`.
+#[tauri::command]
+async fn capa_do_jogo(svc: Svc<'_>, id: i64) -> Result<Option<String>, String> {
+    blocking(&svc, move |s| Ok(s.game_art(id)?.map(|p| p.display().to_string()))).await
+}
+
 #[tauri::command]
 async fn versoes(svc: Svc<'_>, id: i64) -> Result<Vec<String>, String> {
     blocking(&svc, move |s| s.snapshots(id)).await
@@ -182,6 +188,7 @@ pub fn run() {
             editar_jogo,
             remover_jogo,
             jogar,
+            capa_do_jogo,
             versoes,
             restaurar_versao,
         ])
