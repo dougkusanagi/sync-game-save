@@ -25,5 +25,6 @@ O app precisa saber, para milhares de jogos, o nome, as pastas de instalação e
 
 - Busca rápida e memória baixa; o catálogo pode ser apagado e remontado sem perder dados do usuário.
 - O manifesto não traz descrição, desenvolvedora nem ano: esses dados vêm de outras fontes (Steam Store, IGDB opcional) e ficam em cache em `library.db`.
-- É preciso medir o tempo de montagem e o tamanho do `catalog.db` na Fase 1.
+- Medido em 2026-11-05 com o manifesto real (45.612 jogos, 352.819 regras de arquivo, 29 MB de YAML), em build release: montagem em 2,3 s, `catalog.db` com 35 MB, busca em cerca de 1 ms (4 ms para prefixo de 2 letras) e busca por pasta em 0,2 ms.
+- O manifesto real traz caracteres de controle (ex.: DEL) que o parser YAML recusa; a montagem os troca por espaço antes de ler.
 - A tela "Sobre" precisa citar o Ludusavi e sua licença.

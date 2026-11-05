@@ -512,11 +512,11 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 - [x] Remover todo o código Electron (autorizado), inclusive o `css.postcss` do protótipo.
 - [ ] Iniciar o projeto Tauri 2 + React + TypeScript com bun.
-- [ ] Montar o `catalog.db` a partir do manifesto do Ludusavi (download com ETag, troca atômica) e medir tempos.
+- [x] Montar o `catalog.db` a partir do manifesto do Ludusavi (download com ETag, troca atômica) e medir tempos (`sgs-catalog`; números no ADR 0002).
 - [x] Caminhos lógicos: resolver/converter marcadores (`paths`). Falta: preencher `Env` com as pastas reais do Windows/Linux.
 - [x] Índice de arquivos com SHA-256; comparação em três vias (`sgs-core`: `index`, `sync`).
-- [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Falta: retenção.
-- [ ] Backups locais e journal de operações.
+- [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Falta: retenção (`snapshot::prune`).
+- [x] Backups locais (`engine`) e journal de operações (`journal`).
 - [x] `lock.json` com heartbeat (`lock`).
 - [ ] CLI `sgs run|backup|restore|status|list` com saída JSON opcional.
 - [ ] Todos os cenários de teste do sync passando com `cargo test`.
