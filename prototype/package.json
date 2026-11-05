@@ -1,0 +1,13 @@
+{
+  "name": "sync-game-save-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview"
+  },
+  "devDependencies": {
+    "vite-plus": "1.5.0"
+  }
+}

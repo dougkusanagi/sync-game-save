@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR" data-motion="auto" data-glass="on">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Sync Game Save — protótipo</title>
+		<link rel="icon" href="data:," />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+	</head>
+	<body>
+		<div id="app" data-input="keyboard">
+			<div class="bg" aria-hidden="true">
+				<div class="bg-layer"></div>
+				<div class="bg-layer"></div>
+				<div class="bg-shade"></div>
+			</div>
+
+			<div id="base">
+				<nav class="rail" data-group="rail" aria-label="Navegação principal"></nav>
+
+				<header class="topbar">
+					<div class="topbar-left">
+						<span class="clock" id="clock"></span>
+						<button class="cloud-pill" id="cloud-pill" data-f></button>
+					</div>
+					<div class="topbar-right" data-group="top">
+						<button class="icon-btn" data-f data-action="search" aria-label="Buscar"></button>
+						<button class="icon-btn" data-f data-action="quick" aria-label="Central rápida"></button>
+						<span class="pc-name" id="pc-name"></span>
+					</div>
+				</header>
+
+				<main>
+					<section class="screen" id="screen-home" aria-label="Início"></section>
+					<section class="screen" id="screen-library" aria-label="Biblioteca" hidden></section>
+					<section class="screen" id="screen-settings" aria-label="Configurações" hidden></section>
+				</main>
+			</div>
+
+			<footer class="legend" id="legend" aria-label="Comandos disponíveis"></footer>
+
+			<div id="overlays"></div>
+			<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+		</div>
+		<script type="module" src="/src/main.js"></script>
+	</body>
+</html>
