@@ -2,6 +2,8 @@
 //! comparação em três vias e restauração com backup.
 
 pub mod index;
+pub mod lock;
+pub mod paths;
 pub mod snapshot;
 pub mod sync;
 

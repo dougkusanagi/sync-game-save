@@ -513,11 +513,11 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Remover todo o código Electron (autorizado), inclusive o `css.postcss` do protótipo.
 - [ ] Iniciar o projeto Tauri 2 + React + TypeScript com bun.
 - [ ] Montar o `catalog.db` a partir do manifesto do Ludusavi (download com ETag, troca atômica) e medir tempos.
-- [ ] Resolver marcadores de caminho e variáveis do Windows; caminhos lógicos.
+- [x] Caminhos lógicos: resolver/converter marcadores (`paths`). Falta: preencher `Env` com as pastas reais do Windows/Linux.
 - [x] Índice de arquivos com SHA-256; comparação em três vias (`sgs-core`: `index`, `sync`).
 - [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Falta: retenção.
 - [ ] Backups locais e journal de operações.
-- [ ] `lock.json` com heartbeat.
+- [x] `lock.json` com heartbeat (`lock`).
 - [ ] CLI `sgs run|backup|restore|status|list` com saída JSON opcional.
 - [ ] Todos os cenários de teste do sync passando com `cargo test`.
 - [ ] Uso real por 1–2 semanas pela CLI com atalhos da Steam, nos jogos atuais.
@@ -565,6 +565,6 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 em andamento (branch `feat/fase1-nucleo-sync`). Feito: `src-tauri/crates/sgs-core` com índice, snapshots, restauração com backup e decisão em três vias (4 testes). Falta: caminhos lógicos e marcadores, `lock.json`, journal, catálogo, CLI, os demais cenários de teste e o projeto Tauri + React. Ainda vale o texto abaixo para a revisão do protótipo e o ADR 0002.
+Fase 1 em andamento (branch `feat/fase1-nucleo-sync`). Feito: `src-tauri/crates/sgs-core` com índice, snapshots, restauração com backup e decisão em três vias (8 testes), `lock.json` e caminhos lógicos. Falta: `Env` real do SO, journal, catálogo, CLI, os demais cenários de teste e o projeto Tauri + React. Ainda vale o texto abaixo para a revisão do protótipo e o ADR 0002.
 
 Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
