@@ -12,7 +12,7 @@ Um launcher/HUB de jogos para PC que:
 4. Tem visual moderno, inspirado no PS5 (sem copiar marca, ícones ou layout exato), com uso impecável por controle e por teclado + mouse.
 5. Mostra conquistas e, no futuro, aceita temas criados pela comunidade.
 
-Critério de conclusão da versão 1.0: o app instalado (Windows) gerencia a biblioteca, abre jogos, sincroniza saves entre dois PCs pela pasta do OneDrive sem perda em todos os cenários da seção "Cenários de teste do sync", e toda a interface funciona só com controle.
+Critério de conclusão do MVP: os itens P0 da seção "Prioridades do MVP" funcionam no Windows, com os testes de sync passando.
 
 ## Estado atual (2026-11-05)
 
@@ -41,34 +41,80 @@ Protótipo da interface: pronto em `prototype/` (HTML + CSS + JS, servidor Vite+
 
 ## Prioridades do MVP
 
-O MVP é a menor versão que o usuário instala e usa no lugar da cópia manual. Ordem de prioridade (P0 primeiro). Nada de P1/P2 começa antes de todo o P0 funcionar e ter testes.
+O MVP é a menor versão que substitui a cópia manual sem risco de perder save. Nada de P1/P2 começa antes de todo o P0 funcionar e ter testes.
 
-**P0 — sem isto não há MVP**
+**P0 — MVP**
 
-1. **Assistente de primeiro uso** (seção "Assistente de primeiro uso"): explica por que manter os saves numa pasta do OneDrive/Google Drive/Dropbox, pergunta se o usuário já tem essa pasta e só libera o uso depois de configurada e verificada.
-2. **Sync seguro** ao abrir e fechar o jogo: snapshots imutáveis, backup local antes de toda ação perigosa, comparação em três vias, tela de conflito, trava de um PC por vez. Todos os "Cenários de teste do sync" passando.
-3. **Adicionar jogos com facilidade**: escolher a pasta do jogo (ou o executável) e o app reconhece o jogo e os caminhos de save; varrer uma pasta de jogos e encontrar todos de uma vez (seção "Reconhecimento de jogos").
-4. **Abrir o jogo pelo HUB** e acompanhar o processo (inclusive launcher intermediário), com ícone na bandeja.
-5. **Histórico de versões e restauração** de qualquer versão.
-6. **Navegação completa por controle e por teclado + mouse**, com a interface do protótipo (Início, Biblioteca, Busca, Filtros, Menu, Configurações, Sobre).
-7. **Instaladores** Windows (NSIS) e Ubuntu (AppImage).
+1. **Pasta de sync**: em Configurações, escolher com o seletor de pasta nativo a pasta onde ficam os saves (ex.: dentro do OneDrive). Cada jogo ganha uma subpasta com o nome dele. Sem a pasta configurada, o botão Jogar explica o que falta e leva a essa tela.
+2. **Adicionar jogo**: seletor nativo de pasta ou `.exe`. O app sugere o nome, o executável e os **caminhos do save** (pelo catálogo do Ludusavi, buscando pelo nome da pasta). Se não achar, o usuário escolhe a pasta ou os arquivos do save com o seletor nativo. Sem caminho de save, o jogo não pode ser sincronizado.
+3. **Persistência**: jogos adicionados e o estado do último sync em `library.db` (SQLite, local, fora da nuvem). Editar e remover jogo.
+4. **Iniciar / parar jogo**: botão Jogar e botão Parar (pede confirmação, porque fechar à força pode corromper o save). Acompanhar o processo e os filhos, para jogos abertos por um launcher que fecha logo.
+5. **Sync ao abrir**: comparar o save local com o da pasta de sync.
+   - Só a pasta de sync mudou: backup local → restaurar → abrir.
+   - Só o local mudou: criar snapshot na pasta de sync → abrir.
+   - Os dois mudaram (**conflito**): mostrar data e tamanho de cada lado e oferecer "Usar o local" ou "Usar o da pasta de sync". O lado descartado vira snapshot/backup. **Nenhum snapshot é apagado e o save original da pasta do jogo sempre tem cópia antes de ser sobrescrito.**
+   - Pasta de sync indisponível: avisar e oferecer "Jogar sem sincronizar".
+6. **Sync ao fechar**: esperar o jogo terminar de gravar e criar um snapshot novo (imutável, conferido por hash, `head.json` atualizado por último), mesmo se o jogo fechar com erro.
+7. **Interface mínima** com navegação por controle e por teclado + mouse: lista de jogos, Jogar/Parar, estado do sync, tela de conflito, Configurações e Sobre (nome, versão, build).
+8. **Rede de segurança mínima** (itens que costumam faltar):
+   - Ver os snapshots de um jogo e restaurar um deles (com backup antes). Sem isso, um snapshot guardado não ajuda o usuário a recuperar o save.
+   - Aviso quando o jogo é aberto em outro PC (`lock.json`), já que os dois PCs usam a mesma pasta.
+   - Mensagens de erro claras e um log em arquivo, para investigar uma falha de sync.
+   - Testes automáticos dos cenários de sync (seção "Cenários de teste do sync").
+   - Um instalador para Windows (NSIS).
+
+### Como cada item do P0 funciona (decisões do MVP)
+
+**Onde encontrar o save de um jogo** (em ordem; para no primeiro passo com resultado confiável):
+
+1. **Catálogo do Ludusavi** (`catalog.db`): identificar o jogo pelo nome da pasta escolhida (`installDir`). Se não bater, buscar pelo nome da pasta limpo e pelo nome do `.exe`. Resolver os marcadores (`<base>` = pasta do jogo, `<home>`, `<winAppData>`, `<winLocalAppData>`, `<winDocuments>`, `<winPublic>`, `<winProgramData>`, `<storeUserId>` como curinga) e as regras `when` (SO e loja). Usar só regras com tag `save`; regras `config` ficam desmarcadas por padrão. Mostrar cada caminho com "encontrado: N arquivos, tamanho" ou "não encontrado ainda".
+2. **Registro do Windows**: alguns jogos salvam no registro (`registry` no manifesto). No MVP, avisar que o jogo salva no registro e que esse tipo não é sincronizado ainda (exportar `.reg` fica para P1).
+3. **Detecção por mudança** (quando o catálogo não conhece o jogo ou nenhum caminho existe): o usuário clica "Descobrir onde o jogo salva", joga e salva uma vez. Antes de abrir, o app registra data e tamanho dos arquivos nas pastas comuns de save (`%USERPROFILE%\Saved Games`, `Documents`, `Documents\My Games`, `%APPDATA%`, `%LOCALAPPDATA%`, `%USERPROFILE%\AppData\LocalLow`, `%PUBLIC%\Documents` e a pasta do jogo). Ao fechar, lista as pastas com arquivos novos ou alterados, ignorando caches, logs, shaders e crash dumps, e sugere a mais provável. O usuário confirma.
+4. **Manual**: seletor nativo de pasta ou arquivos. O usuário sempre pode editar a lista.
+
+Os caminhos são guardados com marcadores (ex.: `<winAppData>/Jogo/saves`), não absolutos, para funcionar em outro PC e com outro usuário.
+
+**Adicionar jogo**: aceitar pasta ou `.exe`. Com pasta, escolher o executável pelo `launch` do manifesto; senão, o `.exe` maior que não seja instalador, desinstalador, crash handler ou redistribuível. O nome do jogo vem do catálogo ou do nome da pasta; o usuário pode editar. Uma única tela com tudo preenchido e um botão "Adicionar".
+
+**Pasta de sync**: `<pasta escolhida>/<nome do jogo sem caracteres inválidos>/`, com `snapshots/<data>_<PC>/` em arquivos legíveis, `head.json` e `lock.json` (layout completo em "Projeto do sync seguro"). Se o nome mudar, a pasta não é renomeada: o id do jogo fica em `game.json`.
+
+**Primeiro sync de um jogo novo**: se a pasta de sync do jogo está vazia, o save local vira o primeiro snapshot. Se já tem snapshots (de outro PC) e o local também tem save, é conflito: o usuário escolhe, nada é apagado.
+
+**Parar jogo**: primeiro pede para fechar (fecha a janela principal), espera 10 s e só então oferece "Forçar fechamento", com aviso de risco ao save.
+
+**Processo**: Job Object no Windows (pega processos filhos) e, como reserva, procurar processos cujo executável esteja dentro da pasta do jogo. O jogo é considerado fechado quando nenhum desses roda por 5 s.
+
+**Sync ao fechar**: esperar 3 s depois do fechamento e confirmar que os arquivos do save pararam de mudar (dois cálculos de hash iguais com 1 s de intervalo). Se nada mudou, não cria snapshot.
+
+**Backups locais**: antes de sobrescrever o save local, copiar para `%LOCALAPPDATA%\SyncGameSave\backups\<jogo>\<data>_<motivo>\`. Retenção: nunca apagar automaticamente no MVP; mostrar o espaço usado em Configurações.
+
+**Retenção na pasta de sync**: o MVP não apaga snapshots. Limpeza configurável fica para P1.
+
+**Trava de outro PC**: `lock.json` com PC, hora e heartbeat a cada 2 min. Trava com heartbeat de menos de 10 min gera aviso com "Abrir mesmo assim" e "Cancelar". Trava mais antiga é tratada como abandonada (ex.: PC desligado no meio do jogo).
+
+**Log**: arquivo diário em `%LOCALAPPDATA%\SyncGameSave\logs\`, guardando 14 dias, com cada passo do sync (arquivos, hashes, decisões). Botão "Abrir pasta de logs" em Configurações.
+
+**Interface do MVP**: uma tela de lista de jogos (com Jogar/Parar e estado do sync por jogo), a tela de adicionar/editar jogo, a de snapshots com "Restaurar", o diálogo de conflito, Configurações (pasta de sync, logs) e Sobre. Usar o motor de foco e os tokens do protótipo, sem a arte de fundo (arte é P1).
 
 **P1 — logo depois do MVP**
 
+- Assistente de primeiro uso (explicar o OneDrive/Google Drive, perguntar se já existe a pasta).
+- Varrer uma pasta e adicionar vários jogos de uma vez.
+- Interface completa do protótipo (Início com arte, biblioteca, busca, filtros, menu, central rápida).
+- Ícone na bandeja.
 - Sons: fundo ambiente e efeitos (seção "Som").
-- Arte da SteamGridDB e metadados da Steam Store.
-- Tempo de jogo e "jogados recentemente" com dados reais.
+- Arte e metadados (Steam, SteamGridDB) e tempo de jogo.
+- Instalador para Ubuntu (AppImage) e atualização automática.
 - CLI `sgs run` e "Adicionar à Steam".
-- Atualização automática.
 
 **P2 — depois**
 
-- Conquistas (provedores).
+- Conquistas da Steam com visual inspirado no PS5.
 - Temas da comunidade e tema claro.
 - Emuladores (saves por ROM, RetroAchievements).
 - Steam Deck.
 
-## Assistente de primeiro uso (P0)
+## Assistente de primeiro uso (P1)
 
 Abre na primeira execução, depois da instalação. O HUB não abre jogos nem copia saves até o assistente terminar. Pode ser reaberto em Configurações → Nuvem.
 
@@ -83,7 +129,7 @@ Abre na primeira execução, depois da instalação. O HUB não abre jogos nem c
 6. **Adicionar jogos**: atalho para "Procurar jogos numa pasta" ou "Adicionar um jogo". Pode pular.
 7. **Pronto**: resumo do que foi configurado.
 
-## Reconhecimento de jogos (P0)
+## Reconhecimento de jogos (P0: um jogo por vez; P1: varredura)
 
 Decisão: **reconhecer pela pasta do jogo**, com o executável como confirmação. Motivo: o manifesto do Ludusavi indexa os jogos pelo nome da pasta de instalação (`installDir`), que é estável. Nomes de executáveis variam muito (`game.exe`, `LAUNCHER_x64.exe`, `UnityCrashHandler64.exe`).
 
