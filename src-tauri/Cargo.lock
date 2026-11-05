@@ -3016,6 +3016,7 @@ dependencies = [
 name = "sgs-core"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "serde",
  "serde_json",
  "sha2 0.11.1",

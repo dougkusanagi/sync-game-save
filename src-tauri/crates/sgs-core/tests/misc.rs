@@ -38,3 +38,11 @@ fn env_do_sistema_tem_base_e_home() {
     assert!(resolve("<base>/save", &env).is_some());
     assert!(resolve("<home>", &env).is_some());
 }
+
+#[test]
+fn documentos_usa_a_pasta_do_sistema() {
+    let env = system_env(None);
+    if let Some(real) = dirs::document_dir() {
+        assert_eq!(resolve("<winDocuments>", &env), Some(real));
+    }
+}

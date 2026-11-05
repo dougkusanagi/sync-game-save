@@ -7,7 +7,7 @@ use std::io::{BufRead, Write};
 use std::path::PathBuf;
 
 const HELP: &str = "\
-Uso: sgs <comando> --sync-dir <pasta> --game <nome> --save-dir <pasta do save> [opções]
+Uso: sgs <comando> --sync-dir <pasta> --game <nome> --save-dir <pasta do save ou <marcador>/caminho> [opções]
 
 Comandos:
   run [--force] [--on-conflict local|cloud|abort] -- <programa> [args...]
@@ -106,6 +106,16 @@ fn unix_now() -> u64 {
         .unwrap_or(0)
 }
 
+/// Aceita caminho comum ou lógico (`<winDocuments>/SavedGames/Jogo`).
+fn resolve_save_dir(p: &std::path::Path) -> Result<PathBuf, String> {
+    let text = p.to_string_lossy();
+    if !text.starts_with('<') {
+        return Ok(p.to_path_buf());
+    }
+    sgs_core::paths::resolve(&text, &sgs_core::env::system_env(None))
+        .ok_or_else(|| format!("não consegui resolver o caminho {text} neste PC"))
+}
+
 fn context(o: &Opts) -> Result<Ctx, String> {
     let game = slug(&o.game);
     if game.is_empty() {
@@ -123,7 +133,7 @@ fn context(o: &Opts) -> Result<Ctx, String> {
     };
     Ok(Ctx {
         game_dir: o.sync_dir.join("SyncGameSave").join("games").join(&game),
-        save_dir: o.save_dir.clone(),
+        save_dir: resolve_save_dir(&o.save_dir)?,
         state_dir,
         device: o.device.clone().unwrap_or_else(device_name),
         now: o.now.unwrap_or_else(unix_now),
@@ -261,7 +271,7 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
     }
     journal::end(jdir, &o.game).map_err(e)?;
     match before {
-        Before::RestoredFromCloud => writeln!(out, "Save da nuvem restaurado (o anterior ficou em backup)."),
+        Before::RestoredFromCloud => writeln!(out, "Save da nuvem restaurado. Se havia um save neste PC, uma cópia ficou na pasta de backups."),
         Before::UploadedLocal => writeln!(out, "Save deste PC enviado para a nuvem."),
         _ => writeln!(out, "Save em dia."),
     }

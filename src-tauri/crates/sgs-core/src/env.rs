@@ -23,7 +23,8 @@ pub fn system_env(base: Option<PathBuf>) -> Env {
     add("winLocalAppData", var("LOCALAPPDATA"));
     add("winPublic", var("PUBLIC"));
     add("winProgramData", var("PROGRAMDATA"));
-    add("winDocuments", home.as_ref().map(|h| h.join("Documents")));
+    // Documentos pode estar redirecionado (OneDrive, outro nome de pasta): pergunta ao sistema.
+    add("winDocuments", dirs::document_dir().or_else(|| home.as_ref().map(|h| h.join("Documents"))));
     // Linux
     add(
         "xdgData",
