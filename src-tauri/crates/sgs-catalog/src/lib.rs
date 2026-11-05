@@ -1,5 +1,7 @@
 //! Catálogo de jogos: converte o manifesto do Ludusavi (YAML, MIT) em SQLite com FTS5.
 
+pub mod recognize;
+
 use rusqlite::{params, Connection};
 use serde::Deserialize;
 use std::collections::BTreeMap;

@@ -2997,6 +2997,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_yaml",
+ "sgs-core",
  "tempfile",
  "thiserror 2.0.21",
  "ureq",
