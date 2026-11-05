@@ -525,10 +525,10 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 ### Fase 2 — App e biblioteca
 
 - [x] SQLite local (`library.db`) com migrações (`sgs-library`: jogos, caminhos de save, estado do sync, configurações).
-- [ ] Assistente de primeiro uso (pasta da nuvem) bloqueando o uso até ser concluído.
+- [x] Backend do assistente de primeiro uso (`sgs-service`: verificar a pasta, registrar este PC sem apagar outros, detectar dados de outro PC). Falta a tela e o bloqueio do uso até concluir (Fase 3).
 - [x] Reconhecimento pela pasta do jogo e varredura de pastas (`sgs-catalog::recognize`; testado com o Rogue Legacy real). Falta: a tela do assistente de adicionar jogo (Fase 3) e a detecção de save por mudança.
-- [ ] Abrir jogo com rastreio de processos (Job Object) e tempo de jogo.
-- [ ] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface.
+- [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Falta: Job Object e tempo de jogo.
+- [x] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface (comandos Tauri sobre o `sgs-service`; evento `jogo-estado`).
 - [ ] Arte (Steam CDN + SteamGridDB) com cache.
 - [ ] Bandeja e notificações.
 

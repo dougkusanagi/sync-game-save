@@ -7,6 +7,7 @@ pub mod journal;
 pub mod index;
 pub mod lock;
 pub mod paths;
+pub mod process;
 pub mod snapshot;
 pub mod sync;
 

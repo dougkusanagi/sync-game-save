@@ -1,10 +1,11 @@
 //! Reconhecimento de um jogo pela pasta de instalação: nome, executável e caminhos de save.
 
 use crate::{Catalog, Hit, Result};
+use serde::Serialize;
 use sgs_core::paths::{resolve, Env};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum Confidence {
     /// Nome da pasta igual a uma pasta de instalação do catálogo.
     High,
@@ -14,7 +15,7 @@ pub enum Confidence {
     None,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SaveCandidate {
     /// Caminho com marcador, como no catálogo (`<winDocuments>/SavedGames/Jogo`).
     pub logical: String,
@@ -25,7 +26,7 @@ pub struct SaveCandidate {
     pub selected: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Recognition {
     pub name: String,
     pub catalog_id: Option<i64>,
@@ -204,7 +205,7 @@ fn save_candidates(cat: &Catalog, id: i64, env: &Env, windows: bool) -> Result<V
 }
 
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct ScanResult {
     /// Reconhecidos com certeza alta.
     pub recognized: Vec<(PathBuf, Recognition)>,

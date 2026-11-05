@@ -1,6 +1,7 @@
 //! `library.db`: biblioteca de jogos e configurações deste PC.
 //! Fica fora da pasta da nuvem (ver ADR 0003). Remover um jogo daqui nunca apaga saves.
 
+use serde::{Deserialize, Serialize};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 
@@ -45,7 +46,7 @@ const MIGRATIONS: &[&str] = &[
      CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);",
 ];
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NewGame {
     pub name: String,
     pub exe: String,
@@ -55,7 +56,7 @@ pub struct NewGame {
     pub save_paths: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Game {
     pub id: i64,
     pub name: String,

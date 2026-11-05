@@ -143,7 +143,7 @@ pub fn build(manifest: &Path, db: &Path) -> Result<Stats> {
     Ok(stats)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Hit {
     pub id: i64,
     pub name: String,
