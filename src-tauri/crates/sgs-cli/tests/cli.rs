@@ -110,3 +110,20 @@ fn run_espera_o_jogo_aberto_por_launcher_intermediario() {
     assert!(out.contains("Save enviado para a nuvem"), "o save tardio ficou de fora: {out}");
     assert!(fs::read_to_string(&file).unwrap().contains("tardio"));
 }
+
+/// O jogo deve abrir na pasta pedida (muitos jogos acham seus arquivos pelo diretório atual).
+#[cfg(windows)]
+#[test]
+fn run_abre_o_jogo_na_pasta_de_trabalho() {
+    let t = tempfile::tempdir().unwrap();
+    let a = base(t.path(), "A", "1000");
+    fs::create_dir_all(t.path().join("A/save")).unwrap();
+    fs::create_dir_all(t.path().join("nuvem")).unwrap();
+    let cwd = t.path().join("A/save");
+    let cwd = cwd.to_string_lossy().into_owned();
+    let extra = ["--cwd", cwd.as_str(), "--", "powershell", "-NoProfile", "-Command", "Set-Content -Path relativo.sav -Value x"];
+    let (r, out) = call("run", &extra, &a, "");
+    assert_eq!(r.unwrap(), 0, "{out}");
+    assert!(t.path().join("A/save/relativo.sav").exists());
+    assert!(out.contains("Save enviado para a nuvem"), "{out}");
+}

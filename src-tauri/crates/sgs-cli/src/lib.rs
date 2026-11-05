@@ -20,6 +20,7 @@ Comandos:
 Opções:
   --state-dir <pasta>  Estado local (padrão: %LOCALAPPDATA%/SyncGameSave/<jogo>)
   --device <nome>      Nome deste PC (padrão: nome do computador)
+  --cwd <pasta>        Pasta de trabalho do jogo (padrão: a pasta do executável)
   --quiet-secs <n>     Segundos sem nenhum processo do jogo para considerar fechado (padrão: 5)
 ";
 
@@ -37,6 +38,7 @@ struct Opts {
     program: Vec<String>,
     now: Option<u64>,
     quiet_secs: u64,
+    cwd: Option<PathBuf>,
 }
 
 fn parse(args: Vec<String>) -> Result<Opts, String> {
@@ -57,6 +59,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
         program: vec![],
         now: None,
         quiet_secs: 5,
+        cwd: None,
     };
     while let Some(a) = it.next() {
         let mut val = |name: &str| it.next().ok_or(format!("falta o valor de {name}"));
@@ -70,6 +73,7 @@ fn parse(args: Vec<String>) -> Result<Opts, String> {
             "--on-conflict" => o.on_conflict = Some(val(&a)?),
             "--now" => o.now = Some(val(&a)?.parse().map_err(|_| "--now precisa ser um número")?),
             "--quiet-secs" => o.quiet_secs = val(&a)?.parse().map_err(|_| "--quiet-secs precisa ser um número")?,
+            "--cwd" => o.cwd = Some(PathBuf::from(val(&a)?)),
             "--force" => o.force = true,
             "--json" => o.json = true,
             "--" => {
@@ -277,7 +281,13 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
     }
     .map_err(e)?;
 
-    let status = match std::process::Command::new(prog).args(rest).spawn() {
+    let mut command = std::process::Command::new(prog);
+    command.args(rest);
+    // Como a Steam: abre o jogo na pasta do executável (muitos jogos procuram "Content" ali).
+    if let Some(dir) = o.cwd.clone().or_else(|| std::path::Path::new(prog).parent().filter(|d| d.is_dir()).map(|d| d.to_path_buf())) {
+        command.current_dir(dir);
+    }
+    let status = match command.spawn() {
         Ok(mut child) => {
             let pid = child.id();
             // Segue o programa e os processos que ele abriu, mesmo se ele fechar logo (launcher).
