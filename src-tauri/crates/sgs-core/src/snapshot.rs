@@ -1,0 +1,86 @@
+use crate::index::{hash_file, scan, Index};
+use crate::{Error, IoCtx, Result};
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Head {
+    pub snapshot: String,
+    pub index_digest: String,
+    pub device: String,
+}
+
+fn head_path(game_dir: &Path) -> PathBuf {
+    game_dir.join("head.json")
+}
+
+pub fn read_head(game_dir: &Path) -> Result<Option<Head>> {
+    let p = head_path(game_dir);
+    if !p.exists() {
+        return Ok(None);
+    }
+    Ok(Some(serde_json::from_slice(&std::fs::read(&p).ctx(&p)?)?))
+}
+
+fn copy_into(src: &Path, dst: &Path) -> Result<()> {
+    std::fs::create_dir_all(dst.parent().expect("destino tem pasta pai")).ctx(dst)?;
+    std::fs::copy(src, dst).ctx(dst)?;
+    Ok(())
+}
+
+/// Cria um snapshot imutável de `save_dir` em `game_dir/snapshots/<id>/`.
+/// Ordem: copia os arquivos, grava `index.json`, relê e confere os hashes e
+/// só então atualiza `head.json`. Uma falha antes disso deixa o `head` intacto.
+pub fn create(game_dir: &Path, save_dir: &Path, id: &str, device: &str) -> Result<Head> {
+    let index = scan(save_dir)?;
+    let snap = game_dir.join("snapshots").join(id);
+    let files = snap.join("files");
+    std::fs::create_dir_all(&files).ctx(&files)?;
+    for rel in index.files.keys() {
+        copy_into(&save_dir.join(rel), &files.join(rel))?;
+    }
+    let idx_path = snap.join("index.json");
+    std::fs::write(&idx_path, serde_json::to_vec_pretty(&index)?).ctx(&idx_path)?;
+    verify(&snap)?;
+    let head = Head {
+        snapshot: id.to_string(),
+        index_digest: index.digest(),
+        device: device.to_string(),
+    };
+    // Grava em arquivo temporário e renomeia, para o `head` nunca ficar pela metade.
+    let tmp = game_dir.join("head.json.tmp");
+    std::fs::write(&tmp, serde_json::to_vec_pretty(&head)?).ctx(&tmp)?;
+    std::fs::rename(&tmp, head_path(game_dir)).ctx(&tmp)?;
+    Ok(head)
+}
+
+/// Confere se todos os arquivos do snapshot existem e batem com o `index.json`.
+pub fn verify(snap: &Path) -> Result<Index> {
+    let p = snap.join("index.json");
+    let index: Index = serde_json::from_slice(&std::fs::read(&p).ctx(&p)?)?;
+    for (rel, entry) in &index.files {
+        let got = hash_file(&snap.join("files").join(rel))?;
+        if &got != entry {
+            return Err(Error::HashMismatch(rel.clone()));
+        }
+    }
+    Ok(index)
+}
+
+/// Restaura um snapshot em `save_dir`. Antes, copia o save atual para `backup_dir`.
+/// Se o backup falhar, nada é sobrescrito.
+pub fn restore(snap: &Path, save_dir: &Path, backup_dir: &Path) -> Result<()> {
+    let index = verify(snap)?;
+    let current = scan(save_dir)?;
+    for rel in current.files.keys() {
+        copy_into(&save_dir.join(rel), &backup_dir.join(rel))?;
+    }
+    for rel in current.files.keys().filter(|r| !index.files.contains_key(*r)) {
+        let p = save_dir.join(rel);
+        std::fs::remove_file(&p).ctx(&p)?;
+    }
+    for rel in index.files.keys() {
+        copy_into(&snap.join("files").join(rel), &save_dir.join(rel))?;
+    }
+    Ok(())
+}
