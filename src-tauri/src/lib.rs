@@ -6,7 +6,10 @@ use sgs_library::{Game, NewGame};
 use sgs_service::{ChoiceDto, Play, PlayOptions, Service};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, State, WindowEvent};
+use tauri_plugin_notification::NotificationExt;
 
 type Svc<'a> = State<'a, Arc<Service>>;
 
@@ -138,6 +141,7 @@ async fn jogar(app: AppHandle, svc: Svc<'_>, id: i64, opcoes: Option<OpcoesJogar
         skip_sync: o.sem_sincronizar,
         heartbeat_secs: 0,
     };
+    let notify = app.clone();
     let result = blocking(&svc, move |s| {
         let emit = |estado: &str| {
             let _ = app.emit("jogo-estado", EstadoJogo { id, estado: estado.to_string() });
@@ -147,7 +151,25 @@ async fn jogar(app: AppHandle, svc: Svc<'_>, id: i64, opcoes: Option<OpcoesJogar
         r
     })
     .await;
+    match &result {
+        Ok(Play::Finished { notice, .. }) => notificar(&notify, "Sync Game Save", notice),
+        Ok(Play::Conflict) => notificar(&notify, "Sync Game Save", "O save deste PC e o da pasta de sincronização mudaram. Abra o app para escolher qual manter."),
+        Err(msg) => notificar(&notify, "Sync Game Save", msg),
+        _ => {}
+    }
     result
+}
+
+fn notificar(app: &AppHandle, titulo: &str, texto: &str) {
+    let _ = app.notification().builder().title(titulo).body(texto).show();
+}
+
+fn mostrar_janela(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
 }
 
 /// Caminho da capa em cache (ou nada). A interface carrega por `convertFileSrc`.
@@ -169,10 +191,40 @@ async fn restaurar_versao(svc: Svc<'_>, id: i64, versao: String) -> Result<Strin
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .on_window_event(|window, event| {
+            // Fechar a janela só esconde o app na bandeja; ele continua cuidando dos saves.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             let svc = Service::open(&dir).map_err(|e| e.to_string())?;
             app.manage(Arc::new(svc));
+
+            let abrir = MenuItem::with_id(app, "abrir", "Abrir Sync Game Save", true, None::<&str>)?;
+            let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&abrir, &sair])?;
+            let mut tray = TrayIconBuilder::new()
+                .tooltip("Sync Game Save")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "abrir" => mostrar_janela(app),
+                    "sair" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                        mostrar_janela(tray.app_handle());
+                    }
+                });
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            tray.build(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -530,7 +530,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Tempo de jogo feito (`library.db` esquema 2). Falta: Job Object. Heartbeat da trava durante o jogo feito (a cada 2 min).
 - [x] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface (comandos Tauri sobre o `sgs-service`; evento `jogo-estado`).
 - [ ] Arte (Steam CDN + SteamGridDB) com cache.
-- [ ] Bandeja e notificações.
+- [x] Bandeja e notificações (fechar a janela esconde o app na bandeja; menu Abrir/Sair; notificação ao fim do sync, conflito e erro). Verificado: o app abre sem erro; o ícone da bandeja não foi inspecionado visualmente.
 
 ### Fase 3 — Interface final
 
