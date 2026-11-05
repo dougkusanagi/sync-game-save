@@ -39,3 +39,26 @@ impl<T> IoCtx<T> for std::io::Result<T> {
         })
     }
 }
+
+/// Tentativas e espera para arquivos presos pelo jogo ou pelo antivírus.
+const RETRIES: u32 = 8;
+const RETRY_WAIT: std::time::Duration = std::time::Duration::from_millis(250);
+
+fn is_busy(e: &std::io::Error) -> bool {
+    // 32 e 33: violação de compartilhamento e de trava no Windows.
+    e.kind() == std::io::ErrorKind::PermissionDenied || matches!(e.raw_os_error(), Some(32) | Some(33))
+}
+
+/// Repete a operação enquanto o arquivo estiver ocupado. Outros erros saem na hora.
+pub(crate) fn retry<T>(mut op: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    let mut left = RETRIES;
+    loop {
+        match op() {
+            Err(e) if left > 0 && is_busy(&e) => {
+                left -= 1;
+                std::thread::sleep(RETRY_WAIT);
+            }
+            r => return r,
+        }
+    }
+}

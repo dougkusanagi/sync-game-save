@@ -32,7 +32,7 @@ pub fn hex(bytes: &[u8]) -> String {
 }
 
 pub fn hash_file(path: &Path) -> Result<Entry> {
-    let data = std::fs::read(path).ctx(path)?;
+    let data = crate::retry(|| std::fs::read(path)).ctx(path)?;
     Ok(Entry {
         size: data.len() as u64,
         sha256: hex(&Sha256::digest(&data)),

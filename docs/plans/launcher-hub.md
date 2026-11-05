@@ -506,7 +506,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [ ] Revisar o protótipo com controle real (Xbox e PlayStation) e teclado; ajustar.
 - [ ] Prototipar o assistente de primeiro uso e a tela de resultado da varredura de pastas.
 - [ ] Confirmar o ADR 0002 (catálogo).
-- [ ] Registrar o layout da pasta da nuvem (snapshots imutáveis + `head.json`) em `docs/adr/0003-formato-da-pasta-da-nuvem.md`.
+- [x] Registrar o layout da pasta da nuvem em `docs/adr/0003-formato-da-pasta-da-nuvem.md`.
 
 ### Fase 1 — Núcleo de sync (`sgs-core` + `sgs-cli`)
 
@@ -518,8 +518,8 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Falta: retenção (`snapshot::prune`).
 - [x] Backups locais (`engine`) e journal de operações (`journal`).
 - [x] `lock.json` com heartbeat (`lock`).
-- [ ] CLI `sgs run|backup|restore|status|list` com saída JSON opcional.
-- [ ] Todos os cenários de teste do sync passando com `cargo test`.
+- [x] CLI `sgs run|backup|restore|status|list` com saída JSON opcional (`sgs-cli`).
+- [x] Cenários de teste do sync passando com `cargo test` (exceto "jogo aberto por launcher intermediário", que depende do rastreio de processos da Fase 2).
 - [ ] Uso real por 1–2 semanas pela CLI com atalhos da Steam, nos jogos atuais.
 
 ### Fase 2 — App e biblioteca

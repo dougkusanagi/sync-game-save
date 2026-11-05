@@ -24,7 +24,7 @@ pub fn read_head(game_dir: &Path) -> Result<Option<Head>> {
 
 fn copy_into(src: &Path, dst: &Path) -> Result<()> {
     std::fs::create_dir_all(dst.parent().expect("destino tem pasta pai")).ctx(dst)?;
-    std::fs::copy(src, dst).ctx(dst)?;
+    crate::retry(|| std::fs::copy(src, dst)).ctx(dst)?;
     Ok(())
 }
 
