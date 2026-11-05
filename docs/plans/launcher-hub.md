@@ -520,11 +520,11 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] `lock.json` com heartbeat (`lock`).
 - [x] CLI `sgs run|backup|restore|status|list` com saída JSON opcional (`sgs-cli`).
 - [x] Cenários de teste do sync passando com `cargo test`, inclusive jogo aberto por launcher intermediário (a CLI acompanha o programa e os processos descendentes; `--quiet-secs`, padrão 5). O Job Object do Windows e a busca por pasta de instalação ficam para a Fase 2.
-- [ ] Uso real por 1–2 semanas pela CLI com atalhos da Steam, nos jogos atuais.
+- [ ] Uso real por 1–2 semanas pela CLI com atalhos da Steam, nos jogos atuais. **Em andamento, em paralelo à Fase 2** (decisão do usuário em 2026-11-05).
 
 ### Fase 2 — App e biblioteca
 
-- [ ] SQLite local (`library.db`) com migrações.
+- [x] SQLite local (`library.db`) com migrações (`sgs-library`: jogos, caminhos de save, estado do sync, configurações).
 - [ ] Assistente de primeiro uso (pasta da nuvem) bloqueando o uso até ser concluído.
 - [ ] Reconhecimento pela pasta do jogo, assistente de adicionar jogo e varredura de pastas.
 - [ ] Abrir jogo com rastreio de processos (Job Object) e tempo de jogo.

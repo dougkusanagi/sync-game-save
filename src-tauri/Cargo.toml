@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "crates/sgs-core", "crates/sgs-catalog", "crates/sgs-cli"]
+members = [".", "crates/sgs-core", "crates/sgs-catalog", "crates/sgs-cli", "crates/sgs-library"]
 
 [package]
 name = "sync-game-save"
