@@ -481,6 +481,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sgs-cli"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "sgs-core",
+ "tempfile",
+]
+
+[[package]]
 name = "sgs-core"
 version = "0.1.0"
 dependencies = [
