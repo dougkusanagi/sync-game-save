@@ -260,3 +260,24 @@ fn tempo_de_jogo_e_registrado_com_e_sem_sync() {
     a.play(ia, &o, &silent).unwrap();
     assert!(a.games().unwrap()[0].playtime_secs >= before + 2);
 }
+
+#[test]
+fn reconhece_sem_catalogo_e_aceita_pasta_escolhida_a_mao() {
+    let (t, a, _b, _ia, _ib) = setup_two_pcs();
+    let jogo = t.path().join("Games/Meu_Jogo.v1.2");
+    fs::create_dir_all(&jogo).unwrap();
+    fs::write(jogo.join("meujogo.exe"), vec![0u8; 20]).unwrap();
+    let r = a.recognize_folder(&jogo).unwrap();
+    assert_eq!(r.name, "Meu Jogo");
+    assert_eq!(r.exe.unwrap().file_name().unwrap(), "meujogo.exe");
+    assert!(r.save_candidates.is_empty());
+
+    // Pasta de save fora dos marcadores: guardada como caminho absoluto e sincronizada.
+    let fora = t.path().join("fora/saves");
+    fs::create_dir_all(&fora).unwrap();
+    fs::write(fora.join("s.sav"), "x").unwrap();
+    let g = NewGame { name: "Manual".into(), save_paths: vec![a.logical_path(&fora)], ..game() };
+    let id = a.add_game(&g).unwrap();
+    assert!(matches!(a.play(id, &opts("exit 0"), &silent).unwrap(), Play::Finished { synced: true, .. }));
+    assert_eq!(a.snapshots(id).unwrap().len(), 1);
+}

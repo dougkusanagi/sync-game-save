@@ -534,9 +534,9 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ### Fase 3 — Interface final
 
-- [ ] Portar o protótipo para componentes React, mantendo os tokens e o motor de foco.
+- [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Falta o visual completo do protótipo (arte de fundo, faixa de jogos, busca, filtros, central rápida), que é P1; a interface atual é a do MVP.
 - [ ] Controle lido no Rust (`gilrs`) + motor de foco.
-- [ ] Telas de histórico, conflito, configurações, primeiro uso e "Sobre" (nome, versão, build).
+- [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações, primeiro uso, adicionar jogo e "Sobre" (nome e versão; o número do build ainda não existe). Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
 - [ ] Testes E2E dos fluxos principais (abrir jogo, conflito, restaurar versão) e capturas em várias resoluções.
 - [ ] `.github/preview.png` e README atualizados.
 

@@ -89,6 +89,11 @@ async fn varrer_pasta(svc: Svc<'_>, pasta: String, profundidade: u32) -> Result<
 }
 
 #[tauri::command]
+async fn converter_caminho(svc: Svc<'_>, caminho: String) -> Result<String, String> {
+    blocking(&svc, move |s| Ok(s.logical_path(&PathBuf::from(caminho)))).await
+}
+
+#[tauri::command]
 async fn listar_jogos(svc: Svc<'_>) -> Result<Vec<Game>, String> {
     blocking(&svc, |s| s.games()).await
 }
@@ -236,6 +241,7 @@ pub fn run() {
             atualizar_catalogo,
             reconhecer_pasta,
             varrer_pasta,
+            converter_caminho,
             listar_jogos,
             adicionar_jogo,
             editar_jogo,

@@ -215,9 +215,32 @@ impl Service {
         Ok(Catalog::open(&self.catalog_path())?)
     }
 
+    /// Sem o catálogo baixado, devolve só o que dá para saber pela pasta (nome e executável),
+    /// e o usuário indica o save à mão.
     pub fn recognize_folder(&self, dir: &Path) -> Result<Recognition> {
         let env = (self.env)(Some(dir.to_path_buf()));
-        Ok(recognize(&self.catalog()?, dir, &env, cfg!(windows))?)
+        match self.catalog() {
+            Ok(cat) => Ok(recognize(&cat, dir, &env, cfg!(windows))?),
+            Err(Error::NoCatalog) => {
+                let folder = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                let cleaned = sgs_catalog::recognize::clean_folder_name(&folder);
+                Ok(Recognition {
+                    name: if cleaned.is_empty() { folder } else { cleaned },
+                    catalog_id: None,
+                    confidence: sgs_catalog::recognize::Confidence::None,
+                    exe: sgs_catalog::recognize::guess_exe(dir),
+                    save_candidates: vec![],
+                    alternatives: vec![],
+                })
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Troca um caminho real por um caminho com marcador (portátil entre PCs), se houver marcador.
+    pub fn logical_path(&self, path: &Path) -> String {
+        let env = (self.env)(None);
+        sgs_core::paths::to_logical(path, &env).unwrap_or_else(|| path.to_string_lossy().into_owned())
     }
 
     pub fn scan_library_folder(&self, dir: &Path, depth: u32) -> Result<ScanResult> {
@@ -268,7 +291,13 @@ impl Service {
         let env = (self.env)(game.install_dir.clone().map(PathBuf::from));
         game.save_paths
             .iter()
-            .map(|logical| resolve(logical, &env).map(|p| (logical.clone(), p)).ok_or_else(|| Error::UnresolvedPath(logical.clone())))
+            .map(|logical| {
+                // Pasta escolhida à mão e sem marcador conhecido: o caminho absoluto vale como está.
+                if !logical.starts_with('<') {
+                    return Ok((logical.clone(), PathBuf::from(logical)));
+                }
+                resolve(logical, &env).map(|p| (logical.clone(), p)).ok_or_else(|| Error::UnresolvedPath(logical.clone()))
+            })
             .collect()
     }
 
