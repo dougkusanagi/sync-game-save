@@ -84,3 +84,36 @@ pub fn restore(snap: &Path, save_dir: &Path, backup_dir: &Path) -> Result<()> {
     }
     Ok(())
 }
+
+/// Snapshots completos (com `index.json`), do mais novo para o mais antigo (pelo nome do id).
+/// Os incompletos, de uma queda no meio da escrita, ficam de fora.
+pub fn list(game_dir: &Path) -> Result<Vec<String>> {
+    let dir = game_dir.join("snapshots");
+    let mut ids = Vec::new();
+    if dir.is_dir() {
+        for item in std::fs::read_dir(&dir).ctx(&dir)? {
+            let p = item.ctx(&dir)?.path();
+            if p.join("index.json").is_file() {
+                ids.push(p.file_name().unwrap().to_string_lossy().into_owned());
+            }
+        }
+    }
+    ids.sort_by_key(|id| std::cmp::Reverse(id.split('_').next().and_then(|n| n.parse::<u64>().ok()).unwrap_or(0)));
+    Ok(ids)
+}
+
+/// Mantém os `keep` mais novos (mínimo 1) e o do `head`; apaga o resto.
+/// Devolve os ids apagados.
+pub fn prune(game_dir: &Path, keep: usize) -> Result<Vec<String>> {
+    let head = read_head(game_dir)?.map(|h| h.snapshot);
+    let mut removed = Vec::new();
+    for id in list(game_dir)?.into_iter().skip(keep.max(1)) {
+        if Some(&id) == head.as_ref() {
+            continue;
+        }
+        let p = game_dir.join("snapshots").join(&id);
+        std::fs::remove_dir_all(&p).ctx(&p)?;
+        removed.push(id);
+    }
+    Ok(removed)
+}

@@ -2,6 +2,8 @@
 //! comparação em três vias e restauração com backup.
 
 pub mod engine;
+pub mod env;
+pub mod journal;
 pub mod index;
 pub mod lock;
 pub mod paths;
