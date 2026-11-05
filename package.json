@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "e2e": "node e2e/run.cjs",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",
+    "playwright": "^1.65.0",
     "typescript": "~6.0.3",
     "vite": "^8.0.16"
   }

@@ -28,7 +28,14 @@ let estado: Estado = {
 let jogos: Game[] =
   cenario === "vazio" || cenario === "primeiro-uso"
     ? []
-    : [
+    : cenario === "preview"
+      ? [
+          jogo(1, "Rogue Legacy", { playtime_secs: 41000 }),
+          jogo(2, "Hollow Knight", { playtime_secs: 93000 }),
+          jogo(3, "Celeste", { playtime_secs: 25200, last_sync_at: Math.floor(Date.now() / 1000) - 86400 }),
+          jogo(4, "Hades", { playtime_secs: 61200 }),
+        ]
+      : [
         jogo(1, "Rogue Legacy", { playtime_secs: 41000 }),
         jogo(2, "Hollow Knight: Edição Especial com um Nome Muito Longo para Testar a Quebra de Linha"),
         jogo(3, "Celeste", { last_sync_at: null, last_played_at: null, playtime_secs: 0 }),

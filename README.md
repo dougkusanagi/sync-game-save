@@ -2,6 +2,8 @@
 
 Launcher/HUB de jogos para PC que sincroniza o save com uma pasta de nuvem (OneDrive, Google Drive etc.) ao abrir e ao fechar cada jogo, sem perder saves.
 
+![Biblioteca de jogos do Sync Game Save, com os botões Jogar, Versões e Remover em cada jogo](.github/preview.png)
+
 ## Estado
 
 Em reescrita para Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). A Fase 1 está pronta: núcleo de sync em Rust (`src-tauri/crates/sgs-core`), catálogo de jogos (`sgs-catalog`), CLI `sgs` (`sgs-cli`) e um app Tauri com tela mínima. A interface final ainda está no protótipo.
@@ -21,8 +23,11 @@ Abra `http://localhost:5199`. Detalhes em [prototype/README.md](prototype/README
 ```bash
 bun install
 bun run tauri dev          # app Tauri + React
-cd src-tauri && cargo test --workspace   # núcleo, catálogo e CLI
+cd src-tauri && cargo test --workspace   # núcleo, catálogo, biblioteca, serviço e CLI
+bun run e2e                # testes E2E da interface (dados simulados)
 ```
+
+Na primeira vez, instale o navegador dos testes E2E com `bunx playwright install chromium`. A interface também abre no navegador (`bun run dev`, `http://localhost:1420/?cenario=jogos`) com dados simulados; os cenários são `jogos`, `vazio`, `primeiro-uso` e `conflito`.
 
 ## CLI `sgs`
 

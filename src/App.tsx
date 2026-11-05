@@ -8,6 +8,10 @@ import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
 import { Conflito, Configuracoes, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
 import { Wizard } from "./screens/Wizard";
 
+// Os ouvintes de teclado e controle são globais e só podem ser registrados uma vez
+// (o React em desenvolvimento executa os efeitos duas vezes).
+let entradaIniciada = false;
+
 type Camada =
   | { tipo: "adicionar" }
   | { tipo: "config" }
@@ -48,7 +52,8 @@ export default function App() {
 
   // Foco, teclado e controle.
   useEffect(() => {
-    if (!raiz.current) return;
+    if (!raiz.current || entradaIniciada) return;
+    entradaIniciada = true;
     focus.init(raiz.current);
     initInput({
       onDevice: () => {},
@@ -64,7 +69,11 @@ export default function App() {
   const pronto = estado !== null;
   const semPasta = pronto && estado.pasta_sync === null;
   useEffect(() => {
-    if (pronto && camadas.length === 0 && raiz.current) focus.focusFirst(raiz.current);
+    if (!pronto || camadas.length > 0 || !raiz.current) return;
+    // Só escolhe um foco inicial se nada válido estiver focado; ao fechar um diálogo, o motor de foco
+    // já devolveu o foco ao botão de origem e isso não pode ser desfeito.
+    const atual = focus.current() as HTMLElement | null;
+    if (!atual || !atual.isConnected || !raiz.current.contains(atual)) focus.focusFirst(raiz.current);
   }, [pronto, semPasta, jogos.length, camadas.length]);
 
   // Andamento do jogo, vindo do Rust.
