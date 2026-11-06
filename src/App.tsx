@@ -3,6 +3,7 @@ import { api, aoMudarEstadoDoJogo, aoUsarControle, noTauri, textoDoErro, type Es
 import * as focus from "./nav/focus.js";
 import { initInput } from "./nav/input.js";
 import { voltar } from "./voltar";
+import { som } from "./som";
 import { AddGame } from "./screens/AddGame";
 import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
 import { Conflito, Configuracoes, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
@@ -46,7 +47,10 @@ export default function App() {
     void carregar();
   }, [carregar]);
 
-  const abrir = (c: Camada) => setCamadas((l) => [...l, c]);
+  const abrir = (c: Camada) => {
+    som.tocar("painel");
+    setCamadas((l) => [...l, c]);
+  };
   const fechar = useCallback(() => setCamadas((l) => l.slice(0, -1)), []);
   const fecharTodas = () => setCamadas([]);
 
@@ -58,11 +62,17 @@ export default function App() {
     const tratar = (acao: string) => {
       if (acao === "up" || acao === "down" || acao === "left" || acao === "right") focus.move(acao);
       else if (acao === "confirm") (focus.current() as HTMLElement | null)?.click();
-      else if (acao === "back") voltar();
+      else if (acao === "back") {
+        if (voltar()) som.tocar("voltar");
+      }
     };
     // No app, o controle é lido no Rust (funciona mesmo sem foco no WebView); no navegador, pela Gamepad API.
     initInput({ onDevice: () => {}, onAction: tratar, gamepad: noTauri });
     void aoUsarControle((acao) => tratar(acao));
+    document.addEventListener("sgs:focus", () => som.tocar("foco"));
+    document.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest?.(".btn:not(:disabled)")) som.tocar("confirmar");
+    });
   }, []);
 
   // Foco inicial depois que a tela muda.
@@ -76,6 +86,11 @@ export default function App() {
     if (!atual || !atual.isConnected || !raiz.current.contains(atual)) focus.focusFirst(raiz.current);
   }, [pronto, semPasta, jogos.length, camadas.length]);
 
+  // Com algum jogo aberto, o som da interface fica em silêncio.
+  useEffect(() => {
+    som.definirJogando(Object.values(cards).some((c) => c === "jogando"));
+  }, [cards]);
+
   // Andamento do jogo, vindo do Rust.
   useEffect(() => {
     let tirar = () => {};
@@ -86,6 +101,7 @@ export default function App() {
   }, []);
 
   function mostrar(texto: string, erro = false) {
+    som.tocar(erro ? "erro" : "sucesso");
     setAviso({ texto, erro });
     window.setTimeout(() => setAviso((a) => (a?.texto === texto ? null : a)), 9000);
   }

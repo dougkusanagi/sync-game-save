@@ -542,7 +542,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ### Fase 4 — Som, conquistas e temas (P1/P2)
 
-- [ ] Fundo ambiente e efeitos sonoros próprios (seção "Som"), com volume separado e teste de 1 hora.
+- [x] Fundo ambiente e efeitos sonoros próprios, sintetizados com WebAudio (`src/som.ts`): volume separado, padrão baixo, desligável, silêncio com jogo aberto ou janela escondida; limites de duração e frequência verificados por testes (`bun test`). **Pendente, só um humano faz:** ouvir o fundo por 1 hora seguida antes de aprovar. Os sons também não foram ouvidos por mim (sem saída de áudio aqui).
 
 - [ ] Spike de fontes de conquistas; implementar `AchievementProvider` com Steam Web API e conquistas do HUB.
 - [ ] Formato de pacote de tema, carregamento seguro e tema claro de exemplo.

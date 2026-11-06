@@ -100,6 +100,23 @@ teste("remover: confirma, o jogo some e os saves não são apagados", async (pag
   await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor({ state: "detached" });
 });
 
+teste("som: desligar e mudar o volume fica guardado depois de recarregar", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const musica = page.getByRole("checkbox", { name: "Música ambiente" });
+  assert.equal(await musica.isChecked(), true, "música ligada por padrão, em volume baixo");
+  await musica.uncheck();
+  // Com a música desligada, os botões de volume dela ficam desativados.
+  assert.equal(await page.getByRole("button", { name: "Aumentar volume da música ambiente" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Aumentar volume dos sons da interface" }).click();
+  const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("sgs.som")));
+  assert.equal(salvo.fundo, false);
+  assert.ok(salvo.volEfeitos > 0.3 && salvo.volEfeitos < 0.4, `volume dos efeitos: ${salvo.volEfeitos}`);
+  await page.reload();
+  await page.getByRole("button", { name: "Configurações" }).click();
+  assert.equal(await page.getByRole("checkbox", { name: "Música ambiente" }).isChecked(), false);
+});
+
 teste("teclado: Esc fecha o diálogo e devolve o foco ao botão de origem", async (page) => {
   await page.goto(`${BASE}?cenario=jogos`);
   const botao = page.getByRole("button", { name: "Configurações" });

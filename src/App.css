@@ -421,3 +421,18 @@ input:not([type]) {
 .wizard section > .acoes {
   margin-top: 1.5rem;
 }
+
+.volume {
+  padding-left: 2.15rem;
+  font-weight: 400;
+}
+
+.volume output {
+  min-width: 3.5rem;
+  text-align: center;
+}
+
+.volume .btn {
+  min-width: 2.75rem;
+  padding: 0.5rem;
+}

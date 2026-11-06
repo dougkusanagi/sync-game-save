@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog } from "../Dialog";
 import { api, escolherPasta, textoDoErro, type Estado, type Game } from "../api";
 import { versaoLegivel } from "../format";
+import { som, type ConfigSom } from "../som";
 
 /** Versões guardadas de um jogo, com restauração. O save atual vai antes para a pasta de backups. */
 export function Versoes({ jogo, onClose }: { jogo: Game; onClose: () => void }) {
@@ -151,6 +152,46 @@ export function Remover({ jogo, onConfirmar, onClose }: { jogo: Game; onConfirma
   );
 }
 
+function Volume({ nome, valor, desligado, onMudar }: { nome: string; valor: number; desligado: boolean; onMudar: (v: number) => void }) {
+  const pct = Math.round(valor * 100);
+  return (
+    <div className="linha volume" role="group" aria-label={`Volume ${nome}`}>
+      <span>Volume</span>
+      <button type="button" className="btn fraco" data-f disabled={desligado || pct <= 0} aria-label={`Diminuir volume ${nome}`} onClick={() => onMudar(Math.max(0, valor - 0.05))}>
+        −
+      </button>
+      <output aria-live="polite">{pct}%</output>
+      <button type="button" className="btn fraco" data-f disabled={desligado || pct >= 100} aria-label={`Aumentar volume ${nome}`} onClick={() => onMudar(Math.min(1, valor + 0.05))}>
+        +
+      </button>
+    </div>
+  );
+}
+
+function SomConfig() {
+  const [c, setC] = useState<ConfigSom>(() => som.obter());
+  const mudar = (p: Partial<ConfigSom>) => {
+    som.definir(p);
+    setC(som.obter());
+  };
+  return (
+    <fieldset className="campo">
+      <legend>Som</legend>
+      <label className="opcao">
+        <input type="checkbox" data-f checked={c.efeitos} onChange={(e) => mudar({ efeitos: e.target.checked })} />
+        <span>Sons da interface (ao mover, confirmar e voltar)</span>
+      </label>
+      <Volume nome="dos sons da interface" valor={c.volEfeitos} desligado={!c.efeitos} onMudar={(v) => mudar({ volEfeitos: v })} />
+      <label className="opcao">
+        <input type="checkbox" data-f checked={c.fundo} onChange={(e) => mudar({ fundo: e.target.checked })} />
+        <span>Música ambiente</span>
+      </label>
+      <Volume nome="da música ambiente" valor={c.volFundo} desligado={!c.fundo} onMudar={(v) => mudar({ volFundo: v })} />
+      <small className="dica">O som para sozinho enquanto um jogo está aberto ou a janela está escondida.</small>
+    </fieldset>
+  );
+}
+
 export function Configuracoes({ estado, onClose, onMudou, onSobre }: { estado: Estado; onClose: () => void; onMudou: () => void; onSobre: () => void }) {
   const [nome, setNome] = useState(estado.nome_pc);
   const [msg, setMsg] = useState<string | null>(null);
@@ -217,6 +258,7 @@ export function Configuracoes({ estado, onClose, onMudou, onSobre }: { estado: E
             </button>
           </div>
         </div>
+        <SomConfig />
         {msg && (
           <p className="caixa ok" role="status">
             {msg}
