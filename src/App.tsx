@@ -4,6 +4,7 @@ import * as focus from "./nav/focus.js";
 import { initInput } from "./nav/input.js";
 import { voltar } from "./voltar";
 import { som } from "./som";
+import { acharTema, aplicarTema } from "./temas";
 import { AddGame } from "./screens/AddGame";
 import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
 import { Conquistas } from "./screens/Conquistas";
@@ -48,6 +49,12 @@ export default function App() {
   useEffect(() => {
     void carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    api.temas()
+      .then((t) => aplicarTema(acharTema(t)))
+      .catch(() => {});
+  }, []);
 
   const abrir = (c: Camada) => {
     som.tocar("painel");

@@ -14,6 +14,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
+mod tema;
+pub use tema::{Theme, ThemeList};
+
 /// Erros já escritos para o usuário final.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -163,6 +166,31 @@ impl Service {
             return Err(Error::Other("O nome deste PC não pode ficar vazio.".into()));
         }
         Ok(self.lib().set_setting("device", name)?)
+    }
+
+    // ---- Temas ----
+
+    /// Temas embutidos e os instalados em `themes/<id>/theme.json`, com o escolhido.
+    pub fn themes(&self) -> ThemeList {
+        let escolhido = self.lib().setting("theme").ok().flatten().unwrap_or_default();
+        let mut themes = tema::builtin_themes();
+        themes.extend(tema::installed_themes(&self.data_dir));
+        let current = if themes.iter().any(|t| t.id == escolhido) {
+            escolhido
+        } else {
+            tema::PADRAO.to_string()
+        };
+        ThemeList { atual: current, temas: themes }
+    }
+
+    /// Troca o tema. Só aceita um tema presente na lista, para não guardar um id inválido.
+    pub fn set_theme(&self, id: &str) -> Result<ThemeList> {
+        let lista = self.themes();
+        if !lista.temas.iter().any(|t| t.id == id) {
+            return Err(Error::Other("Este tema não está instalado. Abra as configurações e escolha outro.".into()));
+        }
+        self.lib().set_setting("theme", id)?;
+        Ok(ThemeList { atual: id.to_string(), temas: lista.temas })
     }
 
     /// Confere a pasta antes de usar: existe, dá para gravar e ler, e já tem dados de outro PC?

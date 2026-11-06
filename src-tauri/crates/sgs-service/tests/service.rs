@@ -281,3 +281,21 @@ fn reconhece_sem_catalogo_e_aceita_pasta_escolhida_a_mao() {
     assert!(matches!(a.play(id, &opts("exit 0"), &silent).unwrap(), Play::Finished { synced: true, .. }));
     assert_eq!(a.snapshots(id).unwrap().len(), 1);
 }
+
+#[test]
+fn temas_embutidos_persistem_e_recusam_id_desconhecido() {
+    let t = tempfile::tempdir().unwrap();
+    let dados = t.path().join("dados");
+    let s = Service::open(&dados).unwrap();
+
+    let lista = s.themes();
+    assert_eq!(lista.atual, "escuro");
+    assert!(lista.temas.iter().any(|x| x.id == "claro" && x.builtin));
+    let json = serde_json::to_value(&lista).unwrap();
+    assert!(json.get("atual").is_some() && json.get("temas").is_some(), "formato da interface: {json}");
+
+    assert_eq!(s.set_theme("claro").unwrap().atual, "claro");
+    assert_eq!(s.themes().atual, "claro");
+    assert!(s.set_theme("nao-existe").is_err());
+    assert_eq!(s.themes().atual, "claro");
+}

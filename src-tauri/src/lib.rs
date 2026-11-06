@@ -200,6 +200,16 @@ async fn conquistas(svc: Svc<'_>, id: i64, forcar: Option<bool>) -> Result<sgs_s
 }
 
 #[tauri::command]
+async fn temas(svc: Svc<'_>) -> Result<sgs_service::ThemeList, String> {
+    blocking(&svc, |s| Ok(s.themes())).await
+}
+
+#[tauri::command]
+async fn definir_tema(svc: Svc<'_>, id: String) -> Result<sgs_service::ThemeList, String> {
+    blocking(&svc, move |s| s.set_theme(&id)).await
+}
+
+#[tauri::command]
 async fn versoes(svc: Svc<'_>, id: i64) -> Result<Vec<String>, String> {
     blocking(&svc, move |s| s.snapshots(id)).await
 }
@@ -271,6 +281,8 @@ pub fn run() {
             capa_do_jogo,
             definir_credenciais_steam,
             conquistas,
+            temas,
+            definir_tema,
             versoes,
             restaurar_versao,
         ])

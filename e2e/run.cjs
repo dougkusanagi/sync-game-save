@@ -116,6 +116,24 @@ teste("configurações: guarda e remove as credenciais da Steam", async (page) =
   await dlg.getByText(/Credenciais da Steam removidas/).waitFor();
 });
 
+teste("tema: troca para o claro e a escolha fica guardada", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const dlg = page.getByRole("dialog", { name: "Configurações" });
+  const aparencia = dlg.getByLabel("Aparência");
+  await aparencia.selectOption({ label: "Claro" });
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sgs-bg").trim() === "#f2f5fb");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(242, 245, 251)");
+  await page.waitForFunction(() => localStorage.getItem("sgs.mock.tema") === "claro");
+
+  await page.reload();
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sgs-bg").trim() === "#f2f5fb");
+
+  await page.getByRole("button", { name: "Configurações" }).click();
+  await page.getByRole("dialog", { name: "Configurações" }).getByLabel("Aparência").selectOption({ label: "Escuro (padrão)" });
+  await page.waitForFunction(() => document.documentElement.style.getPropertyValue("--sgs-bg") === "");
+});
+
 teste("remover: confirma, o jogo some e os saves não são apagados", async (page) => {
   await page.goto(`${BASE}?cenario=jogos`);
   await page.getByRole("button", { name: "Remover" }).first().click();

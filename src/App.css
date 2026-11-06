@@ -5,7 +5,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: var(--sgs-color-scheme);
 }
 
 body {
@@ -254,7 +254,7 @@ input[type="password"]:focus-visible {
   aspect-ratio: 460 / 215;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #1b2a44, #0e1420);
+  background: var(--sgs-capa-bg);
   font-size: 3rem;
   font-weight: 700;
   color: var(--sgs-text-faint);

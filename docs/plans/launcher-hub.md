@@ -349,12 +349,12 @@ Fonte principal para jogos da Steam. O visual segue a ideia dos troféus do PS5,
 
 Prioridade: P2 (depois do MVP). Os dados podem ser buscados já na P1 junto com os metadados da Steam, para a tela ficar pronta mais cedo.
 
-## Temas (futuro)
+## Temas
 
 - Toda cor, raio, fonte, sombra, blur e duração de animação vem de **tokens CSS** (`--sgs-*`) desde o protótipo. Isso torna os temas possíveis sem refazer a interface.
-- Pacote de tema: `theme.json` (nome, autor, versão, versão mínima do app, tokens) + `theme.css` opcional + `assets/` (fundos, sons, fontes).
-- Segurança: temas não executam JS; o CSS é carregado com CSP restrita e sem acesso a URLs externas.
-- Tema padrão e um tema claro oficiais servem de exemplo e de teste.
+- Pacote de tema: `themes/<id>/theme.json` com nome, autor, versão, versão mínima do app e tokens. A escolha fica no banco local e vale ao reabrir.
+- Segurança: temas não executam JS nem CSS. Só tokens `--sgs-*` são aplicados, e valores com `url()`, `@`, `;` ou caracteres de regra são recusados. Ver [ADR 0005](../adr/0005-formato-de-temas.md).
+- Tema escuro (padrão) e claro oficiais servem de exemplo e de teste. `theme.css` e `assets/` (fundos, sons, fontes) ficam para uma decisão futura.
 
 ## Outras sugestões
 
@@ -546,7 +546,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 - [x] Spike de fontes de conquistas e `AchievementProvider` com a Steam Web API (`sgs-achievements`): catálogo, raridade e progresso, cache em `library.db`, níveis por raridade, credenciais guardadas no banco local e tela de conquistas. Ícones vêm do CDN da Steam, liberados na CSP. Falta: atualização automática em segundo plano e ao fechar o jogo.
 - [ ] Conquistas do HUB (marcos de uso: horas jogadas, jogos completos e sequências de sync sem erro).
-- [ ] Formato de pacote de tema, carregamento seguro e tema claro de exemplo.
+- [x] Formato de pacote de tema (`themes/<id>/theme.json`), carregamento seguro só de tokens `--sgs-*`, escolha persistida e temas embutidos escuro e claro. Capturas em 390×844 e 1280×720 sem rolagem horizontal; decisão no [ADR 0005](../adr/0005-formato-de-temas.md). Falta: `theme.css`/`assets/` e um seletor rápido fora de Configurações.
 
 ### Fase 5 — Distribuição
 
@@ -566,4 +566,4 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fases 1 a 3 concluídas no código (branch `feat/fase1-nucleo-sync`): núcleo, catálogo, biblioteca, serviço, CLI e telas do MVP compilam e os testes passam (`cargo test --workspace`, `bun test`, `bun run e2e`). As conquistas da Steam estão prontas na interface. Próximo: concluir as conquistas do HUB, o formato de temas e a arte, e rodar o uso real por 1–2 semanas pela CLI. As pendências que dependem de uma pessoa continuam: revisar o protótipo com um controle de verdade e ouvir o fundo sonoro por 1 hora.
+Fases 1 a 3 concluídas no código (branch `feat/fase1-nucleo-sync`): núcleo, catálogo, biblioteca, serviço, CLI e telas do MVP compilam e os testes passam (`cargo test --workspace`, `bun test`, `bun run e2e`). As conquistas da Steam e os temas (escuro e claro, com pacotes JSON) estão prontos. Próximo: concluir as conquistas do HUB e a arte, e rodar o uso real por 1–2 semanas pela CLI. As pendências que dependem de uma pessoa continuam: revisar o protótipo com um controle de verdade e ouvir o fundo sonoro por 1 hora.

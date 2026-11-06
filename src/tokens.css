@@ -3,8 +3,10 @@
  * possam trocar só este arquivo (ou um theme.json que gera estas variáveis).
  */
 :root {
+	--sgs-color-scheme: dark;
 	--sgs-bg: #06080c;
 	--sgs-bg-rgb: 6 8 12;
+	--sgs-capa-bg: linear-gradient(135deg, #1b2a44, #0e1420);
 	--sgs-surface: rgb(16 20 28 / 0.62);
 	--sgs-surface-strong: rgb(14 18 26 / 0.86);
 	--sgs-surface-solid: #121722;

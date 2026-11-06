@@ -1,6 +1,6 @@
 // Dados simulados para rodar a interface no navegador (testes E2E e capturas de tela).
 // Cenário pela URL: ?cenario=primeiro-uso | vazio | jogos (padrão) | conflito
-import type { Conquista, Conquistas, Game, Estado, Reconhecimento } from "./api";
+import type { Conquista, Conquistas, Game, Estado, Reconhecimento, Tema } from "./api";
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
 
@@ -26,6 +26,45 @@ let estado: Estado = {
   steam_configurada: false,
   steam_id: null,
 };
+
+const temas: Tema[] = [
+  { id: "escuro", name: "Escuro (padrão)", author: "Sync Game Save", version: "0.1.0", builtin: true, tokens: {} },
+  {
+    id: "claro",
+    name: "Claro",
+    author: "Sync Game Save",
+    version: "0.1.0",
+    builtin: true,
+    tokens: {
+      "--sgs-bg": "#f2f5fb",
+      "--sgs-bg-rgb": "242 245 251",
+      "--sgs-surface": "rgb(255 255 255 / 0.72)",
+      "--sgs-surface-strong": "rgb(255 255 255 / 0.92)",
+      "--sgs-surface-solid": "#ffffff",
+      "--sgs-surface-hover": "rgb(16 22 37 / 0.06)",
+      "--sgs-border": "rgb(16 22 37 / 0.14)",
+      "--sgs-border-strong": "rgb(16 22 37 / 0.32)",
+      "--sgs-text": "#101625",
+      "--sgs-text-dim": "rgb(16 22 37 / 0.72)",
+      "--sgs-text-faint": "rgb(16 22 37 / 0.55)",
+      "--sgs-accent-default": "#1d6fe0",
+      "--sgs-ok": "#0f8a60",
+      "--sgs-info": "#1d6fe0",
+      "--sgs-warn": "#9a6500",
+      "--sgs-danger": "#c62d45",
+      "--sgs-tier-common": "#5b6b82",
+      "--sgs-tier-uncommon": "#0f8a60",
+      "--sgs-tier-rare": "#1d6fe0",
+      "--sgs-tier-ultra": "#9a6500",
+      "--sgs-focus-ring": "0 0 0 0.1875rem #1d6fe0, 0 0.75rem 2.5rem rgb(16 22 37 / 0.2)",
+      "--sgs-capa-bg": "linear-gradient(135deg, #dfe7f5, #eef2f9)",
+      "--sgs-color-scheme": "light",
+    },
+  },
+];
+const CHAVE_TEMA = "sgs.mock.tema";
+const temaGuardado = localStorage.getItem(CHAVE_TEMA);
+let temaAtual = temas.some((t) => t.id === temaGuardado) ? (temaGuardado as string) : "escuro";
 
 const conquista = (extra: Partial<Conquista> & Pick<Conquista, "id" | "name">): Conquista => ({
   description: "",
@@ -172,6 +211,15 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       const steamId = String(args.steamId).trim();
       estado = { ...estado, steam_configurada: chave !== "" && steamId !== "", steam_id: steamId || null };
       return r(undefined);
+    }
+    case "temas":
+      return r({ atual: temaAtual, temas });
+    case "definir_tema": {
+      const id = String(args.id);
+      if (!temas.some((t) => t.id === id)) throw "Este tema não está instalado. Abra as configurações e escolha outro.";
+      temaAtual = id;
+      localStorage.setItem(CHAVE_TEMA, id);
+      return r({ atual: temaAtual, temas });
     }
     default:
       throw `Comando desconhecido: ${cmd}`;

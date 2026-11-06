@@ -8,7 +8,26 @@ Launcher/HUB de jogos para PC que sincroniza o save com uma pasta de nuvem (OneD
 
 Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). Estão prontos o núcleo de sync em Rust (`sgs-core`), o catálogo (`sgs-catalog`), a biblioteca local (`sgs-library`), o serviço (`sgs-service`), a CLI `sgs` e as telas do MVP: primeiro uso, biblioteca, adicionar jogo, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
 
-As conquistas da Steam aparecem em cada jogo quando você informa a chave de API e o SteamID64 em Configurações. A chave fica só neste PC, no banco local. Faltam o assistente de varredura de pastas, os temas e os instaladores.
+As conquistas da Steam aparecem em cada jogo quando você informa a chave de API e o SteamID64 em Configurações. A chave fica só neste PC, no banco local. Os temas trocam as cores e medidas da interface; o app traz o escuro (padrão) e o claro. Faltam o assistente de varredura de pastas e os instaladores.
+
+## Temas
+
+Para instalar um tema, crie `themes/<id>/theme.json` na pasta de dados do app (`%APPDATA%\com.syncgamesave.app\themes` no Windows; `SGS_DATA_DIR` troca a pasta) e escolha o tema em Configurações → Tema:
+
+```json
+{
+  "name": "Meu tema",
+  "author": "Seu nome",
+  "version": "1.0.0",
+  "min_app_version": "0.1.0",
+  "tokens": {
+    "--sgs-bg": "#101820",
+    "--sgs-text": "#f5f7fa"
+  }
+}
+```
+
+Só os tokens `--sgs-*` (listados em `src/tokens.css`) são aplicados. Nenhum CSS ou JavaScript do tema é executado, e valores com `url()`, `@` ou `;` são recusados. Temas com `min_app_version` maior que a versão do app são ignorados.
 
 ## Protótipo da interface
 

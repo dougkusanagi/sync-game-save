@@ -50,6 +50,17 @@ export type Conquistas = {
   notice: string | null;
 };
 
+export type Tema = {
+  id: string;
+  name: string;
+  author: string;
+  version: string;
+  builtin: boolean;
+  tokens: Record<string, string>;
+};
+
+export type Temas = { atual: string; temas: Tema[] };
+
 export type VerificacaoPasta = {
   exists: boolean;
   writable: boolean;
@@ -102,6 +113,8 @@ export const api = {
   conquistas: (id: number, forcar = false) => call<Conquistas>("conquistas", { id, forcar }),
   definirCredenciaisSteam: (chave: string, steamId: string) =>
     call<void>("definir_credenciais_steam", { chave, steamId }),
+  temas: () => call<Temas>("temas"),
+  definirTema: (id: string) => call<Temas>("definir_tema", { id }),
 };
 
 /** Abre o seletor nativo de pasta. No navegador simulado devolve um caminho de exemplo. */

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "../Dialog";
-import { api, escolherPasta, textoDoErro, type Estado, type Game } from "../api";
+import { api, escolherPasta, textoDoErro, type Estado, type Game, type Temas } from "../api";
 import { versaoLegivel } from "../format";
 import { som, type ConfigSom } from "../som";
+import { acharTema, aplicarTema } from "../temas";
 
 /** Versões guardadas de um jogo, com restauração. O save atual vai antes para a pasta de backups. */
 export function Versoes({ jogo, onClose }: { jogo: Game; onClose: () => void }) {
@@ -254,6 +255,69 @@ function SteamConfig({
   );
 }
 
+function TemaConfig() {
+  const [lista, setLista] = useState<Temas | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .temas()
+      .then((t) => {
+        setLista(t);
+        aplicarTema(acharTema(t));
+      })
+      .catch((e) => setErro(textoDoErro(e)));
+  }, []);
+
+  async function trocar(id: string) {
+    if (!lista || id === lista.atual) return;
+    const anterior = acharTema(lista);
+    const novo = lista.temas.find((t) => t.id === id) ?? null;
+    aplicarTema(novo);
+    setLista({ ...lista, atual: id });
+    setErro(null);
+    try {
+      const atualizada = await api.definirTema(id);
+      setLista(atualizada);
+      aplicarTema(acharTema(atualizada));
+    } catch (e) {
+      aplicarTema(anterior);
+      setLista(lista);
+      setErro(textoDoErro(e));
+    }
+  }
+
+  const atual = acharTema(lista);
+  return (
+    <fieldset className="campo">
+      <legend>Tema</legend>
+      <label className="campo">
+        Aparência
+        <select data-f value={lista?.atual ?? ""} disabled={!lista} onChange={(e) => void trocar(e.target.value)}>
+          {!lista && <option value="">Carregando…</option>}
+          {lista?.temas.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+              {t.builtin ? "" : " (instalado)"}
+            </option>
+          ))}
+        </select>
+      </label>
+      {atual && (
+        <small className="dica">
+          {atual.author} · versão {atual.version}
+        </small>
+      )}
+      <small className="dica">Os temas trocam cores e medidas. Nenhum código do tema é executado.</small>
+      {erro && (
+        <p className="erro" role="alert">
+          {erro}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
 function SomConfig() {
   const [c, setC] = useState<ConfigSom>(() => som.obter());
   const mudar = (p: Partial<ConfigSom>) => {
@@ -345,6 +409,7 @@ export function Configuracoes({ estado, onClose, onMudou, onSobre }: { estado: E
           </div>
         </div>
         <SteamConfig estado={estado} rodar={rodar} ocupado={ocupado} />
+        <TemaConfig />
         <SomConfig />
         {msg && (
           <p className="caixa ok" role="status">
