@@ -23,6 +23,31 @@ export type Estado = {
   nome_pc: string;
   catalogo_pronto: boolean;
   operacoes_interrompidas: string[];
+  steam_configurada: boolean;
+  steam_id: string | null;
+};
+
+export type Nivel = "Common" | "Uncommon" | "Rare" | "UltraRare";
+
+export type Conquista = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  icon_gray: string;
+  hidden: boolean;
+  unlocked: boolean;
+  unlock_time: number | null;
+  percent: number | null;
+  tier: Nivel | null;
+};
+
+export type Conquistas = {
+  set: { achievements: Conquista[]; progress_known: boolean };
+  summary: { unlocked: number; total: number; percent: number; complete: boolean; by_tier: Record<string, number> };
+  from_cache: boolean;
+  fetched_at: number;
+  notice: string | null;
 };
 
 export type VerificacaoPasta = {
@@ -74,6 +99,9 @@ export const api = {
   capaDoJogo: (id: number) => call<string | null>("capa_do_jogo", { id }),
   versoes: (id: number) => call<string[]>("versoes", { id }),
   restaurarVersao: (id: number, versao: string) => call<string>("restaurar_versao", { id, versao }),
+  conquistas: (id: number, forcar = false) => call<Conquistas>("conquistas", { id, forcar }),
+  definirCredenciaisSteam: (chave: string, steamId: string) =>
+    call<void>("definir_credenciais_steam", { chave, steamId }),
 };
 
 /** Abre o seletor nativo de pasta. No navegador simulado devolve um caminho de exemplo. */

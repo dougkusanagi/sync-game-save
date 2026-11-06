@@ -91,6 +91,31 @@ teste("versões: restaurar pede confirmação e informa onde ficou o backup", as
   await page.getByText(/foi guardado em/).waitFor();
 });
 
+teste("conquistas: mostra o progresso, filtra e revela as ocultas", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Conquistas" }).first().click();
+  const dlg = page.getByRole("dialog", { name: "Conquistas de Rogue Legacy" });
+  await dlg.getByRole("heading", { name: "2 de 3 conquistas · 66%" }).waitFor();
+  await dlg.locator(".filtros").getByRole("button", { name: "Bloqueadas", exact: true }).click();
+  await dlg.getByText("Conquista oculta").waitFor();
+  await dlg.getByRole("button", { name: "Mostrar" }).click();
+  await dlg.getByText("Segredo da família").waitFor();
+});
+
+teste("configurações: guarda e remove as credenciais da Steam", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const dlg = page.getByRole("dialog", { name: "Configurações" });
+  const salvar = dlg.getByRole("button", { name: "Salvar credenciais" });
+  assert.equal(await salvar.isDisabled(), true, "não salva sem a chave e o SteamID");
+  await dlg.getByLabel("Chave de API").fill("CHAVE-DE-TESTE");
+  await dlg.getByLabel("SteamID64").fill("76561198000000000");
+  await salvar.click();
+  await dlg.getByText("Credenciais da Steam guardadas neste PC.").waitFor();
+  await dlg.getByRole("button", { name: "Remover credenciais" }).click();
+  await dlg.getByText(/Credenciais da Steam removidas/).waitFor();
+});
+
 teste("remover: confirma, o jogo some e os saves não são apagados", async (page) => {
   await page.goto(`${BASE}?cenario=jogos`);
   await page.getByRole("button", { name: "Remover" }).first().click();

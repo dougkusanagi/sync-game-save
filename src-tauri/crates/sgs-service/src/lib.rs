@@ -306,6 +306,11 @@ impl Service {
         tem("steam_api_key") && tem("steam_id")
     }
 
+    /// SteamID64 guardado (não é segredo). A chave de API nunca é devolvida.
+    pub fn steam_id(&self) -> Result<Option<String>> {
+        Ok(self.lib().setting("steam_id")?.filter(|v| !v.trim().is_empty()))
+    }
+
     /// Conquistas do jogo. Usa o cache se foi buscado há menos de 10 minutos (a menos que `force`)
     /// e, sem internet ou com erro, devolve o que ficou guardado junto com o motivo.
     pub fn achievements(&self, id: i64, force: bool) -> Result<AchievementsView> {

@@ -168,6 +168,92 @@ function Volume({ nome, valor, desligado, onMudar }: { nome: string; valor: numb
   );
 }
 
+function SteamConfig({
+  estado,
+  rodar,
+  ocupado,
+}: {
+  estado: Estado;
+  rodar: (fn: () => Promise<string | void>) => Promise<void>;
+  ocupado: boolean;
+}) {
+  const [chave, setChave] = useState("");
+  const [steamId, setSteamId] = useState(estado.steam_id ?? "");
+  const podeSalvar = chave.trim() !== "" && /^\d+$/.test(steamId.trim()) && !ocupado;
+
+  return (
+    <fieldset className="campo">
+      <legend>Conquistas da Steam</legend>
+      <p className="dica">
+        Opcional. Com a chave de API e o SteamID64, o app mostra o progresso das conquistas dos jogos que você tem na Steam. A chave fica só
+        neste PC, no banco local, e nunca volta para a tela.
+      </p>
+      <p className="dica">
+        Crie a chave em <code className="caminho">steamcommunity.com/dev/apikey</code> e copie o SteamID64 do seu perfil. O perfil precisa estar
+        com os detalhes dos jogos públicos para o progresso aparecer.
+      </p>
+      <label className="campo">
+        Chave de API
+        <input
+          data-f
+          type="password"
+          autoComplete="off"
+          value={chave}
+          placeholder={estado.steam_configurada ? "Chave guardada — preencha para trocar" : "Cole a chave de API"}
+          onChange={(e) => setChave(e.target.value)}
+        />
+      </label>
+      <label className="campo">
+        SteamID64
+        <input
+          data-f
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={20}
+          value={steamId}
+          placeholder="Ex.: 76561198000000000"
+          onChange={(e) => setSteamId(e.target.value)}
+        />
+      </label>
+      <div className="linha">
+        <span>{estado.steam_configurada ? `Configurada para o SteamID ${estado.steam_id ?? ""}.` : "Ainda não configurada."}</span>
+        <button
+          className="btn fraco"
+          data-f
+          disabled={!podeSalvar}
+          onClick={() =>
+            rodar(async () => {
+              await api.definirCredenciaisSteam(chave, steamId);
+              setChave("");
+              return "Credenciais da Steam guardadas neste PC.";
+            })
+          }
+        >
+          Salvar credenciais
+        </button>
+        {estado.steam_configurada && (
+          <button
+            className="btn fraco"
+            data-f
+            disabled={ocupado}
+            onClick={() =>
+              rodar(async () => {
+                await api.definirCredenciaisSteam("", "");
+                setChave("");
+                setSteamId("");
+                return "Credenciais da Steam removidas. As conquistas guardadas continuam na tela.";
+              })
+            }
+          >
+            Remover credenciais
+          </button>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
 function SomConfig() {
   const [c, setC] = useState<ConfigSom>(() => som.obter());
   const mudar = (p: Partial<ConfigSom>) => {
@@ -258,6 +344,7 @@ export function Configuracoes({ estado, onClose, onMudou, onSobre }: { estado: E
             </button>
           </div>
         </div>
+        <SteamConfig estado={estado} rodar={rodar} ocupado={ocupado} />
         <SomConfig />
         {msg && (
           <p className="caixa ok" role="status">

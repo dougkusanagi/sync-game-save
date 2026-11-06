@@ -2,11 +2,13 @@
 
 Launcher/HUB de jogos para PC que sincroniza o save com uma pasta de nuvem (OneDrive, Google Drive etc.) ao abrir e ao fechar cada jogo, sem perder saves.
 
-![Biblioteca de jogos do Sync Game Save, com os botões Jogar, Versões e Remover em cada jogo](.github/preview.png)
+![Biblioteca de jogos do Sync Game Save, com os botões Jogar, Conquistas, Versões e Remover em cada jogo](.github/preview.png)
 
 ## Estado
 
-Em reescrita para Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). A Fase 1 está pronta: núcleo de sync em Rust (`src-tauri/crates/sgs-core`), catálogo de jogos (`sgs-catalog`), CLI `sgs` (`sgs-cli`) e um app Tauri com tela mínima. A interface final ainda está no protótipo.
+Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). Estão prontos o núcleo de sync em Rust (`sgs-core`), o catálogo (`sgs-catalog`), a biblioteca local (`sgs-library`), o serviço (`sgs-service`), a CLI `sgs` e as telas do MVP: primeiro uso, biblioteca, adicionar jogo, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
+
+As conquistas da Steam aparecem em cada jogo quando você informa a chave de API e o SteamID64 em Configurações. A chave fica só neste PC, no banco local. Faltam o assistente de varredura de pastas, os temas e os instaladores.
 
 ## Protótipo da interface
 

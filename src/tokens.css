@@ -22,6 +22,11 @@
 	--sgs-warn: #ffc857;
 	--sgs-danger: #ff6b7d;
 
+	--sgs-tier-common: #9fb4cc;
+	--sgs-tier-uncommon: #3ddc97;
+	--sgs-tier-rare: #6cb6ff;
+	--sgs-tier-ultra: #ffc857;
+
 	--sgs-font: "Outfit", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
 	--sgs-radius-s: 0.5rem;
 	--sgs-radius-m: 0.875rem;

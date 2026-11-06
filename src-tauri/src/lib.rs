@@ -46,6 +46,7 @@ struct Estado {
     catalogo_pronto: bool,
     operacoes_interrompidas: Vec<String>,
     steam_configurada: bool,
+    steam_id: Option<String>,
 }
 
 #[tauri::command]
@@ -57,6 +58,7 @@ async fn estado(svc: Svc<'_>) -> Result<Estado, String> {
             catalogo_pronto: s.catalog_path().exists(),
             operacoes_interrompidas: s.interrupted_operations(),
             steam_configurada: s.steam_configured(),
+            steam_id: s.steam_id()?,
         })
     })
     .await

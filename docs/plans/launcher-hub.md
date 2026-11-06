@@ -536,7 +536,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 - [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Falta o visual completo do protótipo (arte de fundo, faixa de jogos, busca, filtros, central rápida), que é P1; a interface atual é a do MVP.
 - [x] Controle lido no Rust (`gilrs`) + motor de foco. A lógica (botões, zona morta do analógico, repetição, só com a janela focada) tem testes. **Não testado com um controle de verdade**: nenhum estava conectado quando verifiquei.
-- [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações, primeiro uso, adicionar jogo e "Sobre" (nome e versão; o número do build ainda não existe). Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
+- [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações (com as credenciais da Steam), primeiro uso, adicionar jogo e "Sobre" (nome e versão; o número do build ainda não existe). Tela de conquistas com anel de progresso, níveis por raridade, filtros, ordenação e conquistas ocultas. Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
 - [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 11 testes: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, remover, teclado, layout no celular). Rodam com dados simulados. Além deles, `bun run e2e:app` abre o app Tauri de verdade (dados isolados por `SGS_DATA_DIR`) e confere assistente, pasta de sync, reconhecimento do Rogue Legacy real, jogar e versões.
 - [x] `.github/preview.png` e README atualizados. A miniatura está em tema escuro porque o app só tem tema escuro (a regra global pede claro; o tema claro é P2).
 
@@ -544,7 +544,8 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 - [x] Fundo ambiente e efeitos sonoros próprios, sintetizados com WebAudio (`src/som.ts`): volume separado, padrão baixo, desligável, silêncio com jogo aberto ou janela escondida; limites de duração e frequência verificados por testes (`bun test`). **Pendente, só um humano faz:** ouvir o fundo por 1 hora seguida antes de aprovar. Os sons também não foram ouvidos por mim (sem saída de áudio aqui).
 
-- [ ] Spike de fontes de conquistas; implementar `AchievementProvider` com Steam Web API e conquistas do HUB.
+- [x] Spike de fontes de conquistas e `AchievementProvider` com a Steam Web API (`sgs-achievements`): catálogo, raridade e progresso, cache em `library.db`, níveis por raridade, credenciais guardadas no banco local e tela de conquistas. Ícones vêm do CDN da Steam, liberados na CSP. Falta: atualização automática em segundo plano e ao fechar o jogo.
+- [ ] Conquistas do HUB (marcos de uso: horas jogadas, jogos completos e sequências de sync sem erro).
 - [ ] Formato de pacote de tema, carregamento seguro e tema claro de exemplo.
 
 ### Fase 5 — Distribuição
@@ -565,6 +566,4 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Próximo passo
 
-Fase 1 concluída no código (branch `feat/fase1-nucleo-sync`): `sgs-core`, `sgs-catalog`, `sgs-cli` e o projeto Tauri + React compilam e os testes passam com `cargo test --workspace`. Faltam só duas coisas que dependem do usuário: o uso real por 1–2 semanas pela CLI. Próximo: Fase 2 (SQLite `library.db`, assistente de primeiro uso, adicionar jogo, rastreio de processos). Ainda vale o texto abaixo para a revisão do protótipo.
-
-Revisar o protótipo (`cd prototype && bun install && bun run dev`) com controle e teclado, anotar ajustes e confirmar o ADR 0002. Depois, iniciar a Fase 1 removendo o código Electron e criando o projeto Tauri + React.
+Fases 1 a 3 concluídas no código (branch `feat/fase1-nucleo-sync`): núcleo, catálogo, biblioteca, serviço, CLI e telas do MVP compilam e os testes passam (`cargo test --workspace`, `bun test`, `bun run e2e`). As conquistas da Steam estão prontas na interface. Próximo: concluir as conquistas do HUB, o formato de temas e a arte, e rodar o uso real por 1–2 semanas pela CLI. As pendências que dependem de uma pessoa continuam: revisar o protótipo com um controle de verdade e ouvir o fundo sonoro por 1 hora.

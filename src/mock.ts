@@ -1,6 +1,6 @@
 // Dados simulados para rodar a interface no navegador (testes E2E e capturas de tela).
 // Cenário pela URL: ?cenario=primeiro-uso | vazio | jogos (padrão) | conflito
-import type { Game, Estado, Reconhecimento } from "./api";
+import type { Conquista, Conquistas, Game, Estado, Reconhecimento } from "./api";
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
 
@@ -23,6 +23,65 @@ let estado: Estado = {
   nome_pc: "PC-SALA",
   catalogo_pronto: true,
   operacoes_interrompidas: [],
+  steam_configurada: false,
+  steam_id: null,
+};
+
+const conquista = (extra: Partial<Conquista> & Pick<Conquista, "id" | "name">): Conquista => ({
+  description: "",
+  icon: "",
+  icon_gray: "",
+  hidden: false,
+  unlocked: false,
+  unlock_time: null,
+  percent: null,
+  tier: null,
+  ...extra,
+});
+
+const conquistasDoJogo = (): Conquistas => {
+  const achievements: Conquista[] = [
+    conquista({
+      id: "ACH_ROGUE_1",
+      name: "Primeira morte",
+      description: "Morra pela primeira vez na mansão.",
+      unlocked: true,
+      unlock_time: Math.floor(Date.now() / 1000) - 86400 * 3,
+      percent: 91.5,
+      tier: "Common",
+    }),
+    conquista({
+      id: "ACH_ROGUE_2",
+      name: "Herdeiro persistente",
+      description: "Chegue ao segundo chefe sem usar o elevador.",
+      unlocked: true,
+      unlock_time: Math.floor(Date.now() / 1000) - 7200,
+      percent: 12.25,
+      tier: "Rare",
+    }),
+    conquista({
+      id: "ACH_ROGUE_3",
+      name: "Segredo da família",
+      description: "Encontre o diário escondido na biblioteca.",
+      hidden: true,
+      percent: 0.8,
+      tier: "UltraRare",
+    }),
+  ];
+  const unlocked = achievements.filter((a) => a.unlocked).length;
+  return {
+    set: { achievements, progress_known: true },
+    summary: {
+      unlocked,
+      total: achievements.length,
+      percent: Math.floor((unlocked * 100) / achievements.length),
+      complete: unlocked === achievements.length,
+      by_tier: { Comum: 1, Rara: 1 },
+    },
+    from_cache: false,
+    fetched_at: Math.floor(Date.now() / 1000),
+    notice: null,
+  };
 };
 
 let jogos: Game[] =
@@ -106,6 +165,14 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       return r(["1793920203_PC-SALA", "1793919686_PC-SALA", "1793900000_PC-QUARTO"]);
     case "restaurar_versao":
       return r("C:/Users/voce/AppData/Local/sync-game-save/state/1/backups/1793920300_restaurar");
+    case "conquistas":
+      return r(conquistasDoJogo());
+    case "definir_credenciais_steam": {
+      const chave = String(args.chave).trim();
+      const steamId = String(args.steamId).trim();
+      estado = { ...estado, steam_configurada: chave !== "" && steamId !== "", steam_id: steamId || null };
+      return r(undefined);
+    }
     default:
       throw `Comando desconhecido: ${cmd}`;
   }

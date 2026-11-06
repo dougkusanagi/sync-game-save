@@ -6,6 +6,7 @@ import { voltar } from "./voltar";
 import { som } from "./som";
 import { AddGame } from "./screens/AddGame";
 import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
+import { Conquistas } from "./screens/Conquistas";
 import { Conflito, Configuracoes, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
 import { Wizard } from "./screens/Wizard";
 
@@ -17,6 +18,7 @@ type Camada =
   | { tipo: "adicionar" }
   | { tipo: "config" }
   | { tipo: "sobre" }
+  | { tipo: "conquistas"; jogo: Game }
   | { tipo: "versoes"; jogo: Game }
   | { tipo: "remover"; jogo: Game }
   | { tipo: "conflito"; jogo: Game }
@@ -181,6 +183,7 @@ export default function App() {
           jogos={jogos}
           estados={cards}
           onJogar={(j) => void jogar(j)}
+          onConquistas={(j) => abrir({ tipo: "conquistas", jogo: j })}
           onVersoes={(j) => abrir({ tipo: "versoes", jogo: j })}
           onRemover={(j) => abrir({ tipo: "remover", jogo: j })}
           onAdicionar={() => abrir({ tipo: "adicionar" })}
@@ -213,6 +216,8 @@ export default function App() {
             return <Configuracoes key={i} estado={estado} onClose={fechar} onMudou={() => void carregar()} onSobre={() => abrir({ tipo: "sobre" })} />;
           case "sobre":
             return <Sobre key={i} onClose={fechar} />;
+          case "conquistas":
+            return <Conquistas key={i} jogo={c.jogo} onClose={fechar} />;
           case "versoes":
             return <Versoes key={i} jogo={c.jogo} onClose={fechar} />;
           case "remover":

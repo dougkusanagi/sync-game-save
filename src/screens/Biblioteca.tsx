@@ -39,12 +39,13 @@ type Props = {
   jogos: Game[];
   estados: Record<number, EstadoCard>;
   onJogar: (j: Game) => void;
+  onConquistas: (j: Game) => void;
   onVersoes: (j: Game) => void;
   onRemover: (j: Game) => void;
   onAdicionar: () => void;
 };
 
-export function Biblioteca({ jogos, estados, onJogar, onVersoes, onRemover, onAdicionar }: Props) {
+export function Biblioteca({ jogos, estados, onJogar, onConquistas, onVersoes, onRemover, onAdicionar }: Props) {
   if (jogos.length === 0) {
     return (
       <section className="vazio" aria-labelledby="vazio-titulo">
@@ -81,6 +82,9 @@ export function Biblioteca({ jogos, estados, onJogar, onVersoes, onRemover, onAd
             <div className="cartao-acoes">
               <button className="btn primario" data-f data-autofocus={i === 0 || undefined} disabled={!!st} onClick={() => onJogar(j)}>
                 {st === "jogando" ? "Jogando" : "Jogar"}
+              </button>
+              <button className="btn fraco" data-f disabled={!!st} onClick={() => onConquistas(j)}>
+                Conquistas
               </button>
               <button className="btn fraco" data-f disabled={!!st} onClick={() => onVersoes(j)}>
                 Versões
