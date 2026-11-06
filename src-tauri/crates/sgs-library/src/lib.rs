@@ -46,6 +46,11 @@ const MIGRATIONS: &[&str] = &[
      CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);",
     "ALTER TABLE games ADD COLUMN playtime_secs INTEGER NOT NULL DEFAULT 0;
      ALTER TABLE games ADD COLUMN last_played_at INTEGER;",
+    "CREATE TABLE achievements_cache(
+        game_id INTEGER PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+        fetched_at INTEGER NOT NULL,
+        json TEXT NOT NULL
+     );",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -230,6 +235,23 @@ impl Library {
             0 => Err(Error::NotFound),
             _ => Ok(()),
         }
+    }
+
+    /// Guarda a última resposta de conquistas, para funcionar sem internet.
+    pub fn save_achievements(&mut self, id: i64, json: &str, now: i64) -> Result<()> {
+        self.0.execute(
+            "INSERT INTO achievements_cache(game_id,fetched_at,json) VALUES(?,?,?)
+             ON CONFLICT(game_id) DO UPDATE SET fetched_at=excluded.fetched_at, json=excluded.json",
+            params![id, now, json],
+        )?;
+        Ok(())
+    }
+
+    pub fn achievements_cache(&self, id: i64) -> Result<Option<(String, i64)>> {
+        Ok(self
+            .0
+            .query_row("SELECT json, fetched_at FROM achievements_cache WHERE game_id=?", [id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .optional()?)
     }
 
     pub fn setting(&self, key: &str) -> Result<Option<String>> {

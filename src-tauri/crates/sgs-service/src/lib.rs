@@ -2,6 +2,7 @@
 //! abrir/fechar jogo com sync e restauração de versões. Não depende do Tauri.
 
 use serde::Serialize;
+use sgs_achievements::{AchievementProvider, AchievementSet, GameRef, SteamProvider, Summary, UreqHttp};
 use sgs_catalog::recognize::{recognize, scan_folder, Recognition, ScanResult};
 use sgs_catalog::Catalog;
 use sgs_core::engine::{Before, Choice, Ctx};
@@ -47,6 +48,24 @@ impl From<sgs_catalog::Error> for Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Conquistas prontas para a interface.
+#[derive(Debug, Serialize)]
+pub struct AchievementsView {
+    pub set: AchievementSet,
+    pub summary: Summary,
+    /// Veio do cache (sem internet, erro ou busca recente).
+    pub from_cache: bool,
+    pub fetched_at: i64,
+    /// Motivo para mostrar dados incompletos ou antigos, em linguagem simples.
+    pub notice: Option<String>,
+}
+
+impl AchievementsView {
+    fn new(set: AchievementSet, fetched_at: i64, from_cache: bool, notice: Option<String>) -> Self {
+        AchievementsView { summary: set.summary(), set, from_cache, fetched_at, notice }
+    }
+}
 
 /// Resultado de conferir a pasta de sync no assistente de primeiro uso.
 #[derive(Debug, Serialize, PartialEq, Eq)]
@@ -265,6 +284,65 @@ impl Service {
     /// Tira da biblioteca. Os saves, locais e na nuvem, continuam onde estão.
     pub fn remove_game(&self, id: i64) -> Result<()> {
         Ok(self.lib().remove_game(id)?)
+    }
+
+    // ---- Conquistas ----
+
+    /// Guarda a chave de API e o SteamID do usuário. A chave nunca volta para a interface.
+    pub fn set_steam_credentials(&self, api_key: &str, steam_id: &str) -> Result<()> {
+        let (k, i) = (api_key.trim(), steam_id.trim());
+        if !i.is_empty() && !i.chars().all(|c| c.is_ascii_digit()) {
+            return Err(Error::Other("O SteamID deve ter só números (o \"SteamID64\", com 17 dígitos).".into()));
+        }
+        let mut lib = self.lib();
+        lib.set_setting("steam_api_key", k)?;
+        lib.set_setting("steam_id", i)?;
+        Ok(())
+    }
+
+    pub fn steam_configured(&self) -> bool {
+        let lib = self.lib();
+        let tem = |k: &str| lib.setting(k).ok().flatten().is_some_and(|v| !v.trim().is_empty());
+        tem("steam_api_key") && tem("steam_id")
+    }
+
+    /// Conquistas do jogo. Usa o cache se foi buscado há menos de 10 minutos (a menos que `force`)
+    /// e, sem internet ou com erro, devolve o que ficou guardado junto com o motivo.
+    pub fn achievements(&self, id: i64, force: bool) -> Result<AchievementsView> {
+        const VALIDADE: i64 = 600;
+        let game = self.lib().get(id)?;
+        let agora = (self.now)() as i64;
+        let cache: Option<(AchievementSet, i64)> = self
+            .lib()
+            .achievements_cache(id)?
+            .and_then(|(json, t)| serde_json::from_str(&json).ok().map(|s| (s, t)));
+        if let (Some((set, t)), false) = (&cache, force) {
+            if agora - t < VALIDADE {
+                return Ok(AchievementsView::new(set.clone(), *t, true, None));
+            }
+        }
+        let steam_app_id = match (game.catalog_id, self.catalog_path().exists()) {
+            (Some(c), true) => self.catalog()?.steam_id(c)?,
+            _ => None,
+        };
+        let (key, steam_id) = {
+            let lib = self.lib();
+            (lib.setting("steam_api_key")?.unwrap_or_default(), lib.setting("steam_id")?.unwrap_or_default())
+        };
+        let provider = SteamProvider { api_key: key, steam_id, http: UreqHttp };
+        match provider.fetch(&GameRef { steam_app_id }) {
+            Ok(set) => {
+                if let Ok(json) = serde_json::to_string(&set) {
+                    self.lib().save_achievements(id, &json, agora)?;
+                }
+                let aviso = (!set.progress_known).then(|| sgs_achievements::Error::PrivateProfile.to_string());
+                Ok(AchievementsView::new(set, agora, false, aviso))
+            }
+            Err(e) => match cache {
+                Some((set, t)) => Ok(AchievementsView::new(set, t, true, Some(e.to_string()))),
+                None => Err(Error::Other(e.to_string())),
+            },
+        }
     }
 
     // ---- Arte ----

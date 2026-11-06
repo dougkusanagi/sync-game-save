@@ -3418,6 +3418,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sgs-achievements"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "ureq",
+]
+
+[[package]]
 name = "sgs-catalog"
 version = "0.1.0"
 dependencies = [
@@ -3468,6 +3478,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "sgs-achievements",
  "sgs-catalog",
  "sgs-core",
  "sgs-library",

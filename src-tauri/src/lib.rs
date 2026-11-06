@@ -45,6 +45,7 @@ struct Estado {
     nome_pc: String,
     catalogo_pronto: bool,
     operacoes_interrompidas: Vec<String>,
+    steam_configurada: bool,
 }
 
 #[tauri::command]
@@ -55,6 +56,7 @@ async fn estado(svc: Svc<'_>) -> Result<Estado, String> {
             nome_pc: s.device_name()?,
             catalogo_pronto: s.catalog_path().exists(),
             operacoes_interrompidas: s.interrupted_operations(),
+            steam_configurada: s.steam_configured(),
         })
     })
     .await
@@ -186,6 +188,16 @@ async fn capa_do_jogo(svc: Svc<'_>, id: i64) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
+async fn definir_credenciais_steam(svc: Svc<'_>, chave: String, steam_id: String) -> Result<(), String> {
+    blocking(&svc, move |s| s.set_steam_credentials(&chave, &steam_id)).await
+}
+
+#[tauri::command]
+async fn conquistas(svc: Svc<'_>, id: i64, forcar: Option<bool>) -> Result<sgs_service::AchievementsView, String> {
+    blocking(&svc, move |s| s.achievements(id, forcar.unwrap_or(false))).await
+}
+
+#[tauri::command]
 async fn versoes(svc: Svc<'_>, id: i64) -> Result<Vec<String>, String> {
     blocking(&svc, move |s| s.snapshots(id)).await
 }
@@ -255,6 +267,8 @@ pub fn run() {
             remover_jogo,
             jogar,
             capa_do_jogo,
+            definir_credenciais_steam,
+            conquistas,
             versoes,
             restaurar_versao,
         ])

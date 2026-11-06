@@ -53,7 +53,7 @@ fn configuracoes_e_persistencia_com_migracao() {
     let p = t.path().join("dados/library.db");
     {
         let mut lib = Library::open(&p).unwrap();
-        assert_eq!(lib.schema_version().unwrap(), 2);
+        assert_eq!(lib.schema_version().unwrap(), 3);
         lib.set_setting("sync_dir", "D:/OneDrive").unwrap();
         lib.set_setting("sync_dir", "E:/Nuvem").unwrap();
         lib.add_game(&game("Persistente"), 1).unwrap();
@@ -107,7 +107,19 @@ fn migra_banco_da_versao_1_sem_perder_jogos() {
         .unwrap();
     }
     let lib = Library::open(&p).unwrap();
-    assert_eq!(lib.schema_version().unwrap(), 2);
+    assert_eq!(lib.schema_version().unwrap(), 3);
     let g = lib.list().unwrap().remove(0);
     assert_eq!((g.name.as_str(), g.playtime_secs), ("Antigo", 0));
+}
+
+#[test]
+fn cache_de_conquistas_e_removido_com_o_jogo() {
+    let mut lib = Library::open_in_memory().unwrap();
+    let id = lib.add_game(&game("Conquistas"), 1).unwrap();
+    assert_eq!(lib.achievements_cache(id).unwrap(), None);
+    lib.save_achievements(id, "{\"a\":1}", 100).unwrap();
+    lib.save_achievements(id, "{\"a\":2}", 200).unwrap();
+    assert_eq!(lib.achievements_cache(id).unwrap(), Some(("{\"a\":2}".to_string(), 200)));
+    lib.remove_game(id).unwrap();
+    assert_eq!(lib.achievements_cache(id).unwrap(), None);
 }
