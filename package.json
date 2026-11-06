@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "e2e": "node e2e/run.cjs",
+    "e2e:app": "node e2e/app-real.cjs",
     "tauri": "tauri"
   },
   "dependencies": {

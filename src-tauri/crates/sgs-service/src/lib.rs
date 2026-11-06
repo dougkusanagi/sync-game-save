@@ -346,11 +346,14 @@ impl Service {
             }
         }
         journal::end(&jdir, &game.name)?;
-        match before? {
+        // O que aconteceu ao abrir também entra no aviso final.
+        let ao_abrir = match before? {
             Before::Conflict => return Ok(Play::Conflict),
             Before::LockedByOther(pc) => return Ok(Play::Locked { pc }),
-            _ => {}
-        }
+            Before::RestoredFromCloud => "O save da pasta de sincronização foi restaurado antes de abrir (o anterior ficou em backup). ",
+            Before::UploadedLocal => "O save deste PC foi enviado antes de abrir. ",
+            Before::Ready => "",
+        };
         let game_dir = ctx.game_dir.clone();
         let device = ctx.device.clone();
         let result = launch(&opts.args, &mut || {
@@ -365,8 +368,8 @@ impl Service {
         let code = result?;
         let digest = sgs_core::index::scan_roots(&ctx.roots).map(|i| i.digest()).unwrap_or_default();
         self.lib().record_sync(id, &digest, (self.now)() as i64)?;
-        let notice = if created { "Save enviado para a pasta de sincronização." } else { "Save sem mudanças." };
-        Ok(Play::Finished { exit_code: code, synced: true, notice: notice.into() })
+        let ao_fechar = if created { "Save enviado para a pasta de sincronização." } else { "Save sem mudanças depois de jogar." };
+        Ok(Play::Finished { exit_code: code, synced: true, notice: format!("{ao_abrir}{ao_fechar}") })
     }
 
     // ---- Versões ----

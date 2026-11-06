@@ -207,7 +207,11 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            let dir = app.path().app_data_dir()?;
+            // `SGS_DATA_DIR` isola os dados (usado nos testes do app real); sem ele, vale a pasta de dados do app.
+            let dir = match std::env::var_os("SGS_DATA_DIR") {
+                Some(d) => PathBuf::from(d),
+                None => app.path().app_data_dir()?,
+            };
             let svc = Service::open(&dir).map_err(|e| e.to_string())?;
             app.manage(Arc::new(svc));
             controle::iniciar(app.handle().clone());

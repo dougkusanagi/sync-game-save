@@ -25,9 +25,10 @@ bun install
 bun run tauri dev          # app Tauri + React
 cd src-tauri && cargo test --workspace   # núcleo, catálogo, biblioteca, serviço e CLI
 bun run e2e                # testes E2E da interface (dados simulados)
+(cd src-tauri && cargo build) && bun run e2e:app   # abre o app real e confere o fluxo (Windows)
 ```
 
-Na primeira vez, instale o navegador dos testes E2E com `bunx playwright install chromium`. A interface também abre no navegador (`bun run dev`, `http://localhost:1420/?cenario=jogos`) com dados simulados; os cenários são `jogos`, `vazio`, `primeiro-uso` e `conflito`.
+`SGS_DATA_DIR` troca a pasta de dados do app (útil para testes sem mexer na sua biblioteca). Na primeira vez, instale o navegador dos testes E2E com `bunx playwright install chromium`. A interface também abre no navegador (`bun run dev`, `http://localhost:1420/?cenario=jogos`) com dados simulados; os cenários são `jogos`, `vazio`, `primeiro-uso` e `conflito`.
 
 ## CLI `sgs`
 

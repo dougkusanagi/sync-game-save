@@ -125,7 +125,7 @@ fn joga_em_um_pc_e_recebe_no_outro() {
 
     // PC B começa sem save: recebe os dois e só então abre o jogo.
     let r = b.play(ib, &opts("exit 0"), &silent).unwrap();
-    assert!(matches!(r, Play::Finished { synced: true, .. }));
+    assert!(matches!(&r, Play::Finished { synced: true, notice, .. } if notice.contains("restaurado")), "{r:?}");
     assert_eq!(read(t.path(), "B", "Jogo/slot1.sav"), "um");
     assert_eq!(read(t.path(), "B", "Config/op.ini"), "opcoes");
     assert!(a.games().unwrap()[0].last_sync_at.is_some());
