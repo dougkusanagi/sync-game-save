@@ -1,0 +1,1 @@
+- O tema visual agora pode ser trocado pela barra superior.

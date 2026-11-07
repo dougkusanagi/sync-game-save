@@ -1,0 +1,66 @@
+/*
+ * Tokens do tema. Todo valor visual vem daqui, para que temas da comunidade
+ * possam trocar só este arquivo (ou um theme.json que gera estas variáveis).
+ */
+:root {
+	--sgs-color-scheme: dark;
+	--sgs-bg: #06080c;
+	--sgs-bg-rgb: 6 8 12;
+	--sgs-capa-bg: linear-gradient(135deg, #1b2a44, #0e1420);
+	--sgs-surface: rgb(16 20 28 / 0.62);
+	--sgs-surface-strong: rgb(14 18 26 / 0.86);
+	--sgs-surface-solid: #121722;
+	--sgs-surface-hover: rgb(255 255 255 / 0.08);
+	--sgs-border: rgb(255 255 255 / 0.12);
+	--sgs-border-strong: rgb(255 255 255 / 0.28);
+	--sgs-text: #f3f5f9;
+	--sgs-text-dim: rgb(243 245 249 / 0.72);
+	--sgs-text-faint: rgb(243 245 249 / 0.5);
+
+	--sgs-accent-default: #5aa9ff;
+	--sgs-accent: var(--game-accent, var(--sgs-accent-default));
+	--sgs-ok: #3ddc97;
+	--sgs-info: #6cb6ff;
+	--sgs-warn: #ffc857;
+	--sgs-danger: #ff6b7d;
+
+	--sgs-tier-common: #9fb4cc;
+	--sgs-tier-uncommon: #3ddc97;
+	--sgs-tier-rare: #6cb6ff;
+	--sgs-tier-ultra: #ffc857;
+
+	--sgs-font: "Outfit", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+	--sgs-radius-s: 0.5rem;
+	--sgs-radius-m: 0.875rem;
+	--sgs-radius-l: 1.25rem;
+	--sgs-blur: 28px;
+
+	--sgs-dur: 220ms;
+	--sgs-dur-slow: 420ms;
+	--sgs-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--sgs-focus-scale: 1.06;
+	--sgs-focus-ring: 0 0 0 0.1875rem #fff, 0 0.75rem 2.5rem rgb(0 0 0 / 0.55);
+
+	--sgs-rail-w: 6rem;
+	--sgs-gutter: 11rem;
+}
+
+html[data-glass="off"] {
+	--sgs-surface: var(--sgs-surface-solid);
+	--sgs-surface-strong: var(--sgs-surface-solid);
+	--sgs-blur: 0px;
+}
+
+html[data-motion="reduced"] {
+	--sgs-dur: 0ms;
+	--sgs-dur-slow: 0ms;
+	--sgs-focus-scale: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-motion="full"]) {
+		--sgs-dur: 0ms;
+		--sgs-dur-slow: 0ms;
+		--sgs-focus-scale: 1;
+	}
+}

@@ -1,0 +1,289 @@
+// Testes E2E dos fluxos principais, com dados simulados (modo navegador do app).
+// Uso: bun run e2e    (sobe o servidor do Vite sozinho e fecha no fim)
+// Primeira vez na máquina: bunx playwright install chromium
+const { chromium } = require("playwright");
+const { spawn } = require("node:child_process");
+const assert = require("node:assert/strict");
+const http = require("node:http");
+const path = require("node:path");
+
+const PORTA = Number(process.env.PORTA ?? 1420);
+const BASE = `http://localhost:${PORTA}/`;
+
+function servidorNoAr() {
+  return new Promise((ok) => {
+    http.get(BASE, (r) => (r.resume(), ok(true))).on("error", () => ok(false));
+  });
+}
+
+async function subirServidor() {
+  if (await servidorNoAr()) return null;
+  const p = spawn("bunx", ["vite", "--port", String(PORTA), "--strictPort"], { cwd: path.join(__dirname, ".."), shell: true, stdio: "ignore" });
+  for (let i = 0; i < 60; i++) {
+    if (await servidorNoAr()) return p;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  p.kill();
+  throw new Error("o servidor do Vite não subiu");
+}
+
+// Enquanto o jogo roda, Jogar fica travado; ao fechar sem problema, nenhum aviso aparece.
+async function jogoTerminouSemAviso(page) {
+  const jogar = page.locator(".hero").getByRole("button", { name: /Jogar|Jogando/ });
+  await page.waitForFunction(() => document.querySelector(".hero .btn-play")?.disabled === true);
+  await page.waitForFunction(() => document.querySelector(".hero .btn-play")?.disabled === false);
+  assert.equal(await jogar.count(), 1);
+  assert.equal(await page.locator(".toast").count(), 0, "não mostra aviso quando deu tudo certo");
+}
+
+const testes = [];
+const teste = (nome, fn) => testes.push([nome, fn]);
+
+teste("primeiro uso: escolhe a pasta, nomeia o PC e chega à biblioteca vazia", async (page) => {
+  await page.goto(`${BASE}?cenario=primeiro-uso`);
+  await page.getByRole("button", { name: "Escolher a pasta" }).click();
+  await page.getByRole("button", { name: /Escolher pasta/ }).click();
+  await page.getByText("Pasta pronta").waitFor();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  const nome = page.getByLabel("Nome deste PC");
+  await nome.fill("PC-QUARTO");
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByText("Sua biblioteca está vazia").waitFor();
+});
+
+teste("adicionar jogo: reconhece, marca o save e o jogo aparece na lista", async (page) => {
+  await page.goto(`${BASE}?cenario=vazio`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Escolher pasta do jogo/ }).click();
+  await page.getByText("Reconheci este jogo").waitFor();
+  assert.equal(await page.getByRole("checkbox").first().isChecked(), true, "o save encontrado vem marcado");
+  assert.equal(await page.getByRole("checkbox").nth(1).isChecked(), false, "o save que não existe vem desmarcado");
+  await page.getByRole("button", { name: "Adicionar jogo" }).last().click();
+  await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor();
+});
+
+teste("adicionar jogo: nome vazio bloqueia o envio", async (page) => {
+  await page.goto(`${BASE}?cenario=vazio`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Escolher pasta do jogo/ }).click();
+  await page.getByLabel("Nome do jogo").fill("   ");
+  assert.equal(await page.getByRole("button", { name: "Adicionar jogo" }).last().isDisabled(), true);
+});
+
+teste("jogar: trava o botão enquanto o jogo roda e não mostra aviso quando dá tudo certo", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Jogar" }).first().click();
+  await jogoTerminouSemAviso(page);
+});
+
+teste("conflito: o usuário escolhe e o jogo segue", async (page) => {
+  await page.goto(`${BASE}?cenario=conflito`);
+  await page.getByRole("button", { name: "Jogar" }).first().click();
+  await page.getByRole("dialog", { name: "Dois saves diferentes" }).waitFor();
+  await page.getByRole("button", { name: "Usar o save deste PC" }).click();
+  await jogoTerminouSemAviso(page);
+});
+
+teste("jogo aberto em outro PC: pede confirmação antes de abrir", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: /^Hollow Knight/ }).click();
+  await page.getByRole("dialog", { name: "Jogo aberto em outro PC" }).getByText("PC-QUARTO").waitFor();
+  await page.getByRole("button", { name: "Abrir mesmo assim" }).click();
+  await jogoTerminouSemAviso(page);
+});
+
+teste("versões: restaurar pede confirmação e informa onde ficou o backup", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Versões" }).first().click();
+  await page.getByRole("button", { name: "Restaurar" }).first().click();
+  await page.getByRole("button", { name: "Confirmar" }).click();
+  await page.getByText(/foi guardado em/).waitFor();
+});
+
+teste("conquistas: mostra o progresso, filtra e revela as ocultas", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: /^Rogue Legacy./ }).hover();
+  await page.getByRole("button", { name: "Conquistas" }).first().click();
+  const dlg = page.getByRole("dialog", { name: "Conquistas de Rogue Legacy" });
+  await dlg.getByRole("heading", { name: "2 de 3 conquistas · 66%" }).waitFor();
+  await dlg.locator(".filtros").getByRole("button", { name: "Bloqueadas", exact: true }).click();
+  await dlg.getByText("Conquista oculta").waitFor();
+  await dlg.getByRole("button", { name: "Mostrar" }).click();
+  await dlg.getByText("Segredo da família").waitFor();
+});
+
+teste("conquistas do HUB: mostra marcos e o resumo do progresso", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Meu progresso" }).click();
+  const dlg = page.getByRole("dialog", { name: "Conquistas do HUB" });
+  await dlg.getByRole("heading", { name: "Faltam 7 marcos para completar." }).waitFor();
+  await dlg.getByText("Ritmo constante").waitFor();
+  await dlg.getByText("Jogos completos").waitFor();
+});
+
+teste("configurações: sem chave, usa a conta da Steam deste PC e permite trocar", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const dlg = page.getByRole("dialog", { name: "Configurações" });
+  await dlg.getByText("Conta da Steam encontrada (SteamID 76561198000000000).").waitFor();
+  assert.equal(await dlg.getByLabel(/chave/i).count(), 0, "não pede nenhuma chave");
+  await dlg.getByText("Usar outra conta").click();
+  const usar = dlg.getByRole("button", { name: "Usar esta conta" });
+  await dlg.getByLabel("SteamID64").fill("123");
+  assert.equal(await usar.isDisabled(), true, "SteamID incompleto não é aceito");
+  await dlg.getByLabel("SteamID64").fill("76561198263490373");
+  await usar.click();
+  await dlg.getByText("Conta da Steam encontrada (SteamID 76561198263490373).").waitFor();
+  await dlg.getByRole("button", { name: "Usar a conta deste PC" }).click();
+  await dlg.getByText("Conta da Steam encontrada (SteamID 76561198000000000).").waitFor();
+});
+
+teste("tema: troca para o claro e a escolha fica guardada", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const dlg = page.getByRole("dialog", { name: "Configurações" });
+  const aparencia = dlg.getByLabel("Aparência");
+  await aparencia.selectOption({ label: "Claro" });
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sgs-bg").trim() === "#f2f5fb");
+  assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), "rgb(242, 245, 251)");
+  await page.waitForFunction(() => localStorage.getItem("sgs.mock.tema") === "claro");
+
+  await page.reload();
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--sgs-bg").trim() === "#f2f5fb");
+
+  await page.getByRole("button", { name: "Configurações" }).click();
+  await page.getByRole("dialog", { name: "Configurações" }).getByLabel("Aparência").selectOption({ label: "Escuro (padrão)" });
+  await page.waitForFunction(() => document.documentElement.style.getPropertyValue("--sgs-bg") === "");
+});
+
+teste("remover: confirma, o jogo some e os saves não são apagados", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: /^Rogue Legacy./ }).hover();
+  await page.getByRole("button", { name: "Mais opções" }).click();
+  await page.getByRole("button", { name: "Remover da biblioteca" }).click();
+  await page.getByText(/Nada é apagado/).waitFor();
+  await page.getByRole("button", { name: "Remover" }).last().click();
+  await page.getByText(/continuam onde estavam/).waitFor();
+  await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor({ state: "detached" });
+});
+
+teste("som: desligar e mudar o volume fica guardado depois de recarregar", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  const musica = page.getByRole("checkbox", { name: "Música ambiente" });
+  assert.equal(await musica.isChecked(), true, "música ligada por padrão, em volume baixo");
+  await musica.uncheck();
+  // Com a música desligada, os botões de volume dela ficam desativados.
+  assert.equal(await page.getByRole("button", { name: "Aumentar volume da música ambiente" }).isDisabled(), true);
+  await page.getByRole("button", { name: "Aumentar volume dos sons da interface" }).click();
+  const salvo = await page.evaluate(() => JSON.parse(localStorage.getItem("sgs.som")));
+  assert.equal(salvo.fundo, false);
+  assert.ok(salvo.volEfeitos > 0.3 && salvo.volEfeitos < 0.4, `volume dos efeitos: ${salvo.volEfeitos}`);
+  await page.reload();
+  await page.getByRole("button", { name: "Configurações" }).click();
+  assert.equal(await page.getByRole("checkbox", { name: "Música ambiente" }).isChecked(), false);
+});
+
+teste("teclado: Esc fecha o diálogo e devolve o foco ao botão de origem", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  const botao = page.getByRole("button", { name: "Configurações" });
+  await botao.focus();
+  await botao.press("Enter");
+  await page.getByRole("dialog", { name: "Configurações" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog").waitFor({ state: "detached" });
+  assert.equal(await page.evaluate(() => document.activeElement?.textContent), "Configurações");
+});
+
+teste("teclado: setas movem o foco entre os botões", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.waitForSelector(".cap");
+  const antes = await page.evaluate(() => document.activeElement?.textContent);
+  await page.keyboard.press("ArrowRight");
+  const depois = await page.evaluate(() => document.activeElement?.textContent);
+  assert.notEqual(antes, depois);
+});
+
+teste("início: Q e E trocam a seção; L abre a biblioteca e Esc volta", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.waitForSelector(".cap.is-focused");
+  await page.keyboard.press("e");
+  await page.getByRole("heading", { name: "Adicionados" }).waitFor();
+  await page.keyboard.press("q");
+  await page.getByRole("heading", { name: "Jogados recentemente" }).waitFor();
+  await page.keyboard.press("l");
+  await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
+  assert.equal(await page.locator(".card").count(), 4);
+  await page.keyboard.press("Escape");
+  await page.getByRole("heading", { name: "Jogados recentemente" }).waitFor();
+});
+
+teste("sobre: mostra a versão e procura atualização", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: "Configurações" }).click();
+  await page.getByRole("dialog", { name: "Configurações" }).getByRole("button", { name: "Sobre" }).click();
+  const dlg = page.getByRole("dialog", { name: "Sobre" });
+  await dlg.getByText(/Versão 1\.0\.0/).waitFor();
+  await dlg.getByText("Você está na versão mais recente.").waitFor();
+});
+
+teste("layout: sem rolagem horizontal no celular, com nomes longos", async (page) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.waitForSelector(".cap");
+  const [larg, vis] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+  assert.ok(larg <= vis, `rolagem horizontal: ${larg} > ${vis}`);
+});
+
+(async () => {
+  const servidor = await subirServidor();
+  const browser = await chromium.launch();
+  let falhas = 0;
+  for (const [nome, fn] of testes) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await ctx.newPage();
+    page.setDefaultTimeout(6000);
+    const erros = [];
+    page.on("pageerror", (e) => erros.push(String(e)));
+    try {
+      await fn(page);
+      assert.equal(erros.length, 0, `erros na página: ${erros.join(" | ")}`);
+      console.log(`ok   ${nome}`);
+    } catch (e) {
+      falhas++;
+      console.log(`FALHOU ${nome}\n     ${String(e.message).split("\n")[0]}`);
+    }
+    await ctx.close();
+  }
+  await browser.close();
+  servidor?.kill();
+  if (servidor) spawn("taskkill", ["/F", "/T", "/PID", String(servidor.pid)], { shell: true, stdio: "ignore" });
+  console.log(falhas ? `\n${falhas} teste(s) falharam` : `\n${testes.length} testes passaram`);
+  process.exit(falhas ? 1 : 0);
+})();
+teste("tema rapido fica disponivel na barra superior", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  const seletor = page.getByLabel("Tema visual");
+  await seletor.waitFor();
+  await seletor.selectOption("claro");
+  await page.waitForFunction(() => localStorage.getItem("sgs.mock.tema") === "claro");
+  await seletor.selectOption("escuro");
+});
+teste("adicionar jogo aceita selecionar diretamente o executavel", async (page) => {
+  await page.goto(`${BASE}?cenario=vazio`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("dialog", { name: "Adicionar jogo" }).getByRole("button", { name: /Escolher execut/ }).click();
+  await page.getByRole("textbox", { name: "Nome do jogo" }).waitFor();
+  await page.getByRole("textbox", { name: "Nome do jogo" }).fill("Rogue Legacy");
+  await page.getByRole("dialog", { name: "Adicionar jogo" }).getByRole("button", { name: "Adicionar jogo", exact: true }).click();
+  await page.getByRole("button", { name: /^Rogue Legacy/ }).waitFor();
+});
+teste("editar jogo salva nome e caminhos de save", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("button", { name: /^Rogue Legacy/ }).hover();
+  await page.getByRole("button", { name: "Mais opções" }).click();
+  await page.getByRole("button", { name: "Editar jogo" }).click();
+  await page.getByLabel("Nome do jogo").fill("Rogue Legacy Editado");
+  await page.getByRole("button", { name: "Salvar alterações" }).click();
+  await page.getByRole("heading", { name: "Rogue Legacy Editado" }).waitFor();
+});

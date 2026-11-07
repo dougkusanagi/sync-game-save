@@ -1,0 +1,38 @@
+[workspace]
+resolver = "2"
+members = [".", "crates/sgs-core", "crates/sgs-catalog", "crates/sgs-cli", "crates/sgs-library", "crates/sgs-service", "crates/sgs-achievements"]
+
+[package]
+name = "sync-game-save"
+version = "1.0.0"
+description = "Launcher de jogos com sincronização segura de saves"
+edition = "2024"
+
+[lib]
+name = "sync_game_save_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sgs-core = { path = "crates/sgs-core" }
+tauri-plugin-dialog = "2"
+sgs-service = { version = "0.1.0", path = "crates/sgs-service" }
+sgs-library = { version = "0.1.0", path = "crates/sgs-library" }
+sgs-catalog = { version = "0.1.0", path = "crates/sgs-catalog" }
+tauri-plugin-notification = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+gilrs = "0.11.2"
+tokio = { version = "1", features = ["time"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
