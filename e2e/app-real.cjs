@@ -74,18 +74,32 @@ async function esperar(url, n = 80) {
     await page.screenshot({ path: path.join(OUT, "2-biblioteca.png") });
     ok("jogo adicionado pelo backend aparece na biblioteca");
 
-    await page.getByRole("button", { name: "Jogar" }).click();
-    await page.getByText(/Save enviado para a pasta de sincronização|Save sem mudanças/).waitFor({ timeout: 20000 });
-    await page.screenshot({ path: path.join(OUT, "3-depois-de-jogar.png") });
+    await page.getByRole("button", { name: "Jogar" }).first().click();
+    // O executável de teste termina rápido: esperamos o snapshot persistido, que prova o sync.
     const snaps = path.join(nuvem, "SyncGameSave", "games", "Jogo Teste", "snapshots");
+    for (let i = 0; i < 80 && (!fs.existsSync(snaps) || fs.readdirSync(snaps).length === 0); i++) await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 20000));
+    await page.screenshot({ path: path.join(OUT, "3-depois-de-jogar.png") });
     fs.existsSync(snaps) && fs.readdirSync(snaps).length === 1 ? ok("jogar pela interface criou 1 snapshot na pasta de sync") : falha("snapshot ausente em " + snaps);
 
     // 5. Versões e tempo de jogo.
-    await page.getByRole("button", { name: "Versões" }).click();
+    await page.getByRole("button", { name: "Versões" }).first().click();
     await page.getByRole("button", { name: "Restaurar" }).waitFor();
     await page.screenshot({ path: path.join(OUT, "4-versoes.png") });
     ok("diálogo de versões lista o snapshot do backend real");
     await page.keyboard.press("Escape");
+
+    // 6. Arte de um jogo sem catálogo: busca na loja da Steam pelo nome e a janela consegue mostrar o arquivo local.
+    const rl = await invoke("adicionar_jogo", { jogo: { name: "RogueLegacy", exe: "cmd", install_dir: null, catalog_id: null, save_paths: [] } });
+    const hero = await invoke("arte_do_jogo", { id: rl, tipo: "hero" });
+    hero ? ok("arte de fundo baixada pela busca na loja da Steam") : falha("arte_do_jogo hero voltou vazia");
+    await page.reload();
+    await page.getByRole("button", { name: /^RogueLegacy./ }).hover();
+    const carregou = await page
+      .waitForFunction(() => [...document.querySelectorAll(".cap-art img")].some((i) => i.complete && i.naturalWidth > 0) && getComputedStyle(document.querySelector(".fundo-arte")).backgroundImage.includes("asset"), null, { timeout: 15000 })
+      .then(() => true, () => false);
+    await page.screenshot({ path: path.join(OUT, "5-arte.png") });
+    carregou ? ok("a janela mostra a capa e o fundo vindos do cache local") : falha("as imagens locais não carregaram na janela (protocolo asset)");
 
     await browser.close();
   } finally {

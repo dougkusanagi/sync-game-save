@@ -207,6 +207,14 @@ impl Library {
         Ok(())
     }
 
+    /// Invalida a base local quando os caminhos monitorados mudam.
+    pub fn reset_sync_state(&mut self, id: i64) -> Result<()> {
+        if self.0.execute("UPDATE sync_state SET base_digest=NULL,last_sync_at=NULL WHERE game_id=?", [id])? == 0 {
+            return Err(Error::NotFound);
+        }
+        Ok(())
+    }
+
     /// Tira o jogo da biblioteca. Não toca em arquivos de save, locais ou da nuvem.
     pub fn remove_game(&mut self, id: i64) -> Result<()> {
         match self.0.execute("DELETE FROM games WHERE id=?", [id])? {

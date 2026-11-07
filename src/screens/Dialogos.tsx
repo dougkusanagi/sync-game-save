@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Dialog } from "../Dialog";
-import { api, escolherPasta, textoDoErro, type Estado, type Game, type Temas } from "../api";
+import { api, escolherArquivoExe, escolherPasta, instalarAtualizacao, textoDoErro, verificarAtualizacao, type Atualizacao, type Estado, type Game, type Temas } from "../api";
 import { versaoLegivel } from "../format";
 import { som, type ConfigSom } from "../som";
 import { acharTema, aplicarTema } from "../temas";
@@ -153,6 +153,90 @@ export function Remover({ jogo, onConfirmar, onClose }: { jogo: Game; onConfirma
   );
 }
 
+/** Ações menos frequentes de um jogo, abertas por "Mais opções" ou pelo botão Opções. */
+export function Opcoes({
+  jogo,
+  onClose,
+  onJogar,
+  onVersoes,
+  onConquistas,
+  onRemover,
+  onEditar,
+}: {
+  jogo: Game;
+  onClose: () => void;
+  onJogar: () => void;
+  onVersoes: () => void;
+  onConquistas: () => void;
+  onRemover: () => void;
+  onEditar: () => void;
+}) {
+  return (
+    <Dialog titulo={jogo.name} onClose={onClose}>
+      <div className="coluna opcoes-jogo">
+        <button className="btn primario" data-f data-autofocus onClick={onJogar}>
+          Jogar
+        </button>
+        <button className="btn fraco" data-f onClick={onVersoes}>
+          Versões do save
+        </button>
+        <button className="btn fraco" data-f onClick={onConquistas}>
+          Conquistas
+        </button>
+        <button className="btn fraco" data-f onClick={onEditar}>
+          Editar jogo
+        </button>
+        <button className="btn fraco" data-f onClick={onRemover}>
+          Remover da biblioteca
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** Edita os dados da biblioteca sem mover nem alterar arquivos de save. */
+export function EditarJogo({ jogo, onClose, onSaved }: { jogo: Game; onClose: () => void; onSaved: () => void }) {
+  const [nome, setNome] = useState(jogo.name);
+  const [exe, setExe] = useState(jogo.exe);
+  const [paths, setPaths] = useState(jogo.save_paths);
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function adicionarPasta() {
+    const p = await escolherPasta("Escolha uma pasta de save");
+    if (!p) return;
+    const logical = await api.converterCaminho(p);
+    setPaths((atual) => atual.includes(logical) ? atual : [...atual, logical]);
+  }
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault();
+    setOcupado(true);
+    setErro(null);
+    try {
+      await api.editarJogo(jogo.id, { name: nome.trim(), exe, install_dir: jogo.install_dir, catalog_id: jogo.catalog_id, save_paths: paths });
+      onSaved();
+    } catch (err) {
+      setErro(textoDoErro(err));
+      setOcupado(false);
+    }
+  }
+
+  return <Dialog titulo={`Editar ${jogo.name}`} onClose={onClose}>
+    <form className="coluna" onSubmit={(e) => void salvar(e)}>
+      <label className="campo">Nome do jogo<input data-f data-autofocus value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} /></label>
+      <div className="campo">Executável<div className="linha"><code className="caminho">{exe}</code><button type="button" className="btn fraco" data-f onClick={async () => { const p = await escolherArquivoExe("Escolha o executável do jogo"); if (p) setExe(p); }}>Trocar…</button></div></div>
+      <fieldset className="campo"><legend>Pastas de save</legend>
+        {paths.map((p) => <label className="opcao" key={p}><input type="checkbox" data-f checked onChange={() => setPaths((atual) => atual.filter((x) => x !== p))} /><code className="caminho">{p}</code></label>)}
+        {paths.length === 0 && <p className="dica">Sem caminhos de save; o jogo não será sincronizado.</p>}
+        <button type="button" className="btn fraco" data-f onClick={() => void adicionarPasta()}>Adicionar pasta de save…</button>
+      </fieldset>
+      {erro && <p className="erro" role="alert">{erro}</p>}
+      <div className="acoes"><button type="button" className="btn fraco" data-f onClick={onClose}>Cancelar</button><button className="btn primario" data-f disabled={ocupado || !nome.trim() || !exe}>{ocupado ? "Salvando…" : "Salvar alterações"}</button></div>
+    </form>
+  </Dialog>;
+}
+
 function Volume({ nome, valor, desligado, onMudar }: { nome: string; valor: number; desligado: boolean; onMudar: (v: number) => void }) {
   const pct = Math.round(valor * 100);
   return (
@@ -178,62 +262,50 @@ function SteamConfig({
   rodar: (fn: () => Promise<string | void>) => Promise<void>;
   ocupado: boolean;
 }) {
-  const [chave, setChave] = useState("");
-  const [steamId, setSteamId] = useState(estado.steam_id ?? "");
-  const podeSalvar = chave.trim() !== "" && /^\d+$/.test(steamId.trim()) && !ocupado;
+  const [steamId, setSteamId] = useState("");
+  const valido = /^\d{17}$/.test(steamId.trim());
 
   return (
     <fieldset className="campo">
       <legend>Conquistas da Steam</legend>
       <p className="dica">
-        Opcional. Com a chave de API e o SteamID64, o app mostra o progresso das conquistas dos jogos que você tem na Steam. A chave fica só
-        neste PC, no banco local, e nunca volta para a tela.
+        Não precisa configurar nada: o app usa a conta da Steam deste PC. Para o progresso aparecer, o seu perfil precisa mostrar os detalhes dos
+        jogos como públicos (na Steam: Perfil › Editar perfil › Privacidade).
       </p>
-      <p className="dica">
-        Crie a chave em <code className="caminho">steamcommunity.com/dev/apikey</code> e copie o SteamID64 do seu perfil. O perfil precisa estar
-        com os detalhes dos jogos públicos para o progresso aparecer.
-      </p>
-      <label className="campo">
-        Chave de API
-        <input
-          data-f
-          type="password"
-          autoComplete="off"
-          value={chave}
-          placeholder={estado.steam_configurada ? "Chave guardada — preencha para trocar" : "Cole a chave de API"}
-          onChange={(e) => setChave(e.target.value)}
-        />
-      </label>
-      <label className="campo">
-        SteamID64
-        <input
-          data-f
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          maxLength={20}
-          value={steamId}
-          placeholder="Ex.: 76561198000000000"
-          onChange={(e) => setSteamId(e.target.value)}
-        />
-      </label>
-      <div className="linha">
-        <span>{estado.steam_configurada ? `Configurada para o SteamID ${estado.steam_id ?? ""}.` : "Ainda não configurada."}</span>
-        <button
-          className="btn fraco"
-          data-f
-          disabled={!podeSalvar}
-          onClick={() =>
-            rodar(async () => {
-              await api.definirCredenciaisSteam(chave, steamId);
-              setChave("");
-              return "Credenciais da Steam guardadas neste PC.";
-            })
-          }
-        >
-          Salvar credenciais
-        </button>
-        {estado.steam_configurada && (
+      <p>{estado.steam_id ? `Conta da Steam encontrada (SteamID ${estado.steam_id}).` : "Nenhuma conta da Steam encontrada neste PC. Entre na Steam neste PC e abra o app de novo."}</p>
+      <details>
+        <summary data-f tabIndex={0}>
+          Usar outra conta
+        </summary>
+        <label className="campo">
+          SteamID64
+          <input
+            data-f
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={17}
+            value={steamId}
+            placeholder="Ex.: 76561198000000000"
+            onChange={(e) => setSteamId(e.target.value.replace(/\D/g, ""))}
+          />
+        </label>
+        {steamId !== "" && !valido && <p className="erro">O SteamID64 tem 17 números.</p>}
+        <div className="linha">
+          <button
+            className="btn fraco"
+            data-f
+            disabled={!valido || ocupado}
+            onClick={() =>
+              rodar(async () => {
+                await api.definirCredenciaisSteam("", steamId.trim());
+                setSteamId("");
+                return "Conta da Steam trocada neste PC.";
+              })
+            }
+          >
+            Usar esta conta
+          </button>
           <button
             className="btn fraco"
             data-f
@@ -241,16 +313,14 @@ function SteamConfig({
             onClick={() =>
               rodar(async () => {
                 await api.definirCredenciaisSteam("", "");
-                setChave("");
-                setSteamId("");
-                return "Credenciais da Steam removidas. As conquistas guardadas continuam na tela.";
+                return "O app voltou a usar a conta da Steam deste PC.";
               })
             }
           >
-            Remover credenciais
+            Usar a conta deste PC
           </button>
-        )}
-      </div>
+        </div>
+      </details>
     </fieldset>
   );
 }
@@ -432,18 +502,81 @@ export function Configuracoes({ estado, onClose, onMudou, onSobre }: { estado: E
 }
 
 export function Sobre({ onClose }: { onClose: () => void }) {
-  const [info, setInfo] = useState<{ nome: string; versao: string } | null>(null);
+  const [info, setInfo] = useState<{ nome: string; versao: string; build: string } | null>(null);
+  const [atualizacao, setAtualizacao] = useState<Atualizacao | null>(null);
+  const [verificando, setVerificando] = useState(true);
+  const [instalando, setInstalando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
   useEffect(() => {
-    api.sobre().then(setInfo).catch(() => setInfo({ nome: "Sync Game Save", versao: "desconhecida" }));
+    api.sobre()
+      .then(setInfo)
+      .catch(() => setInfo({ nome: "Sync Game Save", versao: "desconhecida", build: "" }));
   }, []);
+
+  async function verificar() {
+    setVerificando(true);
+    setErro(null);
+    try {
+      setAtualizacao(await verificarAtualizacao());
+    } catch (e) {
+      console.error(e);
+      setErro("Não foi possível verificar atualizações agora. Confira sua conexão e tente de novo.");
+    } finally {
+      setVerificando(false);
+    }
+  }
+
+  useEffect(() => {
+    void verificar();
+  }, []);
+
+  async function instalar() {
+    setInstalando(true);
+    setErro(null);
+    try {
+      await instalarAtualizacao();
+    } catch (e) {
+      console.error(e);
+      setErro("Não foi possível instalar a atualização. Confira sua conexão e tente de novo.");
+      setInstalando(false);
+    }
+  }
+
   return (
     <Dialog titulo="Sobre" onClose={onClose}>
       <p>
         <strong>{info?.nome ?? "Sync Game Save"}</strong>
         <br />
         Versão {info?.versao ?? "…"}
+        {info?.build ? ` · build ${info.build}` : ""}
       </p>
       <p>Guarda os saves dos seus jogos numa pasta de nuvem, sem perder o progresso.</p>
+      <div className="campo">
+        Atualizações
+        {atualizacao ? (
+          <>
+            <p>
+              A versão {atualizacao.versao} está disponível. O app baixa, instala e reabre.
+            </p>
+            <button className="btn primario" data-f disabled={instalando} onClick={() => void instalar()}>
+              {instalando ? "Baixando e instalando…" : `Atualizar para ${atualizacao.versao}`}
+            </button>
+          </>
+        ) : (
+          <div className="linha">
+            <span>{verificando ? "Procurando atualização…" : "Você está na versão mais recente."}</span>
+            <button className="btn fraco" data-f disabled={verificando || instalando} onClick={() => void verificar()}>
+              Verificar de novo
+            </button>
+          </div>
+        )}
+        {erro && (
+          <p className="erro" role="alert">
+            {erro}
+          </p>
+        )}
+      </div>
       <p className="dica">
         O catálogo de caminhos de save vem do manifesto do projeto Ludusavi (licença MIT), de Matthew T. Kennerly.
       </p>

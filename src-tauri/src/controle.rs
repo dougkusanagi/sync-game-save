@@ -6,6 +6,7 @@
 use gilrs::{Axis, Button, EventType, Gilrs};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -105,14 +106,52 @@ fn tipo_do_controle(nome: &str) -> &'static str {
     }
 }
 
+/// Foco da janela, vindo dos eventos dela. Só vale fora do Windows: lá, o evento `Focused(false)` chega
+/// quando o foco passa para o WebView (janela filha) e o `Focused(true)` não volta, e o controle parava.
+static FOCADA: AtomicBool = AtomicBool::new(true);
+
+pub fn definir_foco(focada: bool) {
+    FOCADA.store(focada, Ordering::Relaxed);
+}
+
+#[cfg(windows)]
+fn janela_em_primeiro_plano(w: &tauri::WebviewWindow) -> bool {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn GetForegroundWindow() -> *mut std::ffi::c_void;
+        fn GetAncestor(hwnd: *mut std::ffi::c_void, flags: u32) -> *mut std::ffi::c_void;
+    }
+    const GA_ROOT: u32 = 2;
+    let Ok(minha) = w.hwnd() else { return false };
+    let minha = minha.0 as *mut std::ffi::c_void;
+    // O Windows diz qual janela de topo recebe a entrada; o WebView é filho dela.
+    let fg = unsafe { GetForegroundWindow() };
+    !fg.is_null() && (fg == minha || unsafe { GetAncestor(fg, GA_ROOT) } == minha)
+}
+
+#[cfg(not(windows))]
+fn janela_em_primeiro_plano(_w: &tauri::WebviewWindow) -> bool {
+    FOCADA.load(Ordering::Relaxed)
+}
+
 fn janela_pronta(app: &AppHandle) -> bool {
-    app.get_webview_window("main").is_some_and(|w| w.is_visible().unwrap_or(false) && w.is_focused().unwrap_or(false))
+    app.get_webview_window("main")
+        .is_some_and(|w| w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false) && janela_em_primeiro_plano(&w))
 }
 
 /// Inicia a leitura em segundo plano. Sem suporte a controle neste sistema, o app segue só com teclado e mouse.
 pub fn iniciar(app: AppHandle) {
     std::thread::spawn(move || {
-        let Ok(mut gilrs) = Gilrs::new() else { return };
+        let mut gilrs = match Gilrs::new() {
+            Ok(g) => g,
+            Err(e) => {
+                eprintln!("controle: leitura indisponível ({e})");
+                return;
+            }
+        };
+        for (_, g) in gilrs.gamepads() {
+            eprintln!("controle: conectado {}", g.name());
+        }
         let mut rep = Repetidor::default();
         let mut direcao_analogica: HashMap<Axis, &'static str> = HashMap::new();
         let mut dispositivo = "xbox";
@@ -153,6 +192,7 @@ pub fn iniciar(app: AppHandle) {
                             }
                         }
                     }
+                    EventType::Connected => eprintln!("controle: conectado {}", gilrs.gamepad(ev.id).name()),
                     EventType::Disconnected => {
                         rep = Repetidor::default();
                         direcao_analogica.clear();

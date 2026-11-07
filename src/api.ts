@@ -16,6 +16,8 @@ export type Game = {
   last_played_at: number | null;
 };
 
+export type TipoArte = "header" | "hero" | "logo" | "cover";
+
 export type NewGame = Pick<Game, "name" | "exe" | "install_dir" | "catalog_id" | "save_paths">;
 
 export type Estado = {
@@ -25,6 +27,7 @@ export type Estado = {
   operacoes_interrompidas: string[];
   steam_configurada: boolean;
   steam_id: string | null;
+  steamgriddb_configurada: boolean;
 };
 
 export type Nivel = "Common" | "Uncommon" | "Rare" | "UltraRare";
@@ -61,6 +64,28 @@ export type Tema = {
 
 export type Temas = { atual: string; temas: Tema[] };
 
+export type MarcoHub = {
+  id: string;
+  nome: string;
+  descricao: string;
+  nivel: "bronze" | "prata" | "ouro";
+  progresso: number;
+  alvo: number;
+  unidade: string;
+  desbloqueada: boolean;
+};
+
+export type ConquistasHub = {
+  conquistas: MarcoHub[];
+  desbloqueadas: number;
+  total: number;
+  horas: number;
+  jogos: number;
+  sequencia_atual: number;
+  melhor_sequencia: number;
+  jogos_completos: number;
+};
+
 export type VerificacaoPasta = {
   exists: boolean;
   writable: boolean;
@@ -95,7 +120,7 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 }
 
 export const api = {
-  sobre: () => call<{ nome: string; versao: string }>("sobre"),
+  sobre: () => call<{ nome: string; versao: string; build: string }>("sobre"),
   estado: () => call<Estado>("estado"),
   verificarPastaSync: (pasta: string) => call<VerificacaoPasta>("verificar_pasta_sync", { pasta }),
   definirPastaSync: (pasta: string) => call<VerificacaoPasta>("definir_pasta_sync", { pasta }),
@@ -105,17 +130,48 @@ export const api = {
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),
   listarJogos: () => call<Game[]>("listar_jogos"),
   adicionarJogo: (jogo: NewGame) => call<number>("adicionar_jogo", { jogo }),
+  editarJogo: (id: number, jogo: NewGame) => call<void>("editar_jogo", { id, jogo }),
   removerJogo: (id: number) => call<void>("remover_jogo", { id }),
   jogar: (id: number, opcoes?: OpcoesJogar) => call<ResultadoJogar>("jogar", { id, opcoes }),
+  pararJogo: (id: number) => call<boolean>("parar_jogo", { id }),
   capaDoJogo: (id: number) => call<string | null>("capa_do_jogo", { id }),
+  arteDoJogo: (id: number, tipo: TipoArte) => call<string | null>("arte_do_jogo", { id, tipo }),
   versoes: (id: number) => call<string[]>("versoes", { id }),
   restaurarVersao: (id: number, versao: string) => call<string>("restaurar_versao", { id, versao }),
   conquistas: (id: number, forcar = false) => call<Conquistas>("conquistas", { id, forcar }),
   definirCredenciaisSteam: (chave: string, steamId: string) =>
     call<void>("definir_credenciais_steam", { chave, steamId }),
+  definirChaveSteamGridDB: (chave: string) => call<void>("definir_chave_steamgriddb", { chave }),
+  conquistasHub: () => call<ConquistasHub>("conquistas_hub"),
   temas: () => call<Temas>("temas"),
   definirTema: (id: string) => call<Temas>("definir_tema", { id }),
 };
+
+export type Atualizacao = {
+  versao: string;
+  atual: string;
+  notas: string | null;
+};
+
+/** Procura uma atualização no canal configurado. No navegador simulado nunca há uma. */
+export async function verificarAtualizacao(): Promise<Atualizacao | null> {
+  if (noTauri) return null;
+  const { check } = await import("@tauri-apps/plugin-updater");
+  const u = await check();
+  if (!u) return null;
+  return { versao: u.version, atual: u.currentVersion, notas: u.body ?? null };
+}
+
+/** Baixa, instala e reabre o app. Só termina se algo der errado (o app reinicia). */
+export async function instalarAtualizacao(): Promise<void> {
+  if (noTauri) return;
+  const { check } = await import("@tauri-apps/plugin-updater");
+  const { relaunch } = await import("@tauri-apps/plugin-process");
+  const u = await check();
+  if (!u) throw new Error("Nenhuma atualização disponível.");
+  await u.downloadAndInstall();
+  await relaunch();
+}
 
 /** Abre o seletor nativo de pasta. No navegador simulado devolve um caminho de exemplo. */
 export async function escolherPasta(titulo: string): Promise<string | null> {

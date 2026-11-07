@@ -14,7 +14,7 @@ Um launcher/HUB de jogos para PC que:
 
 Critério de conclusão do MVP: os itens P0 da seção "Prioridades do MVP" funcionam no Windows, com os testes de sync passando.
 
-## Estado atual (2026-11-05)
+## Base original (2026-11-05, antes da migração)
 
 - Stack: Electron 31 + electron-vite + Vue 3 + TypeScript + Tailwind 3. Gerenciador: bun (`bun.lockb`).
 - `src/main/GameRepository.ts`: lista de jogos fixa no código (2 jogos).
@@ -513,13 +513,13 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Remover todo o código Electron (autorizado), inclusive o `css.postcss` do protótipo.
 - [x] Iniciar o projeto Tauri 2 + React + TypeScript com bun (tela mínima com nome e versão; os ícones ainda são os do modelo do Tauri e precisam ser trocados).
 - [x] Montar o `catalog.db` a partir do manifesto do Ludusavi (download com ETag, troca atômica) e medir tempos (`sgs-catalog`; números no ADR 0002).
-- [x] Caminhos lógicos: resolver/converter marcadores (`paths`). Falta: preencher `Env` com as pastas reais do Windows/Linux.
+- [x] Caminhos lógicos: resolver/converter marcadores (`paths`). `Env` usa as pastas do sistema; há teste para a pasta Documentos.
 - [x] Índice de arquivos com SHA-256; comparação em três vias (`sgs-core`: `index`, `sync`).
-- [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Falta: retenção (`snapshot::prune`).
+- [x] Snapshots imutáveis, commit por `head.json`, verificação de hash e restauração com backup. Retenção disponível no núcleo e coberta por teste; o MVP não apaga snapshots automaticamente.
 - [x] Backups locais (`engine`) e journal de operações (`journal`).
 - [x] `lock.json` com heartbeat (`lock`).
 - [x] CLI `sgs run|backup|restore|status|list` com saída JSON opcional (`sgs-cli`).
-- [x] Cenários de teste do sync passando com `cargo test`, inclusive jogo aberto por launcher intermediário (a CLI acompanha o programa e os processos descendentes; `--quiet-secs`, padrão 5). O Job Object do Windows e a busca por pasta de instalação ficam para a Fase 2.
+- [x] Cenários de teste do sync passando com `cargo test`, inclusive jogo aberto por launcher intermediário (a CLI acompanha o programa e os processos descendentes; `--quiet-secs`, padrão 5). A busca pelo executável na pasta do jogo está implementada e testada; Job Object continua pendente.
 - [ ] Uso real por 1–2 semanas pela CLI com atalhos (Steam, Epic ou outro), nos jogos atuais. Primeira sessão real feita em 2026-11-05 com o Rogue Legacy (Epic, sem save na nuvem). **Em andamento, em paralelo à Fase 2** (decisão do usuário em 2026-11-05).
 
 ### Fase 2 — App e biblioteca
@@ -529,29 +529,29 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Reconhecimento pela pasta do jogo e varredura de pastas (`sgs-catalog::recognize`; testado com o Rogue Legacy real). Falta: a tela do assistente de adicionar jogo (Fase 3) e a detecção de save por mudança.
 - [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Tempo de jogo feito (`library.db` esquema 2). Falta: Job Object. Heartbeat da trava durante o jogo feito (a cada 2 min).
 - [x] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface (comandos Tauri sobre o `sgs-service`; evento `jogo-estado`).
-- [ ] Arte (Steam CDN + SteamGridDB) com cache.
+- [x] Arte (Steam CDN + SteamGridDB) com cache: capa baixada uma vez em `art`, Steam primeiro e SteamGridDB pelo nome quando há chave configurada em Configurações. Verificado por testes unitários do parsing e recompilação; a busca real depende de uma chave do usuário.
 - [x] Bandeja e notificações (fechar a janela esconde o app na bandeja; menu Abrir/Sair; notificação ao fim do sync, conflito e erro). Verificado: o app abre sem erro; o ícone da bandeja não foi inspecionado visualmente.
 
 ### Fase 3 — Interface final
 
-- [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Falta o visual completo do protótipo (arte de fundo, faixa de jogos, busca, filtros, central rápida), que é P1; a interface atual é a do MVP.
+- [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Visual do protótipo portado: Início com arte de fundo, logo, faixa de jogos por seção (Q/E) e legenda; Biblioteca em grade de capas (`src/screens/Inicio.tsx`, `src/telas.css`). Faltam busca, filtros, menu e central rápida.
 - [x] Controle lido no Rust (`gilrs`) + motor de foco. A lógica (botões, zona morta do analógico, repetição, só com a janela focada) tem testes. **Não testado com um controle de verdade**: nenhum estava conectado quando verifiquei.
-- [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações (com as credenciais da Steam), primeiro uso, adicionar jogo e "Sobre" (nome e versão; o número do build ainda não existe). Tela de conquistas com anel de progresso, níveis por raridade, filtros, ordenação e conquistas ocultas. Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
-- [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 11 testes: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, remover, teclado, layout no celular). Rodam com dados simulados. Além deles, `bun run e2e:app` abre o app Tauri de verdade (dados isolados por `SGS_DATA_DIR`) e confere assistente, pasta de sync, reconhecimento do Rogue Legacy real, jogar e versões.
-- [x] `.github/preview.png` e README atualizados. A miniatura está em tema escuro porque o app só tem tema escuro (a regra global pede claro; o tema claro é P2).
+- [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações (com as credenciais da Steam e a chave do SteamGridDB), primeiro uso, adicionar jogo, conquistas do HUB e "Sobre" (nome, versão e build). Tela de conquistas com anel de progresso, níveis por raridade, filtros, ordenação e conquistas ocultas. Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
+- [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 17 testes: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, conquistas do jogo e do HUB, configurações, tema, remover, teclado, layout no celular). Rodam com dados simulados. Além deles, `bun run e2e:app` abre o app Tauri de verdade (dados isolados por `SGS_DATA_DIR`) e confere assistente, pasta de sync, reconhecimento do Rogue Legacy real, jogar e versões.
+- [x] `.github/preview.png` (1280×640, tema claro) e README atualizados.
 
 ### Fase 4 — Som, conquistas e temas (P1/P2)
 
 - [x] Fundo ambiente e efeitos sonoros próprios, sintetizados com WebAudio (`src/som.ts`): volume separado, padrão baixo, desligável, silêncio com jogo aberto ou janela escondida; limites de duração e frequência verificados por testes (`bun test`). **Pendente, só um humano faz:** ouvir o fundo por 1 hora seguida antes de aprovar. Os sons também não foram ouvidos por mim (sem saída de áudio aqui).
 
-- [x] Spike de fontes de conquistas e `AchievementProvider` com a Steam Web API (`sgs-achievements`): catálogo, raridade e progresso, cache em `library.db`, níveis por raridade, credenciais guardadas no banco local e tela de conquistas. Ícones vêm do CDN da Steam, liberados na CSP. Falta: atualização automática em segundo plano e ao fechar o jogo.
-- [ ] Conquistas do HUB (marcos de uso: horas jogadas, jogos completos e sequências de sync sem erro).
-- [x] Formato de pacote de tema (`themes/<id>/theme.json`), carregamento seguro só de tokens `--sgs-*`, escolha persistida e temas embutidos escuro e claro. Capturas em 390×844 e 1280×720 sem rolagem horizontal; decisão no [ADR 0005](../adr/0005-formato-de-temas.md). Falta: `theme.css`/`assets/` e um seletor rápido fora de Configurações.
+- [x] Spike de fontes de conquistas e `AchievementProvider` com a Steam Web API (`sgs-achievements`): catálogo, raridade e progresso, cache em `library.db`, níveis por raridade, credenciais guardadas no banco local e tela de conquistas. Ícones vêm do CDN da Steam, liberados na CSP. O cache atualiza em segundo plano e após fechar um jogo Steam.
+- [x] Conquistas do HUB (marcos de uso: horas jogadas, jogos na biblioteca, jogos completos e sequências de sync sem erro), com progresso calculado da biblioteca e do cache de conquistas e sequência guardada no banco local. Tela própria em **Meu progresso**, verificada por capturas e teste E2E.
+- [x] Formato de pacote de tema (`themes/<id>/theme.json`), carregamento seguro só de tokens `--sgs-*`, escolha persistida e temas embutidos escuro e claro, com seletor rápido na barra superior. Capturas em 390×844 e 1280×720 sem rolagem horizontal; decisão no [ADR 0005](../adr/0005-formato-de-temas.md). `theme.css`/`assets/` continuam reservados para decisão futura conforme o ADR.
 
 ### Fase 5 — Distribuição
 
-- [ ] Versão `0.1.0` → 1.0 conforme SemVer; changelog por fragmentos.
-- [ ] Instalador NSIS (Windows) e AppImage (Linux), atualização automática.
+- [x] Versão `1.0.0` nos metadados (app, Tauri e pacote) e changelog consolidado em `changelog/1.0.0.md`.
+- [x] Instalador NSIS (Windows, português do Brasil, por usuário) e AppImage (Linux), com atualização automática assinada (ver [ADR 0006](../adr/0006-distribuicao-e-atualizacao.md)). O NSIS foi gerado e verificado nesta máquina; o AppImage é gerado pelo mesmo comando no Linux e ainda não foi executado aqui. Publicar o release no GitHub depende de autorização.
 
 ## Tentativas que falharam
 
@@ -559,11 +559,8 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 ## Dúvidas abertas
 
-- ADR 0002 (catálogo em SQLite FTS5) está de acordo?
-- Usar a chave da SteamGridDB do usuário, ou só a arte da Steam e imagens próprias?
 - Steam Deck (SteamOS) entra junto com o Ubuntu ou depois?
-- Seletor de tema claro/escuro: o protótipo é só escuro (a arte do jogo é o fundo). O plano deixa o tema claro para a fase de temas. Confirmar.
 
 ## Próximo passo
 
-Fases 1 a 3 concluídas no código (branch `feat/fase1-nucleo-sync`): núcleo, catálogo, biblioteca, serviço, CLI e telas do MVP compilam e os testes passam (`cargo test --workspace`, `bun test`, `bun run e2e`). As conquistas da Steam e os temas (escuro e claro, com pacotes JSON) estão prontos. Próximo: concluir as conquistas do HUB e a arte, e rodar o uso real por 1–2 semanas pela CLI. As pendências que dependem de uma pessoa continuam: revisar o protótipo com um controle de verdade e ouvir o fundo sonoro por 1 hora.
+Fases 2 a 5 parcialmente implementadas no código (branch `feat/fase1-nucleo-sync`): arte, conquistas do HUB, conquistas da Steam, temas, versão 1.0.0, instalador NSIS e atualização automática estão prontos e os testes passam (`cargo test --workspace -- --test-threads=1`, `bun test`, `bun run e2e`). Ainda faltam no código Job Object no Windows, descoberta de saves por mudança, busca/filtros da biblioteca, menu e central rápida. Também faltam validações externas: o uso real por 1–2 semanas pela CLI, revisar o protótipo com um controle de verdade, ouvir o fundo sonoro por 1 hora, validar o SteamGridDB com uma chave real e publicar o release (autorização do usuário; o AppImage precisa ser gerado no Linux).

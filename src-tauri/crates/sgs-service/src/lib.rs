@@ -2,7 +2,7 @@
 //! abrir/fechar jogo com sync e restauração de versões. Não depende do Tauri.
 
 use serde::Serialize;
-use sgs_achievements::{AchievementProvider, AchievementSet, GameRef, SteamProvider, Summary, UreqHttp};
+use sgs_achievements::{AchievementProvider, AchievementSet, GameRef, SteamCommunityProvider, SteamProvider, Summary, UreqHttp};
 use sgs_catalog::recognize::{recognize, scan_folder, Recognition, ScanResult};
 use sgs_catalog::Catalog;
 use sgs_core::engine::{Before, Choice, Ctx};
@@ -14,7 +14,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
+mod art;
+mod hub;
 mod tema;
+pub use art::{steam_header_url, ArtKind};
+pub use hub::{HubAchievement, HubAchievements};
 pub use tema::{Theme, ThemeList};
 
 /// Erros já escritos para o usuário final.
@@ -306,12 +310,27 @@ impl Service {
     }
 
     pub fn update_game(&self, id: i64, g: &NewGame) -> Result<()> {
-        Ok(self.lib().update_game(id, g)?)
+        let antiga = self.lib().get(id)?;
+        if antiga.save_paths != g.save_paths {
+            let base = self.data_dir.join("state").join(id.to_string()).join("base.json");
+            if base.exists() {
+                std::fs::remove_file(&base).map_err(|e| Error::Other(format!("Não consegui atualizar o estado de sincronização: {e}")))?;
+            }
+            self.lib().reset_sync_state(id)?;
+        }
+        self.lib().update_game(id, g)?;
+        Ok(())
     }
 
     /// Tira da biblioteca. Os saves, locais e na nuvem, continuam onde estão.
     pub fn remove_game(&self, id: i64) -> Result<()> {
-        Ok(self.lib().remove_game(id)?)
+        self.lib().remove_game(id)?;
+        // O id pode voltar a ser usado por outro jogo: a arte e o id da Steam deste não podem ficar para ele.
+        let _ = self.lib().set_setting(&format!("steam_appid:{id}"), "");
+        for kind in [ArtKind::Header, ArtKind::Hero, ArtKind::Logo, ArtKind::Cover] {
+            let _ = std::fs::remove_file(self.data_dir.join("art").join(kind.cache_name(id)));
+        }
+        Ok(())
     }
 
     // ---- Conquistas ----
@@ -334,9 +353,11 @@ impl Service {
         tem("steam_api_key") && tem("steam_id")
     }
 
-    /// SteamID64 guardado (não é segredo). A chave de API nunca é devolvida.
+    /// SteamID64 da conta: o informado em Configurações ou, sem ele, o da Steam instalada neste PC.
+    /// Não é segredo. A chave de API nunca é devolvida.
     pub fn steam_id(&self) -> Result<Option<String>> {
-        Ok(self.lib().setting("steam_id")?.filter(|v| !v.trim().is_empty()))
+        let guardado = self.lib().setting("steam_id")?.filter(|v| !v.trim().is_empty());
+        Ok(guardado.or_else(local_steam_id))
     }
 
     /// Conquistas do jogo. Usa o cache se foi buscado há menos de 10 minutos (a menos que `force`)
@@ -354,16 +375,17 @@ impl Service {
                 return Ok(AchievementsView::new(set.clone(), *t, true, None));
             }
         }
-        let steam_app_id = match (game.catalog_id, self.catalog_path().exists()) {
-            (Some(c), true) => self.catalog()?.steam_id(c)?,
-            _ => None,
+        let steam_app_id = self.steam_id_of(&game)?;
+        let key = self.lib().setting("steam_api_key")?.unwrap_or_default();
+        let steam_id = self.steam_id()?.unwrap_or_default();
+        let jogo = GameRef { steam_app_id };
+        // Sem chave (o normal), lê o perfil público da Steam. A chave antiga, se existir, ainda é usada.
+        let resultado = if key.trim().is_empty() {
+            SteamCommunityProvider { steam_id, http: UreqHttp }.fetch(&jogo)
+        } else {
+            SteamProvider { api_key: key, steam_id, http: UreqHttp }.fetch(&jogo)
         };
-        let (key, steam_id) = {
-            let lib = self.lib();
-            (lib.setting("steam_api_key")?.unwrap_or_default(), lib.setting("steam_id")?.unwrap_or_default())
-        };
-        let provider = SteamProvider { api_key: key, steam_id, http: UreqHttp };
-        match provider.fetch(&GameRef { steam_app_id }) {
+        match resultado {
             Ok(set) => {
                 if let Ok(json) = serde_json::to_string(&set) {
                     self.lib().save_achievements(id, &json, agora)?;
@@ -378,19 +400,121 @@ impl Service {
         }
     }
 
+    /// Atualiza em segundo plano o cache de conquistas dos jogos Steam da biblioteca.
+    /// Falhas individuais são ignoradas para que um perfil privado ou uma falha de rede
+    /// não interrompa as atualizações dos demais jogos.
+    pub fn refresh_achievements(&self) -> Result<()> {
+        if !self.steam_configured() {
+            return Ok(());
+        }
+        for game in self.games()? {
+            if self.steam_id_of(&game).ok().flatten().is_some() {
+                let _ = self.achievements(game.id, false);
+            }
+        }
+        Ok(())
+    }
+
+    /// Guarda a chave do SteamGridDB, usada só para buscar capas. Vazia remove a chave.
+    pub fn set_steamgriddb_key(&self, key: &str) -> Result<()> {
+        Ok(self.lib().set_setting("steamgriddb_api_key", key.trim())?)
+    }
+
+    pub fn steamgriddb_configured(&self) -> bool {
+        self.lib()
+            .setting("steamgriddb_api_key")
+            .ok()
+            .flatten()
+            .is_some_and(|v| !v.trim().is_empty())
+    }
+
+    // ---- Conquistas do HUB ----
+
+    /// Marcos de uso calculados da biblioteca e do histórico de sincronizações.
+    pub fn hub_achievements(&self) -> Result<HubAchievements> {
+        let lib = self.lib();
+        let games = lib.list()?;
+        let playtime_secs: i64 = games.iter().map(|g| g.playtime_secs).sum();
+        let jogos = games.len() as i64;
+        let (sequencia, melhor_sequencia) = {
+            let ler = |chave: &str| lib.setting(chave).ok().flatten().and_then(|v| v.parse::<i64>().ok()).unwrap_or(0);
+            (ler("sync_ok_streak"), ler("sync_best_streak"))
+        };
+        let jogos_completos = games
+            .iter()
+            .filter(|g| {
+                lib.achievements_cache(g.id)
+                    .ok()
+                    .flatten()
+                    .and_then(|(json, _)| serde_json::from_str::<AchievementSet>(&json).ok())
+                    .is_some_and(|set| set.summary().complete)
+            })
+            .count() as i64;
+        Ok(hub::calcular(hub::Uso { playtime_secs, jogos, sequencia, melhor_sequencia, jogos_completos }))
+    }
+
+    fn registrar_sync_ok(&self) {
+        let mut lib = self.lib();
+        let ler = |chave: &str| lib.setting(chave).ok().flatten().and_then(|v| v.parse::<i64>().ok()).unwrap_or(0);
+        let atual = ler("sync_ok_streak") + 1;
+        let melhor = ler("sync_best_streak").max(atual);
+        let _ = lib.set_setting("sync_ok_streak", &atual.to_string());
+        let _ = lib.set_setting("sync_best_streak", &melhor.to_string());
+    }
+
+    fn registrar_sync_erro(&self) {
+        let _ = self.lib().set_setting("sync_ok_streak", "0");
+    }
+
     // ---- Arte ----
 
-    /// Capa do jogo no cache local. Baixa da Steam na primeira vez; offline ou sem id, devolve `None`
-    /// e a interface mostra um espaço reservado.
+    /// Capa do jogo no cache local. Usa a Steam CDN quando o catálogo tem o id; senão, o
+    /// SteamGridDB se uma chave tiver sido configurada. Offline ou sem fonte, devolve `None`.
     pub fn game_art(&self, id: i64) -> Result<Option<PathBuf>> {
+        self.game_art_kind(id, ArtKind::Header)
+    }
+
+    /// Arte do tipo pedido (capa, fundo, logo ou capa vertical), com as mesmas fontes de `game_art`.
+    pub fn game_art_kind(&self, id: i64, kind: ArtKind) -> Result<Option<PathBuf>> {
         let game = self.lib().get(id)?;
-        let cached = self.data_dir.join("art").join(format!("{id}.jpg"));
+        let cached = self.data_dir.join("art").join(kind.cache_name(id));
         if cached.is_file() {
             return Ok(Some(cached));
         }
-        let (Some(cat_id), true) = (game.catalog_id, self.catalog_path().exists()) else { return Ok(None) };
-        let Some(steam) = self.catalog()?.steam_id(cat_id)? else { return Ok(None) };
-        Ok(download_art(&steam_header_url(steam), &cached))
+        if let Some(steam) = self.steam_id_of(&game)? {
+            if let Some(capa) = download_art(&art::steam_art_url(steam, kind), &cached) {
+                return Ok(Some(capa));
+            }
+        }
+        let chave = self.lib().setting("steamgriddb_api_key")?.unwrap_or_default();
+        let Some(url) = art::steamgriddb_art(&chave, &game.name, kind) else { return Ok(None) };
+        Ok(download_art(&url, &cached))
+    }
+
+    /// Id da Steam do jogo: o do catálogo; sem ele, o da busca da loja pelo nome exato.
+    /// O resultado da busca (também "não achei", como `0`) fica guardado para não repetir a consulta.
+    fn steam_id_of(&self, game: &Game) -> Result<Option<u64>> {
+        if let (Some(cat_id), true) = (game.catalog_id, self.catalog_path().exists()) {
+            if let Some(steam) = self.catalog()?.steam_id(cat_id)? {
+                return Ok(Some(steam));
+            }
+        }
+        let chave = format!("steam_appid:{}", game.id);
+        if let Some(v) = self.lib().setting(&chave)?.filter(|v| !v.is_empty()) {
+            return Ok(v.parse::<u64>().ok().filter(|&id| id > 0));
+        }
+        match art::steam_store_search(&game.name) {
+            art::Busca::Achou(id) => {
+                let _ = self.lib().set_setting(&chave, &id.to_string());
+                Ok(Some(id))
+            }
+            art::Busca::Nada => {
+                let _ = self.lib().set_setting(&chave, "0");
+                Ok(None)
+            }
+            // Offline ou loja fora do ar: tenta de novo na próxima vez.
+            art::Busca::Falhou => Ok(None),
+        }
     }
 
     // ---- Jogar ----
@@ -429,6 +553,20 @@ impl Service {
     /// Abre o jogo com sync. `on_state` recebe o andamento ("sincronizando", "jogando", "salvando").
     /// Bloqueia até o jogo fechar; chame de uma thread, não da interface.
     pub fn play(&self, id: i64, opts: &PlayOptions, on_state: &dyn Fn(&str)) -> Result<Play> {
+        let resultado = self.play_inner(id, opts, on_state);
+        if resultado.is_err() {
+            self.registrar_sync_erro();
+        }
+        resultado
+    }
+
+    /// Encerra o jogo aberto pelo app. O `play` em andamento termina e sincroniza o save como de costume.
+    pub fn stop_game(&self, id: i64) -> Result<bool> {
+        let game = self.lib().get(id)?;
+        Ok(sgs_core::process::parar(&game.exe))
+    }
+
+    fn play_inner(&self, id: i64, opts: &PlayOptions, on_state: &dyn Fn(&str)) -> Result<Play> {
         let game = self.lib().get(id)?;
         let launch = |args: &[String], beat: &mut dyn FnMut()| -> Result<i32> {
             on_state("jogando");
@@ -479,6 +617,7 @@ impl Service {
         let code = result?;
         let digest = sgs_core::index::scan_roots(&ctx.roots).map(|i| i.digest()).unwrap_or_default();
         self.lib().record_sync(id, &digest, (self.now)() as i64)?;
+        self.registrar_sync_ok();
         let ao_fechar = if created { "Save enviado para a pasta de sincronização." } else { "Save sem mudanças depois de jogar." };
         Ok(Play::Finished { exit_code: code, synced: true, notice: format!("{ao_abrir}{ao_fechar}") })
     }
@@ -527,11 +666,6 @@ fn unix_now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-
-pub fn steam_header_url(steam_id: u64) -> String {
-    format!("https://cdn.cloudflare.steamstatic.com/steam/apps/{steam_id}/header.jpg")
-}
-
 /// Baixa uma imagem para o cache. Só guarda se for mesmo uma imagem (JPEG/PNG) e de tamanho razoável.
 fn download_art(url: &str, dest: &Path) -> Option<PathBuf> {
     let mut resp = ureq::get(url).config().http_status_as_error(false).timeout_global(Some(Duration::from_secs(10))).build().call().ok()?;
@@ -548,4 +682,28 @@ fn download_art(url: &str, dest: &Path) -> Option<PathBuf> {
     std::fs::write(&tmp, body).ok()?;
     std::fs::rename(&tmp, dest).ok()?;
     Some(dest.to_path_buf())
+}
+
+/// SteamID64 da conta usada por último na Steam instalada neste PC (`config/loginusers.vdf`).
+/// `SGS_STEAM_DIR` troca a pasta da Steam (testes).
+fn local_steam_id() -> Option<String> {
+    let mut pastas: Vec<PathBuf> = Vec::new();
+    if let Some(p) = std::env::var_os("SGS_STEAM_DIR") {
+        pastas.push(PathBuf::from(p));
+    } else {
+        for var in ["ProgramFiles(x86)", "ProgramFiles"] {
+            if let Some(p) = std::env::var_os(var) {
+                pastas.push(PathBuf::from(p).join("Steam"));
+            }
+        }
+        if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
+            let home = PathBuf::from(home);
+            pastas.push(home.join(".steam/steam"));
+            pastas.push(home.join(".local/share/Steam"));
+        }
+    }
+    pastas
+        .iter()
+        .filter_map(|p| std::fs::read_to_string(p.join("config").join("loginusers.vdf")).ok())
+        .find_map(|t| sgs_achievements::steam_id_from_loginusers(&t))
 }

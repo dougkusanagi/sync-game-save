@@ -48,6 +48,31 @@ fn write_cmd(root: &Path, pc: &str, rel: &str, body: &str) -> String {
     format!("New-Item -ItemType Directory -Force -Path '{}' | Out-Null; Set-Content -Path '{}' -Value {body}", p.parent().unwrap().display(), p.display())
 }
 
+#[test]
+fn editar_caminhos_invalida_a_base_sem_apagar_snapshots() {
+    let root = tempfile::tempdir().unwrap();
+    let clock = Arc::new(AtomicU64::new(1_800_000_000));
+    let svc = pc(root.path(), "PC-A", &clock);
+    let game_id = svc.add_game(&game()).unwrap();
+    let game_dir = root.path().join("nuvem");
+    std::fs::create_dir_all(&game_dir).unwrap();
+    svc.set_sync_dir(&game_dir).unwrap();
+    let file = root.path().join("PC-A/saves/Jogo/slot.sav");
+    std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+    std::fs::write(&file, "save").unwrap();
+    let run = opts(&write_cmd(root.path(), "PC-A", "Jogo/slot.sav", "novo"));
+    assert!(matches!(svc.play(game_id, &run, &|_| {}).unwrap(), Play::Finished { .. }));
+    let snapshot_raiz = game_dir.join("SyncGameSave/games");
+    let mut changed = game();
+    changed.save_paths = vec!["<meusaves>/NovoLocal".into()];
+    svc.update_game(game_id, &changed).unwrap();
+    let current = svc.games().unwrap().into_iter().find(|g| g.id == game_id).unwrap();
+    assert_eq!(current.save_paths, changed.save_paths);
+    assert_eq!(current.last_sync_at, None);
+    assert!(!root.path().join("PC-A/dados/state/1/base.json").exists());
+    assert!(snapshot_raiz.exists(), "o snapshot anterior deve continuar recuperável");
+}
+
 fn read(root: &Path, pc: &str, rel: &str) -> String {
     fs::read_to_string(root.join(pc).join("saves").join(rel)).unwrap().trim().to_string()
 }
@@ -298,4 +323,56 @@ fn temas_embutidos_persistem_e_recusam_id_desconhecido() {
     assert_eq!(s.themes().atual, "claro");
     assert!(s.set_theme("nao-existe").is_err());
     assert_eq!(s.themes().atual, "claro");
+}
+
+#[test]
+fn hub_conta_marcos_e_sequencia_de_sync() {
+    let t = tempfile::tempdir().unwrap();
+    let s = pc(t.path(), "A", &clock());
+    let sync = t.path().join("nuvem");
+    fs::create_dir_all(&sync).unwrap();
+    s.set_sync_dir(&sync).unwrap();
+    let id = s.add_game(&game()).unwrap();
+
+    let inicio = s.hub_achievements().unwrap();
+    assert_eq!(inicio.desbloqueadas, 1);
+    assert_eq!(inicio.total, 12);
+
+    assert!(matches!(s.play(id, &opts("exit 0"), &silent).unwrap(), Play::Finished { synced: true, .. }));
+    let depois = s.hub_achievements().unwrap();
+    assert_eq!(depois.sequencia_atual, 1);
+    assert_eq!(depois.melhor_sequencia, 1);
+    assert!(depois.conquistas.iter().any(|c| c.id == "primeiro-jogo" && c.desbloqueada));
+
+    // Um erro de sync zera a sequência atual, mas não o melhor resultado.
+    let sem_save = s.add_game(&NewGame { name: "Sem save".into(), save_paths: vec![], ..game() }).unwrap();
+    assert!(s.play(sem_save, &opts("exit 0"), &silent).is_err());
+    let falhou = s.hub_achievements().unwrap();
+    assert_eq!(falhou.sequencia_atual, 0);
+    assert_eq!(falhou.melhor_sequencia, 1);
+}
+
+#[test]
+fn chave_do_steamgriddb_nao_volta_e_pode_ser_removida() {
+    let t = tempfile::tempdir().unwrap();
+    let s = pc(t.path(), "A", &clock());
+    assert!(!s.steamgriddb_configured());
+    s.set_steamgriddb_key("  chave-secreta  ").unwrap();
+    assert!(s.steamgriddb_configured());
+    s.set_steamgriddb_key("").unwrap();
+    assert!(!s.steamgriddb_configured());
+}
+
+#[test]
+fn remover_jogo_apaga_a_arte_para_o_id_nao_herdar() {
+    let t = tempfile::tempdir().unwrap();
+    let s = pc(t.path(), "A", &clock());
+    let id = s.add_game(&game()).unwrap();
+    let art = t.path().join("A/dados/art");
+    fs::create_dir_all(&art).unwrap();
+    for f in [format!("{id}.jpg"), format!("{id}-hero.jpg"), format!("{id}-logo.png")] {
+        fs::write(art.join(f), [0xFF, 0xD8, 0xFF]).unwrap();
+    }
+    s.remove_game(id).unwrap();
+    assert_eq!(fs::read_dir(&art).unwrap().count(), 0);
 }

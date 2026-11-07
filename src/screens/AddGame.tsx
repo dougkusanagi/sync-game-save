@@ -42,6 +42,31 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
     }
   }
 
+  async function escolherExecutavel() {
+    setErro(null);
+    const escolhido = await escolherArquivoExe("Escolha o executável do jogo");
+    if (!escolhido) return;
+    const separador = Math.max(escolhido.lastIndexOf("/"), escolhido.lastIndexOf("\\"));
+    if (separador < 0) {
+      setErro("Não consegui identificar a pasta deste executável. Escolha a pasta do jogo.");
+      return;
+    }
+    const pasta = escolhido.slice(0, separador);
+    setOcupado(true);
+    try {
+      const r = await api.reconhecerPasta(pasta);
+      setPastaJogo(pasta);
+      setRec(r);
+      setNome(r.name);
+      setExe(escolhido);
+      setItens(r.save_candidates.map((c) => ({ ...c, marcado: c.selected })));
+    } catch (e) {
+      setErro(textoDoErro(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function baixarCatalogo() {
     setOcupado(true);
     setErro(null);
@@ -104,6 +129,9 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
           <p>Escolha a pasta onde o jogo está instalado. O app tenta descobrir o nome, o executável e onde ele guarda o save.</p>
           <button className="btn primario" data-f data-autofocus onClick={escolherJogo} disabled={ocupado}>
             {ocupado ? "Procurando…" : "Escolher pasta do jogo…"}
+          </button>
+          <button className="btn fraco" data-f onClick={escolherExecutavel} disabled={ocupado}>
+            Escolher executável…
           </button>
         </div>
       ) : (

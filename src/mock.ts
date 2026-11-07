@@ -1,8 +1,10 @@
 // Dados simulados para rodar a interface no navegador (testes E2E e capturas de tela).
 // Cenário pela URL: ?cenario=primeiro-uso | vazio | jogos (padrão) | conflito
-import type { Conquista, Conquistas, Game, Estado, Reconhecimento, Tema } from "./api";
+import type { Conquista, Conquistas, ConquistasHub, Game, Estado, MarcoHub, Reconhecimento, Tema } from "./api";
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
+
+const STEAM: Record<string, number> = { "Rogue Legacy": 241600, "Hollow Knight": 367520, Celeste: 504230, Hades: 1145360, "Animal Well": 813230, "Sea of Stars": 1244090 };
 
 const jogo = (id: number, name: string, extra: Partial<Game> = {}): Game => ({
   id,
@@ -24,7 +26,8 @@ let estado: Estado = {
   catalogo_pronto: true,
   operacoes_interrompidas: [],
   steam_configurada: false,
-  steam_id: null,
+  steam_id: "76561198000000000",
+  steamgriddb_configurada: false,
 };
 
 const temas: Tema[] = [
@@ -123,6 +126,49 @@ const conquistasDoJogo = (): Conquistas => {
   };
 };
 
+const conquistasHub = (): ConquistasHub => {
+  const horas = Math.floor(jogos.reduce((s, j) => s + j.playtime_secs, 0) / 3600);
+  const sequencia = 12;
+  const melhor = 18;
+  const completos = 1;
+  const marcos: Array<[string, string, string, MarcoHub["nivel"], number, string, number]> = [
+    ["primeira-hora", "Primeira hora", "Jogue por 1 hora no total.", "bronze", 1, "h", horas],
+    ["dez-horas", "Dez horas de jogo", "Jogue por 10 horas no total.", "prata", 10, "h", horas],
+    ["cinquenta-horas", "Cinquenta horas", "Jogue por 50 horas no total.", "ouro", 50, "h", horas],
+    ["duzentas-horas", "Duzentas horas", "Jogue por 200 horas no total.", "ouro", 200, "h", horas],
+    ["primeiro-jogo", "Primeiro jogo", "Adicione 1 jogo à biblioteca.", "bronze", 1, "jogo", jogos.length],
+    ["cinco-jogos", "Coleção começando", "Adicione 5 jogos à biblioteca.", "prata", 5, "jogos", jogos.length],
+    ["vinte-jogos", "Biblioteca cheia", "Adicione 20 jogos à biblioteca.", "ouro", 20, "jogos", jogos.length],
+    ["sequencia-5", "Ritmo constante", "Conclua 5 sincronizações seguidas sem erro.", "bronze", 5, "syncs", sequencia],
+    ["sequencia-25", "Tudo em dia", "Conclua 25 sincronizações seguidas sem erro.", "prata", 25, "syncs", sequencia],
+    ["sequencia-100", "Sem falhar", "Conclua 100 sincronizações seguidas sem erro.", "ouro", 100, "syncs", sequencia],
+    ["primeiro-completo", "Jogo completo", "Desbloqueie todas as conquistas da Steam de um jogo.", "prata", 1, "jogo", completos],
+    ["cinco-completos", "Caçador de conquistas", "Complete as conquistas da Steam de 5 jogos.", "ouro", 5, "jogos", completos],
+  ];
+  const conquistas: MarcoHub[] = marcos
+    .map(([id, nome, descricao, nivel, alvo, unidade, bruto]) => ({
+      id,
+      nome,
+      descricao,
+      nivel,
+      progresso: Math.min(bruto, alvo),
+      alvo,
+      unidade,
+      desbloqueada: bruto >= alvo,
+    }))
+    .sort((a, b) => Number(b.desbloqueada) - Number(a.desbloqueada) || a.alvo - b.alvo);
+  return {
+    conquistas,
+    desbloqueadas: conquistas.filter((c) => c.desbloqueada).length,
+    total: conquistas.length,
+    horas,
+    jogos: jogos.length,
+    sequencia_atual: sequencia,
+    melhor_sequencia: melhor,
+    jogos_completos: completos,
+  };
+};
+
 let jogos: Game[] =
   cenario === "vazio" || cenario === "primeiro-uso"
     ? []
@@ -132,6 +178,8 @@ let jogos: Game[] =
           jogo(2, "Hollow Knight", { playtime_secs: 93000 }),
           jogo(3, "Celeste", { playtime_secs: 25200, last_sync_at: Math.floor(Date.now() / 1000) - 86400 }),
           jogo(4, "Hades", { playtime_secs: 61200 }),
+          jogo(5, "Animal Well", { playtime_secs: 78700, last_played_at: Math.floor(Date.now() / 1000) - 600 }),
+          jogo(6, "Sea of Stars", { playtime_secs: 57600, last_sync_at: null }),
         ]
       : [
         jogo(1, "Rogue Legacy", { playtime_secs: 41000 }),
@@ -147,7 +195,7 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
   const r = (v: unknown) => v as T;
   switch (cmd) {
     case "sobre":
-      return r({ nome: "Sync Game Save", versao: "0.1.0" });
+      return r({ nome: "Sync Game Save", versao: "1.0.0", build: "local (teste)" });
     case "estado":
       return r(estado);
     case "verificar_pasta_sync":
@@ -188,9 +236,17 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       jogos = [...jogos, jogo(id, g.name, { ...g, last_sync_at: null, last_played_at: null, playtime_secs: 0, base_digest: null })];
       return r(id);
     }
+    case "editar_jogo": {
+      const novo = args.jogo as Pick<Game, "name" | "exe" | "install_dir" | "catalog_id" | "save_paths">;
+      if (jogos.some((j) => j.id !== args.id && j.name.toLowerCase() === novo.name.toLowerCase())) throw "Já existe um jogo com este nome.";
+      jogos = jogos.map((j) => j.id === args.id ? { ...j, ...novo } : j);
+      return r(undefined);
+    }
     case "remover_jogo":
       jogos = jogos.filter((j) => j.id !== args.id);
       return r(undefined);
+    case "parar_jogo":
+      return r(true);
     case "jogar": {
       const o = (args.opcoes ?? {}) as { conflito?: string; forcar?: boolean };
       if (cenario === "conflito" && !o.conflito) return r({ kind: "conflict" });
@@ -200,6 +256,13 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "capa_do_jogo":
       return r(null);
+    case "arte_do_jogo": {
+      // Arte pública da Steam só para dar realismo às capturas; jogos sem id ficam sem arte.
+      const nome = jogos.find((j) => j.id === args.id)?.name ?? "";
+      const steam = Object.entries(STEAM).find(([n]) => nome.startsWith(n))?.[1];
+      const arquivo = { header: "header.jpg", hero: "library_hero.jpg", logo: "logo.png", cover: "library_600x900.jpg" }[args.tipo as string];
+      return r(steam && arquivo ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${steam}/${arquivo}` : null);
+    }
     case "versoes":
       return r(["1793920203_PC-SALA", "1793919686_PC-SALA", "1793900000_PC-QUARTO"]);
     case "restaurar_versao":
@@ -209,9 +272,16 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     case "definir_credenciais_steam": {
       const chave = String(args.chave).trim();
       const steamId = String(args.steamId).trim();
-      estado = { ...estado, steam_configurada: chave !== "" && steamId !== "", steam_id: steamId || null };
+      estado = { ...estado, steam_configurada: chave !== "" && steamId !== "", steam_id: steamId || "76561198000000000" };
       return r(undefined);
     }
+    case "definir_chave_steamgriddb": {
+      const chave = String(args.chave).trim();
+      estado = { ...estado, steamgriddb_configurada: chave !== "" };
+      return r(undefined);
+    }
+    case "conquistas_hub":
+      return r(conquistasHub());
     case "temas":
       return r({ atual: temaAtual, temas });
     case "definir_tema": {

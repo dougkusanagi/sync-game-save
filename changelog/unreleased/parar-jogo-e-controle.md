@@ -1,0 +1,2 @@
+- Adicionado: botão "Parar jogo" na tela inicial enquanto o jogo está aberto; o save é sincronizado ao fechar.
+- Corrigido: o controle Xbox voltou a responder no app (o app agora pergunta ao Windows qual janela está em primeiro plano).
