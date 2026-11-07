@@ -525,8 +525,8 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 ### Fase 2 — App e biblioteca
 
 - [x] SQLite local (`library.db`) com migrações (`sgs-library`: jogos, caminhos de save, estado do sync, configurações).
-- [x] Backend do assistente de primeiro uso (`sgs-service`: verificar a pasta, registrar este PC sem apagar outros, detectar dados de outro PC). Falta a tela e o bloqueio do uso até concluir (Fase 3).
-- [x] Reconhecimento pela pasta do jogo e varredura de pastas (`sgs-catalog::recognize`; testado com o Rogue Legacy real). Falta: a tela do assistente de adicionar jogo (Fase 3) e a detecção de save por mudança.
+- [x] Backend do assistente de primeiro uso (`sgs-service`: verificar a pasta, registrar este PC sem apagar outros, detectar dados de outro PC). Tela em `src/screens/Wizard.tsx`, integrada ao app; fluxo coberto pelo E2E de primeiro uso.
+- [x] Reconhecimento pela pasta do jogo e varredura de pastas (`sgs-catalog::recognize`; testado com o Rogue Legacy real). Tela de adicionar em `src/screens/AddGame.tsx` implementada. Faltam descoberta por mudança e interface de varredura em lote.
 - [x] Abrir jogo com rastreio de processos (`sgs-core::process`, por árvore de processos). Tempo de jogo feito (`library.db` esquema 2). Falta: Job Object. Heartbeat da trava durante o jogo feito (a cada 2 min).
 - [x] Integração do fluxo de abrir/fechar com o `sgs-core` e eventos para a interface (comandos Tauri sobre o `sgs-service`; evento `jogo-estado`).
 - [x] Arte (Steam CDN + SteamGridDB) com cache: capa baixada uma vez em `art`, Steam primeiro e SteamGridDB pelo nome quando há chave configurada em Configurações. Verificado por testes unitários do parsing e recompilação; a busca real depende de uma chave do usuário.
@@ -537,7 +537,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 - [x] Tokens e motor de foco/entrada do protótipo portados para o app (`src/tokens.css`, `src/nav/`). Visual do protótipo portado: Início com arte de fundo, logo, faixa de jogos por seção (Q/E) e legenda; Biblioteca em grade de capas (`src/screens/Inicio.tsx`, `src/telas.css`). Faltam busca, filtros, menu e central rápida.
 - [x] Controle lido no Rust (`gilrs`) + motor de foco. A lógica (botões, zona morta do analógico, repetição, só com a janela focada) tem testes. **Não testado com um controle de verdade**: nenhum estava conectado quando verifiquei.
 - [x] Telas de histórico (Versões), conflito, jogo aberto em outro PC, configurações (com as credenciais da Steam e a chave do SteamGridDB), primeiro uso, adicionar jogo, conquistas do HUB e "Sobre" (nome, versão e build). Tela de conquistas com anel de progresso, níveis por raridade, filtros, ordenação e conquistas ocultas. Verificadas por capturas em 390×844 e 1280×720, sem erro de console nem rolagem horizontal.
-- [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 17 testes: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, conquistas do jogo e do HUB, configurações, tema, remover, teclado, layout no celular). Rodam com dados simulados. Além deles, `bun run e2e:app` abre o app Tauri de verdade (dados isolados por `SGS_DATA_DIR`) e confere assistente, pasta de sync, reconhecimento do Rogue Legacy real, jogar e versões.
+- [x] Testes E2E dos fluxos principais (`bun run e2e`, Playwright, 21 testes na última execução local: primeiro uso, adicionar jogo, jogar, conflito, outro PC, versões, conquistas do jogo e do HUB, configurações, tema, remover, teclado, layout no celular). Rodam com dados simulados. Além deles, `bun run e2e:app` abre o app Tauri de verdade (dados isolados por `SGS_DATA_DIR`) e confere assistente, pasta de sync, reconhecimento do Rogue Legacy real, jogar e versões.
 - [x] `.github/preview.png` (1280×640, tema claro) e README atualizados.
 
 ### Fase 4 — Som, conquistas e temas (P1/P2)
@@ -551,7 +551,7 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 ### Fase 5 — Distribuição
 
 - [x] Versão `1.0.0` nos metadados (app, Tauri e pacote) e changelog consolidado em `changelog/1.0.0.md`.
-- [x] Instalador NSIS (Windows, português do Brasil, por usuário) e AppImage (Linux), com atualização automática assinada (ver [ADR 0006](../adr/0006-distribuicao-e-atualizacao.md)). O NSIS foi gerado e verificado nesta máquina; o AppImage é gerado pelo mesmo comando no Linux e ainda não foi executado aqui. Publicar o release no GitHub depende de autorização.
+- [ ] Concluir a validação da distribuição: instalador NSIS (Windows, português do Brasil, por usuário) e AppImage (Linux), com atualização automática assinada (ver [ADR 0006](../adr/0006-distribuicao-e-atualizacao.md)). O NSIS foi gerado e verificado nesta máquina; o AppImage é gerado pelo mesmo comando no Linux e ainda não foi executado aqui. Publicar o release no GitHub depende de autorização.
 
 ## Tentativas que falharam
 
@@ -561,6 +561,63 @@ Verificação do protótipo: capturas headless em 1920×1080, 1280×720 e 1366×
 
 - Steam Deck (SteamOS) entra junto com o Ubuntu ou depois?
 
+## Retomada e sequência de implementação (2026-11-07)
+
+Estado confirmado: PR #10 integrado na `main` no commit `485c85f`; branch antiga removida. Não procurar nem recriar `feat/fase1-nucleo-sync`. Os testes locais passaram antes da integração: workspace Rust, 14 testes Bun, build e 21 E2E. Isso não comprova conclusão do MVP nem validação de distribuição.
+
+Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo indicado, implementar e verificar; atualizar este plano com o resultado e avançar na sequência. As validações humanas abaixo não impedem implementar os itens de código. Não usar a ausência da branch antiga como bloqueio.
+
+### 1. Concluir o acompanhamento de processos no Windows — próximo trabalho
+
+- Estado: árvore de processos e busca pelo executável na pasta existem em `src-tauri/crates/sgs-core/src/process.rs`. Há proteção por data de início contra reutilização de PID. Ainda não há Job Object; polling pode perder filhos de launchers curtos.
+- Implementar Job Object com recursos Windows, isolados por `cfg(windows)`. Vincular o processo antes que ele possa iniciar filhos (criação suspensa e retomada após associação), mantendo a busca por pasta para jogos relançados por outro launcher, como Steam.
+- Preservar heartbeat, código de saída, diretório de trabalho, argumentos e intervalo de silêncio. Encerrar o HUB não deve matar o jogo por efeito do fechamento do handle. Definir tratamento explícito de falha ao criar/associar o Job Object, sem deixar um processo suspenso abandonado.
+- Conferir todos os consumidores: `sgs-cli`, `sgs-service` e comandos Tauri. Testes existentes: `sgs-core/tests/parar_jogo.rs`, `processo_relancado.rs` e testes de launcher em `sgs-cli/tests/cli.rs`.
+- Concluído quando: teste Windows com launcher curto e descendente fora da pasta acompanha o jogo até o fim; relançamento por pasta e parada continuam funcionando; teste de falha não deixa processo suspenso; workspace Rust passa. Registrar limites observados.
+
+### 2. Corrigir a parada para seguir o fluxo especificado no P0
+
+- Estado: `process::parar` sinaliza encerramento forçado; `sgs-service::stop_game`, comando `parar_jogo`, `api.pararJogo` e `App.tsx` expõem esse caminho. Falta pedido de fechamento normal e espera de 10 segundos antes de oferecer força.
+- Implementar fechamento normal da janela do jogo no Windows; acompanhar o grupo durante a espera. Só disponibilizar encerramento forçado após o prazo e confirmação com aviso sobre saves. Manter a interface responsiva, evitar pedidos duplicados e tratar jogo já encerrado.
+- Concluído quando: testes cobrem fechamento normal, jogo que ignora fechamento, confirmação/cancelamento e sync somente após o grupo terminar. Verificar diálogo e foco por E2E e capturas mobile/desktop.
+
+### 3. Descobrir saves por mudança
+
+- Estado: catálogo e seleção manual existem; não há fluxo de captura antes/depois.
+- Implementar comparação de arquivos nas pastas definidas na seção “Onde encontrar o save”, com exclusão de caches/logs e erros de acesso tratados. Executar fora da thread da interface. Reutilizar resolução de caminhos lógicos; não sincronizar candidatos automaticamente.
+- Expor pelo serviço e Tauri; adicionar ação em `AddGame.tsx`: registrar estado inicial, abrir jogo, aguardar fechamento, listar candidatos com evidência e permitir confirmar/editar. Não salvar caminhos sem confirmação; preservar o formulário em falhas.
+- Concluído quando: testes com diretórios temporários cobrem novos/alterados/inalterados, acesso negado e exclusões; E2E cobre confirmação e cancelamento; inspeção mobile/desktop aprovada.
+
+### 4. Busca, filtros e ordenação da biblioteca
+
+- Estado: `src/screens/Biblioteca.tsx` mostra grade ordenada por nome; faltam controles de busca/filtros.
+- Implementar busca por nome e filtros que os dados atuais permitem, com ordenação e estados vazios distintos. Conferir modelo em `src/api.ts` e `sgs-library` antes de prometer favoritos/ocultos; esses campos exigem persistência e migração se ainda não existirem.
+- Preservar consulta/filtros ao abrir e voltar; integrar foco e atalhos em `src/nav/`. E2E deve cobrir resultados, limpar filtros e retorno com contexto; inspecionar mobile/desktop e atualizar miniatura se a tela principal mudar.
+
+### 5. Varredura em lote, menu e central rápida
+
+- Varredura: reutilizar `sgs-service::scan_library_folder` e comando `varrer_pasta`; criar resultado selecionável com confirmação dos candidatos, caminhos de save e erros por jogo. Não adicionar registros sem saves válidos.
+- Menu/central: implementar as ações especificadas na seção de interface, usando estados reais do app. Sincronização não pode sobrescrever saves de jogo em execução. Preservar navegação por controle, teclado e retorno de foco.
+- Entregar cada fluxo separadamente com regressões E2E, capturas e README/changelog correspondentes.
+
+### 6. Distribuição e fechamento da entrega
+
+- Ícones ainda precisam ser conferidos/substituídos conforme a marca do app; não tratar ícones do modelo Tauri como entrega final.
+- Conferir metadados e changelog juntos: `1.0.0` está no código, mas ainda há fragmentos unreleased. Consolidar apenas o escopo efetivamente entregue no próximo fechamento de versão, seguindo as regras do projeto; não afirmar release publicado.
+- Gerar e validar NSIS e AppImage nos respectivos sistemas. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
+
+## Validações externas ainda abertas
+
+- Uso real por 1–2 semanas; registrar os resultados fornecidos pelo usuário.
+- Controle físico Xbox/PlayStation e revisão de foco na interface real.
+- Ouvir o fundo por uma hora e avaliar fadiga/loop.
+- Consulta real ao SteamGridDB com credencial disponível, sem registrar segredos.
+- Instalação e atualização assinada no Windows e Linux.
+
 ## Próximo passo
 
-Fases 2 a 5 parcialmente implementadas no código (branch `feat/fase1-nucleo-sync`): arte, conquistas do HUB, conquistas da Steam, temas, versão 1.0.0, instalador NSIS e atualização automática estão prontos e os testes passam (`cargo test --workspace -- --test-threads=1`, `bun test`, `bun run e2e`). Ainda faltam no código Job Object no Windows, descoberta de saves por mudança, busca/filtros da biblioteca, menu e central rápida. Também faltam validações externas: o uso real por 1–2 semanas pela CLI, revisar o protótipo com um controle de verdade, ouvir o fundo sonoro por 1 hora, validar o SteamGridDB com uma chave real e publicar o release (autorização do usuário; o AppImage precisa ser gerado no Linux).
+Implementar o item 1: Job Object no acompanhamento Windows, começando por `sgs-core/src/process.rs` e seus testes de launcher. Depois seguir o item 2. Steam Deck fica fora desta sequência até definição de escopo; essa dúvida não bloqueia Windows/Linux desktop.
+
+### Acompanhamento de processos no Windows
+
+Implementado Job Object com processo criado suspenso e retomada pela API ResumeThread. Os testes cobrem launcher curto com filho fora da pasta e falha de associação sem deixar processo suspenso; a busca por pasta e a parada existente também foram verificadas. A execução completa dos testes do workspace deve ser confirmada após essa alteração. Próximo: item 2, parada normal com espera e confirmação antes de forçar.

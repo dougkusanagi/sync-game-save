@@ -5,6 +5,89 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+#[cfg(windows)]
+mod job {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::JobObjects::*;
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::*;
+    use windows_sys::Win32::System::Threading::{OpenThread, ResumeThread, THREAD_SUSPEND_RESUME};
+
+    pub struct Job(HANDLE);
+    impl Drop for Job {
+        fn drop(&mut self) { unsafe { CloseHandle(self.0); } }
+    }
+    impl Job {
+        pub fn create() -> Result<Self, String> {
+            let h = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+            if h.is_null() { Err(format!("não foi possível criar o grupo do jogo: {}", std::io::Error::last_os_error())) } else { Ok(Self(h)) }
+        }
+        pub fn attach_and_resume(&self, child: &mut std::process::Child) -> Result<(), String> {
+            let process = child.as_raw_handle() as HANDLE;
+            if unsafe { AssignProcessToJobObject(self.0, process) } == 0 {
+                let err = std::io::Error::last_os_error();
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("não foi possível acompanhar o jogo: {err}"));
+            }
+            if let Err(err) = resume_primary(child.id()) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("não foi possível iniciar o jogo: {err}"));
+            }
+            Ok(())
+        }
+        pub fn active(&self) -> Result<bool, String> {
+            let mut info: JOBOBJECT_BASIC_ACCOUNTING_INFORMATION = unsafe { std::mem::zeroed() };
+            let ok = unsafe { QueryInformationJobObject(self.0, JobObjectBasicAccountingInformation, &mut info as *mut _ as *mut _, std::mem::size_of_val(&info) as u32, std::ptr::null_mut()) };
+            if ok == 0 { Err(format!("não foi possível verificar o jogo: {}", std::io::Error::last_os_error())) } else { Ok(info.ActiveProcesses > 0) }
+        }
+        pub fn terminate(&self) -> Result<(), String> {
+            if unsafe { TerminateJobObject(self.0, 1) } == 0 {
+                Err(format!("não foi possível parar o jogo: {}", std::io::Error::last_os_error()))
+            } else { Ok(()) }
+        }
+    }
+
+    fn resume_primary(pid: u32) -> Result<(), String> {
+        unsafe {
+            let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+            if snapshot == INVALID_HANDLE_VALUE { return Err(std::io::Error::last_os_error().to_string()); }
+            let mut entry: THREADENTRY32 = std::mem::zeroed();
+            entry.dwSize = std::mem::size_of::<THREADENTRY32>() as u32;
+            let mut found = Thread32First(snapshot, &mut entry) != 0;
+            while found && entry.th32OwnerProcessID != pid {
+                found = Thread32Next(snapshot, &mut entry) != 0;
+            }
+            CloseHandle(snapshot);
+            if !found { return Err("thread inicial não encontrada".into()); }
+            let thread = OpenThread(THREAD_SUSPEND_RESUME, 0, entry.th32ThreadID);
+            if thread.is_null() { return Err(std::io::Error::last_os_error().to_string()); }
+            let result = ResumeThread(thread);
+            let error = if result == u32::MAX { Some(std::io::Error::last_os_error()) } else { None };
+            CloseHandle(thread);
+            match error { Some(err) => Err(err.to_string()), None => Ok(()) }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use std::os::windows::process::CommandExt;
+
+        #[test]
+        fn falha_de_associacao_encerra_processo_suspenso() {
+            let mut child = std::process::Command::new(r"C:\Windows\System32\cmd.exe")
+                .args(["/c", "exit", "0"])
+                .creation_flags(0x00000004)
+                .spawn().unwrap();
+            let job = Job(std::ptr::null_mut());
+            assert!(job.attach_and_resume(&mut child).is_err());
+            assert!(child.try_wait().unwrap().is_some());
+        }
+    }
+}
+
 /// Acompanha um processo e todos os descendentes que ele abriu.
 pub struct Tracker {
     sys: sysinfo::System,
@@ -170,12 +253,20 @@ pub fn run_with_beat(
     tick: &mut dyn FnMut(),
 ) -> Result<i32, String> {
     let mut command = std::process::Command::new(prog);
+    #[cfg(windows)]
+    let job = {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x00000004); // CREATE_SUSPENDED
+        job::Job::create()?
+    };
     command.args(args);
     let pasta = Path::new(prog).parent().filter(|d| d.is_dir()).map(Path::to_path_buf);
     if let Some(dir) = cwd.map(Path::to_path_buf).or_else(|| pasta.clone()) {
         command.current_dir(dir);
     }
     let mut child = command.spawn().map_err(|x| format!("não consegui abrir {prog}: {x}"))?;
+    #[cfg(windows)]
+    job.attach_and_resume(&mut child)?;
     let mut tracker = Tracker::with_dir(child.id(), pasta.as_deref());
     let parar = Arc::new(AtomicBool::new(false));
     if let Some(t) = tracker.as_mut() {
@@ -210,6 +301,16 @@ pub fn run_with_beat(
             None => std::thread::sleep(Duration::from_millis(200)),
         }
     };
+    #[cfg(windows)]
+    while job.active()? {
+        beat.maybe();
+        if parar.load(Ordering::SeqCst) {
+            job.terminate()?;
+            if let Some(t) = tracker.as_mut() { t.matar(); }
+        }
+        if let Some(t) = tracker.as_mut() { t.refresh(); }
+        std::thread::sleep(Duration::from_millis(200));
+    }
     if let Some(t) = tracker.as_mut() {
         t.wait_until_gone(quiet, &mut beat);
     }
