@@ -3,6 +3,7 @@
 import type { Conquista, Conquistas, ConquistasHub, Game, Estado, MarcoHub, Reconhecimento, Tema } from "./api";
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
+let terminarJogo: (() => void) | undefined;
 
 const STEAM: Record<string, number> = { "Rogue Legacy": 241600, "Hollow Knight": 367520, Celeste: 504230, Hades: 1145360, "Animal Well": 813230, "Sea of Stars": 1244090 };
 
@@ -247,11 +248,18 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       return r(undefined);
     case "parar_jogo":
       return r(true);
+    case "forcar_parada_jogo":
+      terminarJogo?.();
+      terminarJogo = undefined;
+      return r(true);
     case "jogar": {
       const o = (args.opcoes ?? {}) as { conflito?: string; forcar?: boolean };
       if (cenario === "conflito" && !o.conflito) return r({ kind: "conflict" });
       if (args.id === 2 && !o.forcar) return r({ kind: "locked", pc: "PC-QUARTO" });
-      await espera(600);
+      if (cenario === "parada") {
+        window.dispatchEvent(new CustomEvent("sgs:mock-jogo", { detail: { id: args.id, estado: "jogando" } }));
+        await new Promise<void>((resolve) => { terminarJogo = resolve; });
+      } else await espera(600);
       return r({ kind: "finished", exit_code: 0, synced: true, notice: "Save enviado para a pasta de sincronização." });
     }
     case "capa_do_jogo":

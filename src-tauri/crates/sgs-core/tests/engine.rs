@@ -23,6 +23,29 @@ fn get(c: &Ctx) -> String {
 }
 
 #[test]
+fn espera_o_save_parar_de_mudar_antes_de_criar_snapshot() {
+    let t = tempfile::tempdir().unwrap();
+    let a = pc(t.path(), "A", 1000);
+    put(&a, "antes");
+    a.before_launch(false).unwrap();
+    let save = a.roots[0].1.join("s.sav");
+    let escritor = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(3500));
+        fs::write(save, "final").unwrap();
+    });
+    let inicio = std::time::Instant::now();
+    assert!(a.after_exit().unwrap());
+    escritor.join().unwrap();
+    assert!(inicio.elapsed() >= std::time::Duration::from_secs(5));
+    let head = read_head(&a.game_dir).unwrap().unwrap();
+    let versoes = sgs_core::snapshot::list(&a.game_dir).unwrap();
+    assert_eq!(versoes.len(), 2);
+    assert_eq!(versoes[0], head.snapshot);
+    assert_eq!(fs::read_to_string(a.game_dir.join("snapshots").join(&versoes[0]).join("files/s.sav")).unwrap(), "final");
+    assert_eq!(fs::read_to_string(a.game_dir.join("snapshots").join(&versoes[1]).join("files/s.sav")).unwrap(), "antes");
+}
+
+#[test]
 fn dois_pcs_em_sequencia() {
     let t = tempfile::tempdir().unwrap();
     let a = pc(t.path(), "A", 1000);

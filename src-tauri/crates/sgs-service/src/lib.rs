@@ -124,9 +124,17 @@ type EnvFn = Box<dyn Fn(Option<PathBuf>) -> Env + Send + Sync>;
 
 pub struct Service {
     lib: Mutex<Library>,
+    operacoes: Mutex<std::collections::HashSet<i64>>,
     data_dir: PathBuf,
     env: EnvFn,
     now: Box<dyn Fn() -> u64 + Send + Sync>,
+}
+
+struct Operacao<'a> { id: i64, ativos: &'a Mutex<std::collections::HashSet<i64>> }
+impl Drop for Operacao<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut ativos) = self.ativos.lock() { ativos.remove(&self.id); }
+    }
 }
 
 fn slug(name: &str) -> String {
@@ -145,7 +153,15 @@ impl Service {
     pub fn with(data_dir: &Path, env: EnvFn, now: Box<dyn Fn() -> u64 + Send + Sync>) -> Result<Self> {
         std::fs::create_dir_all(data_dir).map_err(|e| Error::Other(format!("Não consegui criar a pasta de dados: {e}")))?;
         let lib = Library::open(&data_dir.join("library.db"))?;
-        Ok(Service { lib: Mutex::new(lib), data_dir: data_dir.to_path_buf(), env, now })
+        Ok(Service { lib: Mutex::new(lib), operacoes: Mutex::new(Default::default()), data_dir: data_dir.to_path_buf(), env, now })
+    }
+
+    fn iniciar_operacao(&self, id: i64) -> Result<Operacao<'_>> {
+        let mut ativos = self.operacoes.lock().map_err(|_| Error::Other("Não consegui verificar o estado do jogo.".into()))?;
+        if !ativos.insert(id) {
+            return Err(Error::Other("Este jogo está aberto ou sendo sincronizado. Aguarde terminar antes de tentar novamente.".into()));
+        }
+        Ok(Operacao { id, ativos: &self.operacoes })
     }
 
     fn lib(&self) -> std::sync::MutexGuard<'_, Library> {
@@ -553,6 +569,7 @@ impl Service {
     /// Abre o jogo com sync. `on_state` recebe o andamento ("sincronizando", "jogando", "salvando").
     /// Bloqueia até o jogo fechar; chame de uma thread, não da interface.
     pub fn play(&self, id: i64, opts: &PlayOptions, on_state: &dyn Fn(&str)) -> Result<Play> {
+        let _operacao = self.iniciar_operacao(id)?;
         let resultado = self.play_inner(id, opts, on_state);
         if resultado.is_err() {
             self.registrar_sync_erro();
@@ -561,9 +578,14 @@ impl Service {
     }
 
     /// Encerra o jogo aberto pelo app. O `play` em andamento termina e sincroniza o save como de costume.
-    pub fn stop_game(&self, id: i64) -> Result<bool> {
+    pub fn stop_game(&self, id: i64) -> Result<Option<bool>> {
         let game = self.lib().get(id)?;
-        Ok(sgs_core::process::parar(&game.exe))
+        sgs_core::process::parar(&game.exe).map_err(Error::Other)
+    }
+
+    pub fn force_stop_game(&self, id: i64) -> Result<bool> {
+        let game = self.lib().get(id)?;
+        sgs_core::process::forcar_parada(&game.exe).map_err(Error::Other)
     }
 
     fn play_inner(&self, id: i64, opts: &PlayOptions, on_state: &dyn Fn(&str)) -> Result<Play> {
@@ -608,13 +630,16 @@ impl Service {
         let result = launch(&opts.args, &mut || {
             let _ = lock::heartbeat(&game_dir, &device, (self.now)());
         });
-        // Mesmo se o jogo nem abriu ou caiu, o save é conferido e a trava solta.
+        // Um erro de acompanhamento não garante que o grupo tenha terminado.
+        // Preserve a trava e os saves até ser possível confirmar o encerramento.
+        let code = result?;
+        // Código de saída diferente de zero ainda representa um processo encerrado.
         on_state("salvando");
         journal::begin(&jdir, &game.name, "fechar", ctx.now)?;
-        let created = ctx.after_exit();
+        let mut atualizar_trava = || { let _ = lock::heartbeat(&game_dir, &device, (self.now)()); };
+        let mut beat = sgs_core::process::Beat::new(opts.heartbeat_every(), &mut atualizar_trava);
+        let created = ctx.after_exit_with_beat(&mut || beat.maybe())?;
         journal::end(&jdir, &game.name)?;
-        let created = created?;
-        let code = result?;
         let digest = sgs_core::index::scan_roots(&ctx.roots).map(|i| i.digest()).unwrap_or_default();
         self.lib().record_sync(id, &digest, (self.now)() as i64)?;
         self.registrar_sync_ok();
@@ -632,18 +657,26 @@ impl Service {
 
     /// Restaura uma versão. O save atual vai antes para a pasta de backups. Devolve essa pasta.
     pub fn restore_snapshot(&self, id: i64, snapshot_id: &str) -> Result<PathBuf> {
+        let _operacao = self.iniciar_operacao(id)?;
         let game = self.lib().get(id)?;
         let ctx = self.ctx(&game)?;
-        if let Ok(lock::LockState::HeldByOther(l)) = lock::state(&ctx.game_dir, &ctx.device, ctx.now) {
+        if sgs_core::process::em_execucao(&game.exe).map_err(Error::Other)? {
+            return Err(Error::Other("Feche o jogo e aguarde a sincronização antes de restaurar uma versão.".into()));
+        }
+        if let lock::LockState::HeldByOther(l) = lock::state(&ctx.game_dir, &ctx.device, ctx.now)? {
             return Err(Error::Other(format!("O jogo parece estar aberto em {}. Feche-o antes de restaurar.", l.device)));
+        }
+        if !snapshot::list(&ctx.game_dir)?.iter().any(|id| id == snapshot_id) {
+            return Err(Error::Other("Esta versão não foi encontrada. Atualize a lista e tente novamente.".into()));
         }
         let snap = ctx.game_dir.join("snapshots").join(snapshot_id);
         let backup = ctx.state_dir.join("backups").join(format!("{}_restaurar", ctx.now));
         let jdir = ctx.state_dir.join("journal");
         journal::begin(&jdir, &game.name, "restaurar", ctx.now)?;
-        let r = snapshot::restore_roots(&snap, &ctx.roots, &backup);
+        if let Err(err) = snapshot::restore_roots(&snap, &ctx.roots, &backup) {
+            return Err(Error::Other(format!("Não consegui restaurar a versão: {err}. Confira as cópias em {} antes de tentar novamente.", backup.display())));
+        }
         journal::end(&jdir, &game.name)?;
-        r?;
         Ok(backup)
     }
 

@@ -206,8 +206,13 @@ async fn jogar(app: AppHandle, svc: Svc<'_>, id: i64, opcoes: Option<OpcoesJogar
 
 /// Fecha o jogo aberto pelo app. O save é sincronizado quando o jogo termina de fechar.
 #[tauri::command]
-async fn parar_jogo(svc: Svc<'_>, id: i64) -> Result<bool, String> {
+async fn parar_jogo(svc: Svc<'_>, id: i64) -> Result<Option<bool>, String> {
     blocking(&svc, move |s| s.stop_game(id)).await
+}
+
+#[tauri::command]
+async fn forcar_parada_jogo(svc: Svc<'_>, id: i64) -> Result<bool, String> {
+    blocking(&svc, move |s| s.force_stop_game(id)).await
 }
 
 fn notificar(app: &AppHandle, titulo: &str, texto: &str) {
@@ -355,6 +360,7 @@ pub fn run() {
             remover_jogo,
             jogar,
             parar_jogo,
+            forcar_parada_jogo,
             capa_do_jogo,
             arte_do_jogo,
             definir_credenciais_steam,

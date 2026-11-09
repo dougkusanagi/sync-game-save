@@ -5,6 +5,33 @@ import { versaoLegivel } from "../format";
 import { som, type ConfigSom } from "../som";
 import { acharTema, aplicarTema } from "../temas";
 
+export function PararJogo({ jogo, onClose }: { jogo: Game; onClose: () => void }) {
+  const [estado, setEstado] = useState<"esperando" | "forcar" | "fechado" | "ausente" | "erro" | "forcando">("esperando");
+  const [erro, setErro] = useState("");
+  useEffect(() => {
+    let ativo = true;
+    api.pararJogo(jogo.id).then((resta) => {
+      if (ativo) setEstado(resta === null ? "ausente" : resta ? "forcar" : "fechado");
+    }).catch((e) => { if (ativo) { setErro(textoDoErro(e)); setEstado("erro"); } });
+    return () => { ativo = false; };
+  }, [jogo.id]);
+  async function forcar() {
+    setEstado("forcando");
+    try { await api.forcarParadaJogo(jogo.id); setEstado("fechado"); }
+    catch (e) { setErro(textoDoErro(e)); setEstado("erro"); }
+  }
+  return (
+    <Dialog titulo={`Parar ${jogo.name}`} onClose={onClose} focoKey={estado}>
+      {estado === "esperando" && <p role="status">Pedindo para o jogo fechar. Aguarde enquanto ele salva e encerra.</p>}
+      {estado === "forcar" && <><p>O jogo ainda está aberto. Forçar o fechamento pode corromper ou perder o save. Se possível, salve e feche o jogo normalmente.</p><div className="acoes coluna-movel parada-acoes"><button className="btn fraco" data-f data-autofocus onClick={onClose}>Continuar aguardando</button><button className="btn perigo" data-f onClick={() => void forcar()}>Forçar fechamento</button></div></>}
+      {estado === "forcando" && <p role="status">Fechando o jogo. A sincronização começa depois que todos os processos terminarem.</p>}
+      {estado === "fechado" && <><p role="status">O pedido foi concluído. A sincronização começa depois que o jogo terminar de fechar.</p><button className="btn" data-f onClick={onClose}>Entendi</button></>}
+      {estado === "ausente" && <><p role="status">O jogo não está sendo acompanhado. Se ele ainda estiver aberto, feche-o pelo próprio jogo.</p><button className="btn" data-f onClick={onClose}>Entendi</button></>}
+      {estado === "erro" && <><p role="alert">{erro}</p><button className="btn" data-f onClick={onClose}>Fechar</button></>}
+    </Dialog>
+  );
+}
+
 /** Versões guardadas de um jogo, com restauração. O save atual vai antes para a pasta de backups. */
 export function Versoes({ jogo, onClose }: { jogo: Game; onClose: () => void }) {
   const [lista, setLista] = useState<string[] | null>(null);

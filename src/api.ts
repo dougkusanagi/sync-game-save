@@ -133,7 +133,8 @@ export const api = {
   editarJogo: (id: number, jogo: NewGame) => call<void>("editar_jogo", { id, jogo }),
   removerJogo: (id: number) => call<void>("remover_jogo", { id }),
   jogar: (id: number, opcoes?: OpcoesJogar) => call<ResultadoJogar>("jogar", { id, opcoes }),
-  pararJogo: (id: number) => call<boolean>("parar_jogo", { id }),
+  pararJogo: (id: number) => call<boolean | null>("parar_jogo", { id }),
+  forcarParadaJogo: (id: number) => call<boolean>("forcar_parada_jogo", { id }),
   capaDoJogo: (id: number) => call<string | null>("capa_do_jogo", { id }),
   arteDoJogo: (id: number, tipo: TipoArte) => call<string | null>("arte_do_jogo", { id, tipo }),
   versoes: (id: number) => call<string[]>("versoes", { id }),
@@ -187,7 +188,11 @@ export async function escolherArquivoExe(titulo: string): Promise<string | null>
 }
 
 export function aoMudarEstadoDoJogo(fn: (id: number, estado: string) => void): Promise<() => void> {
-  if (noTauri) return Promise.resolve(() => {});
+  if (noTauri) {
+    const tratar = (e: Event) => { const { id, estado } = (e as CustomEvent<{ id: number; estado: string }>).detail; fn(id, estado); };
+    window.addEventListener("sgs:mock-jogo", tratar);
+    return Promise.resolve(() => window.removeEventListener("sgs:mock-jogo", tratar));
+  }
   return listen<{ id: number; estado: string }>("jogo-estado", (e) => fn(e.payload.id, e.payload.estado));
 }
 

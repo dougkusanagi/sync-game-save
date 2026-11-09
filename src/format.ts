@@ -20,5 +20,5 @@ export function versaoLegivel(id: string): { quando: string; pc: string } {
   const [secs, ...resto] = id.split("_");
   const n = Number(secs);
   const quando = Number.isFinite(n) && n > 0 ? new Date(n * 1000).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : id;
-  return { quando, pc: resto.join("_") || "PC desconhecido" };
+  return { quando, pc: resto.join("_").replace(/~sgs-\d+$/, "") || "PC desconhecido" };
 }

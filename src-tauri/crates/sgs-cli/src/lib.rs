@@ -295,11 +295,13 @@ fn run(ctx: &Ctx, o: &Opts, jdir: &std::path::Path, out: &mut impl Write, input:
             let _ = lock::heartbeat(&gd, &dev, o.now.unwrap_or_else(unix_now));
         },
     );
-    // Mesmo se o programa nem abriu ou saiu com erro, o save é conferido e a trava solta.
+    // Uma falha de acompanhamento não comprova que todos os processos terminaram.
+    let status = status.map_err(|x| format!("não consegui acompanhar {prog}: {x}"))?;
     journal::begin(jdir, &o.game, "fechar", ctx.now).map_err(e)?;
-    let created = ctx.after_exit().map_err(e)?;
+    let mut atualizar_trava = || { let _ = lock::heartbeat(&gd, &dev, o.now.unwrap_or_else(unix_now)); };
+    let mut beat = sgs_core::process::Beat::new(std::time::Duration::from_secs(o.heartbeat_secs), &mut atualizar_trava);
+    let created = ctx.after_exit_with_beat(&mut || beat.maybe()).map_err(e)?;
     journal::end(jdir, &o.game).map_err(e)?;
     writeln!(out, "{}", if created { "Save enviado para a nuvem." } else { "Save sem mudanças." }).map_err(e)?;
-    let status = status.map_err(|x| format!("não consegui abrir {prog}: {x}"))?;
     Ok(status)
 }

@@ -235,13 +235,37 @@ teste("layout: sem rolagem horizontal no celular, com nomes longos", async (page
   assert.ok(larg <= vis, `rolagem horizontal: ${larg} > ${vis}`);
 });
 
+teste("parada: cancelar mantém o jogo e força exige confirmação", async (page) => {
+  await page.goto(`${BASE}?cenario=parada`);
+  await page.getByRole("button", { name: "Jogar" }).first().click();
+  const parar = page.getByRole("button", { name: "Parar jogo" });
+  await parar.click();
+  let dlg = page.getByRole("dialog", { name: /^Parar / });
+  await dlg.getByText(/pode corromper ou perder o save/).waitFor();
+  await page.screenshot({ path: path.join(require("node:os").tmpdir(), "sgs-parada-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: path.join(require("node:os").tmpdir(), "sgs-parada-mobile.png") });
+  const dimensoes = await page.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(dimensoes[0] <= dimensoes[1], `rolagem horizontal: ${dimensoes}`);
+  await dlg.getByRole("button", { name: "Continuar aguardando" }).click();
+  await dlg.waitFor({ state: "detached" });
+  assert.equal(await parar.isVisible(), true);
+  await parar.click();
+  dlg = page.getByRole("dialog", { name: /^Parar / });
+  await dlg.getByRole("button", { name: "Forçar fechamento" }).click();
+  await dlg.getByRole("button", { name: "Entendi" }).click();
+  await page.getByRole("button", { name: "Jogar" }).first().waitFor();
+});
+
 (async () => {
   const servidor = await subirServidor();
   const browser = await chromium.launch();
   let falhas = 0;
   for (const [nome, fn] of testes) {
+    if (process.env.E2E_FILTRO && !nome.includes(process.env.E2E_FILTRO)) continue;
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const page = await ctx.newPage();
+    await page.route("https://cdn.cloudflare.steamstatic.com/**", (route) => route.abort());
     page.setDefaultTimeout(6000);
     const erros = [];
     page.on("pageerror", (e) => erros.push(String(e)));
@@ -251,7 +275,7 @@ teste("layout: sem rolagem horizontal no celular, com nomes longos", async (page
       console.log(`ok   ${nome}`);
     } catch (e) {
       falhas++;
-      console.log(`FALHOU ${nome}\n     ${String(e.message).split("\n")[0]}`);
+      console.log(`FALHOU ${nome}\n     ${e.stack ?? e}`);
     }
     await ctx.close();
   }

@@ -156,6 +156,38 @@ fn joga_em_um_pc_e_recebe_no_outro() {
     assert!(a.games().unwrap()[0].last_sync_at.is_some());
 }
 
+#[cfg(windows)]
+#[test]
+fn sincroniza_depois_do_ultimo_descendente_gravar_o_save() {
+    let (t, a, _, ia, _) = setup_two_pcs();
+    let save = t.path().join("A/saves/Jogo/slot.sav");
+    fs::create_dir_all(save.parent().unwrap()).unwrap();
+    fs::write(&save, "antes").unwrap();
+    let pronto = t.path().join("filho-pronto");
+    let liberar = t.path().join("liberar-filho");
+    let script = t.path().join("filho.ps1");
+    fs::write(&script, format!("[IO.File]::WriteAllText('{}', 'sim'); while (!(Test-Path -LiteralPath '{}')) {{ Start-Sleep -Milliseconds 100 }}; [IO.File]::WriteAllText('{}', 'depois')", pronto.display(), liberar.display(), save.display())).unwrap();
+    let comando = format!("Start-Process powershell.exe -ArgumentList '-NoProfile','-File','{}' -WindowStyle Hidden", script.display());
+    std::thread::scope(|scope| {
+        let jogo = scope.spawn(|| a.play(ia, &opts(&comando), &silent));
+        let limite = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        while !pronto.exists() && std::time::Instant::now() < limite { std::thread::sleep(std::time::Duration::from_millis(50)); }
+        let iniciou = pronto.exists();
+        let terminou_antes = jogo.is_finished();
+        let snapshots = a.snapshots(ia).unwrap();
+        let restauracao_bloqueada = snapshots.first().is_some_and(|s| a.restore_snapshot(ia, s).is_err());
+        let snapshots_antes = snapshots.len();
+        fs::write(&liberar, "sim").unwrap();
+        assert!(matches!(jogo.join().unwrap().unwrap(), Play::Finished { synced: true, .. }));
+        assert!(iniciou, "filho não iniciou");
+        assert!(!terminou_antes);
+        assert!(restauracao_bloqueada, "não deve restaurar enquanto o jogo está aberto");
+        assert_eq!(snapshots_antes, 1, "não deve sincronizar enquanto o filho está aberto");
+        assert_eq!(a.snapshots(ia).unwrap().len(), 2);
+        assert_eq!(fs::read_to_string(&save).unwrap(), "depois");
+    });
+}
+
 #[test]
 fn conflito_pede_escolha_e_guarda_o_lado_descartado() {
     let (t, a, b, ia, ib) = setup_two_pcs();

@@ -24,6 +24,8 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("o arquivo {0} não confere com o hash do índice")]
     HashMismatch(String),
+    #[error("os arquivos de save mudaram durante a sincronização; feche o jogo e tente novamente")]
+    SaveChanged,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

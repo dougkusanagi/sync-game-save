@@ -12,7 +12,7 @@ import { AddGame } from "./screens/AddGame";
 import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
 import { Conquistas } from "./screens/Conquistas";
 import { ConquistasHub } from "./screens/ConquistasHub";
-import { Conflito, Configuracoes, EditarJogo, Opcoes, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
+import { Conflito, Configuracoes, EditarJogo, Opcoes, PararJogo, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
 import { corDoNome, Inicio, jogosDaSecao, SECOES } from "./screens/Inicio";
 import { Wizard } from "./screens/Wizard";
 
@@ -31,6 +31,7 @@ type Camada =
   | { tipo: "opcoes"; jogo: Game }
   | { tipo: "editar"; jogo: Game }
   | { tipo: "remover"; jogo: Game }
+  | { tipo: "parar"; jogo: Game }
   | { tipo: "conflito"; jogo: Game }
   | { tipo: "travado"; jogo: Game; pc: string }
   | { tipo: "semsync"; jogo: Game; mensagem: string };
@@ -192,13 +193,8 @@ export default function App() {
     }
   }
 
-  async function parar(jogo: Game) {
-    try {
-      const fechou = await api.pararJogo(jogo.id);
-      if (!fechou) mostrar(`${jogo.name} não está aberto pelo app.`, true);
-    } catch (err) {
-      mostrar(`${jogo.name}: ${textoDoErro(err)}`, true);
-    }
+  function parar(jogo: Game) {
+    abrir({ tipo: "parar", jogo });
   }
 
   // Atalhos de tela (teclado, controle e cliques na legenda). Só valem sem diálogo aberto.
@@ -511,6 +507,8 @@ export default function App() {
                 }}
               />
             );
+          case "parar":
+            return <PararJogo key={i} jogo={c.jogo} onClose={fechar} />;
           case "conflito":
             return (
               <Conflito

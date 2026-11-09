@@ -1,6 +1,6 @@
-# 0003. Formato da pasta da nuvem: snapshots imutáveis e `head.json`
+﻿# 0003. Formato da pasta da nuvem: snapshots imutáveis e `head.json`
 
-- Status: Aceito
+- Status: Substituído por 0007
 - Data: 2026-11-05
 
 ## Contexto
@@ -35,3 +35,4 @@ Regras:
 - Usa mais espaço (uma cópia completa por versão), por isso existe a retenção.
 - Dois PCs gravando ao mesmo tempo podem gerar duas versões de `head.json` do sincronizador (cópia de conflito do serviço); a trava reduz o risco, e a detecção dessas cópias ainda está pendente.
 - Os caminhos dos arquivos ficam relativos à pasta de save do jogo; a ligação com pastas reais de cada PC (caminhos lógicos com marcadores) é guardada à parte na biblioteca.
+

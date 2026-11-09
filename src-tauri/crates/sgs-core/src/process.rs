@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(windows)]
 mod job {
@@ -18,6 +18,15 @@ mod job {
         fn drop(&mut self) { unsafe { CloseHandle(self.0); } }
     }
     impl Job {
+        pub fn contains(&self, pid: u32) -> bool {
+            use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+            let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+            if process.is_null() { return false; }
+            let mut member = 0;
+            let ok = unsafe { IsProcessInJob(process, self.0, &mut member) };
+            unsafe { CloseHandle(process); }
+            ok != 0 && member != 0
+        }
         pub fn create() -> Result<Self, String> {
             let h = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
             if h.is_null() { Err(format!("não foi possível criar o grupo do jogo: {}", std::io::Error::last_os_error())) } else { Ok(Self(h)) }
@@ -96,22 +105,49 @@ pub struct Tracker {
     /// Pasta do jogo: processos que rodam dela também contam, mesmo sem serem filhos.
     /// Cobre jogos da Steam que fecham e pedem para a Steam abrir de novo.
     dir: Option<String>,
-    /// Pedido de parada: quando ligado, o grupo é encerrado e a espera final termina na hora.
-    parar: Option<Arc<AtomicBool>>,
 }
 
-/// Jogos em andamento (pelo caminho do executável) e o sinal de parada de cada um.
-static ATIVOS: Mutex<Vec<(String, Arc<AtomicBool>)>> = Mutex::new(Vec::new());
+struct Controle {
+    pedido: AtomicBool,
+    enviado: Mutex<Option<Instant>>,
+    forcar: AtomicBool,
+    vivo: AtomicBool,
+}
 
-/// Pede para encerrar o jogo aberto com `prog`. Devolve `false` se ele não está aberto.
-pub fn parar(prog: &str) -> bool {
-    let Ok(ativos) = ATIVOS.lock() else { return false };
-    let mut achou = false;
-    for (_, flag) in ativos.iter().filter(|(p, _)| p == prog) {
-        flag.store(true, Ordering::SeqCst);
-        achou = true;
+static ATIVOS: Mutex<Vec<(String, Arc<Controle>)>> = Mutex::new(Vec::new());
+
+/// Inclui o intervalo de espera após o encerramento do grupo.
+pub fn em_execucao(prog: &str) -> Result<bool, String> {
+    Ok(ATIVOS.lock().map_err(|_| "não foi possível verificar se o jogo está aberto")?.iter().any(|(p, _)| p == prog))
+}
+
+/// Pede fechamento normal e aguarda até dez segundos pelo grupo.
+/// O resultado indica se ainda há processos que podem precisar de força.
+pub fn parar(prog: &str) -> Result<Option<bool>, String> {
+    let controle = ATIVOS.lock().map_err(|_| "não foi possível verificar o jogo")?
+        .iter().find(|(p, _)| p == prog).map(|(_, c)| c.clone());
+    let Some(controle) = controle else { return Ok(None) };
+    controle.pedido.store(true, Ordering::SeqCst);
+    while controle.vivo.load(Ordering::SeqCst) {
+        if controle.enviado.lock().map_err(|_| "não foi possível verificar o pedido")?
+            .is_some_and(|t| t.elapsed() >= Duration::from_secs(10)) { break; }
+        std::thread::sleep(Duration::from_millis(100));
     }
-    achou
+    Ok(Some(controle.vivo.load(Ordering::SeqCst)))
+}
+
+/// Só aceita a força depois de um pedido normal com espera de dez segundos.
+pub fn forcar_parada(prog: &str) -> Result<bool, String> {
+    let controle = ATIVOS.lock().map_err(|_| "não foi possível verificar o jogo")?
+        .iter().find(|(p, _)| p == prog).map(|(_, c)| c.clone());
+    let Some(controle) = controle else { return Ok(false) };
+    let pedido = controle.enviado.lock().map_err(|_| "não foi possível verificar o pedido")?;
+    if !pedido.is_some_and(|t| t.elapsed() >= Duration::from_secs(10)) {
+        return Err("Aguarde o jogo responder ao pedido de fechamento.".into());
+    }
+    if !controle.vivo.load(Ordering::SeqCst) { return Ok(false); }
+    controle.forcar.store(true, Ordering::SeqCst);
+    Ok(true)
 }
 
 fn chave_de_caminho(p: &Path) -> String {
@@ -120,10 +156,28 @@ fn chave_de_caminho(p: &Path) -> String {
     if cfg!(windows) { s.to_lowercase() } else { s.to_string() }
 }
 
+#[cfg(windows)]
+fn pedir_fechamento(tracker: Option<&Tracker>, job: &job::Job) {
+    use windows_sys::Win32::Foundation::{HWND, LPARAM};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, GetWindowThreadProcessId, PostMessageW, WM_CLOSE};
+    struct Contexto<'a> { tracker: Option<&'a Tracker>, job: &'a job::Job }
+    unsafe extern "system" fn janela(hwnd: HWND, data: LPARAM) -> i32 {
+        let contexto = unsafe { &*(data as *const Contexto<'_>) };
+        let mut pid = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, &mut pid); }
+        if contexto.tracker.is_some_and(|t| t.pids.contains(&pid)) || contexto.job.contains(pid) {
+            unsafe { PostMessageW(hwnd, WM_CLOSE, 0, 0); }
+        }
+        1
+    }
+    let contexto = Contexto { tracker, job };
+    unsafe { EnumWindows(Some(janela), &contexto as *const _ as LPARAM); }
+}
+
 impl Tracker {
     pub fn new(root: u32) -> Option<Self> {
         // Sem acesso à lista de processos, só se espera o programa que foi aberto.
-        let mut tracker = Tracker { sys: sysinfo::System::new().ok()?, pids: [root].into(), inicios: Default::default(), dir: None, parar: None };
+        let mut tracker = Tracker { sys: sysinfo::System::new().ok()?, pids: [root].into(), inicios: Default::default(), dir: None };
         tracker.refresh();
         Some(tracker)
     }
@@ -193,20 +247,15 @@ impl Tracker {
     }
 
     /// Espera até nenhum processo do grupo existir por `quiet` seguido.
-    /// Com pedido de parada, encerra o grupo e volta assim que ele some.
     pub fn wait_until_gone(&mut self, quiet: std::time::Duration, beat: &mut Beat) {
         let mut gone_since: Option<std::time::Instant> = None;
         loop {
             beat.maybe();
-            let parando = self.parar.as_ref().is_some_and(|f| f.load(Ordering::SeqCst));
-            if parando {
-                self.matar();
-            }
             if self.refresh() {
                 gone_since = None;
             } else {
                 let t = *gone_since.get_or_insert_with(std::time::Instant::now);
-                if parando || t.elapsed() >= quiet {
+                if t.elapsed() >= quiet {
                     return;
                 }
             }
@@ -268,51 +317,55 @@ pub fn run_with_beat(
     #[cfg(windows)]
     job.attach_and_resume(&mut child)?;
     let mut tracker = Tracker::with_dir(child.id(), pasta.as_deref());
-    let parar = Arc::new(AtomicBool::new(false));
-    if let Some(t) = tracker.as_mut() {
-        t.parar = Some(parar.clone());
-    }
+    let controle = Arc::new(Controle { pedido: AtomicBool::new(false), enviado: Mutex::new(None), forcar: AtomicBool::new(false), vivo: AtomicBool::new(true) });
     if let Ok(mut a) = ATIVOS.lock() {
-        a.push((prog.to_string(), parar.clone()));
+        a.push((prog.to_string(), controle.clone()));
     }
     // Sai da lista ao terminar, de qualquer jeito.
-    struct Sai(Arc<AtomicBool>);
+    struct Sai(Arc<Controle>);
     impl Drop for Sai {
         fn drop(&mut self) {
+            self.0.vivo.store(false, Ordering::SeqCst);
             if let Ok(mut a) = ATIVOS.lock() {
                 a.retain(|(_, f)| !Arc::ptr_eq(f, &self.0));
             }
         }
     }
-    let _sai = Sai(parar.clone());
+    let _sai = Sai(controle.clone());
     let mut beat = Beat::new(every, tick);
-    let status = loop {
+    let mut status = None;
+    let mut gone_since: Option<Instant> = None;
+    let mut pediu = false;
+    loop {
         beat.maybe();
-        // Registra filhos enquanto o launcher ainda existe: ele pode terminar
-        // antes de um filho intermediário, que abre o jogo e também termina.
-        if let Some(t) = tracker.as_mut() {
-            t.refresh();
+        if status.is_none() {
+            status = child.try_wait().map_err(|x| x.to_string())?;
         }
-        if parar.load(Ordering::SeqCst) {
-            let _ = child.kill();
+        let rastreado = tracker.as_mut().is_some_and(|t| t.refresh());
+        #[cfg(windows)]
+        let no_job = job.active()?;
+        #[cfg(not(windows))]
+        let no_job = false;
+        let vivo = status.is_none() || rastreado || no_job;
+        controle.vivo.store(vivo, Ordering::SeqCst);
+        if vivo && !pediu && controle.pedido.load(Ordering::SeqCst) {
+            #[cfg(windows)]
+            pedir_fechamento(tracker.as_ref(), &job);
+            *controle.enviado.lock().map_err(|_| "não foi possível registrar o pedido")? = Some(Instant::now());
+            pediu = true;
         }
-        match child.try_wait().map_err(|x| x.to_string())? {
-            Some(st) => break st,
-            None => std::thread::sleep(Duration::from_millis(200)),
-        }
-    };
-    #[cfg(windows)]
-    while job.active()? {
-        beat.maybe();
-        if parar.load(Ordering::SeqCst) {
-            job.terminate()?;
+        if vivo && controle.forcar.load(Ordering::SeqCst) {
+            #[cfg(windows)]
+            if no_job { job.terminate()?; }
             if let Some(t) = tracker.as_mut() { t.matar(); }
+            if status.is_none() { let _ = child.kill(); }
         }
-        if let Some(t) = tracker.as_mut() { t.refresh(); }
+        if vivo {
+            gone_since = None;
+        } else if gone_since.get_or_insert_with(Instant::now).elapsed() >= quiet {
+            break;
+        }
         std::thread::sleep(Duration::from_millis(200));
     }
-    if let Some(t) = tracker.as_mut() {
-        t.wait_until_gone(quiet, &mut beat);
-    }
-    Ok(status.code().unwrap_or(1))
+    Ok(status.expect("processo terminou").code().unwrap_or(1))
 }

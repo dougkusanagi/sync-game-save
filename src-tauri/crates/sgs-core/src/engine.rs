@@ -71,7 +71,14 @@ impl Ctx {
     }
 
     fn snapshot_id(&self) -> String {
-        format!("{}_{}", self.now, self.device)
+        let base = format!("{}_{}", self.now, self.device);
+        let mut id = base.clone();
+        let mut n = 1;
+        while self.game_dir.join("snapshots").join(&id).exists() {
+            id = format!("{base}~sgs-{n}");
+            n += 1;
+        }
+        id
     }
 
     fn backup_dir(&self, reason: &str) -> PathBuf {
@@ -145,10 +152,38 @@ impl Ctx {
     /// Passo depois de o jogo fechar (qualquer código de saída).
     /// Devolve `true` se criou um snapshot novo.
     pub fn after_exit(&self) -> Result<bool> {
-        let local = scan_roots(&self.roots)?;
+        self.after_exit_with_beat(&mut || {})
+    }
+
+    /// Aguarda os arquivos estabilizarem e mantém a trava ativa durante a espera.
+    pub fn after_exit_with_beat(&self, beat: &mut dyn FnMut()) -> Result<bool> {
+        for _ in 0..3 {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            beat();
+        }
+        let mut local = scan_roots(&self.roots)?;
+        let mut estavel = false;
+        for _ in 0..60 {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            beat();
+            let proximo = scan_roots(&self.roots)?;
+            if local.digest() == proximo.digest() {
+                local = proximo;
+                estavel = true;
+                break;
+            }
+            local = proximo;
+        }
+        if !estavel {
+            return Err(crate::Error::Io {
+                path: self.roots.first().map(|(_, p)| p.clone()).unwrap_or_default(),
+                source: std::io::Error::new(std::io::ErrorKind::TimedOut, "os arquivos de save continuam mudando; feche o jogo e tente sincronizar novamente"),
+            });
+        }
         let changed = self.base()?.as_deref() != Some(local.digest().as_str());
         let created = if changed && !local.files.is_empty() {
-            self.upload()?;
+            let head = snapshot::create_roots_checked(&self.game_dir, &self.roots, &self.snapshot_id(), &self.device, &local)?;
+            self.set_base(&head.index_digest)?;
             true
         } else {
             false
