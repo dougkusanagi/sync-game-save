@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog } from "../Dialog";
-import { api, escolherArquivoExe, escolherPasta, textoDoErro, type Reconhecimento, type SaveCandidate } from "../api";
+import { api, escolherArquivoExe, escolherPasta, textoDoErro, type Reconhecimento, type SaveCandidate, type SaveDescoberto } from "../api";
 
 type Props = { catalogoPronto: boolean; onClose: () => void; onAdicionado: () => void };
 
@@ -20,8 +20,12 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
   const [exe, setExe] = useState<string | null>(null);
   const [itens, setItens] = useState<Item[]>([]);
   const [ocupado, setOcupado] = useState(false);
+  const [descobrindo, setDescobrindo] = useState(false);
+  const descobertaCancelada = useRef(false);
   const [erro, setErro] = useState<string | null>(null);
   const [catalogo, setCatalogo] = useState(catalogoPronto);
+
+  useEffect(() => () => void (descobertaCancelada.current = true), []);
 
   async function escolherJogo() {
     setErro(null);
@@ -101,6 +105,53 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
     if (e) setExe(e);
   }
 
+  /** Abre o jogo, espera fechar e compara as pastas comuns de save. Nada é salvado sozinho. */
+  async function descobrir() {
+    if (!exe || descobrindo) return;
+    setErro(null);
+    setDescobrindo(true);
+    descobertaCancelada.current = false;
+    try {
+      await api.descobrirPastaSave(exe);
+      if (descobertaCancelada.current) return;
+      const c = await api.candidatosSave(exe);
+      if (descobertaCancelada.current) return;
+      if (c.length === 0) {
+        setErro("Nenhum arquivo mudou nas pastas comuns de save. Jogue de novo, salve dentro do jogo e tente mais uma vez.");
+        return;
+      }
+      setItens((atual) => mesclar(atual, c));
+    } catch (e) {
+      if (!descobertaCancelada.current) setErro(textoDoErro(e));
+    } finally {
+      setDescobrindo(false);
+    }
+  }
+
+  function cancelarDescoberta() {
+    descobertaCancelada.current = true;
+    setDescobrindo(false);
+  }
+
+  function mesclar(atual: Item[], c: SaveDescoberto[]): Item[] {
+    const informe = new Map(c.map((x) => [x.logical, x]));
+    const mantidos: Item[] = atual.map((i) => {
+      const d = informe.get(i.logical);
+      informe.delete(i.logical);
+      if (!d) return i;
+      return { ...i, resolved: d.resolved || i.resolved, exists: true, files: Math.max(i.files, d.added + d.removed) };
+    });
+    const novos = [...informe.values()].map((x, idx) => ({
+      logical: x.logical,
+      resolved: x.resolved,
+      exists: true,
+      files: x.added + x.removed,
+      selected: idx === 0,
+      marcado: idx === 0,
+    }));
+    return [...mantidos, ...novos];
+  }
+
   async function adicionar() {
     if (!exe) return;
     setOcupado(true);
@@ -168,19 +219,44 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
           </div>
           <fieldset className="campo">
             <legend>Pastas de save</legend>
-            {itens.length === 0 && <p className="dica">Nenhuma pasta de save conhecida. Use “Adicionar outra pasta de save”.</p>}
-            {itens.map((i) => (
-              <label key={i.logical} className="opcao">
-                <input type="checkbox" data-f checked={i.marcado} onChange={(e) => setItens((l) => l.map((x) => (x.logical === i.logical ? { ...x, marcado: e.target.checked } : x)))} />
-                <span>
-                  <code className="caminho">{i.logical}</code>
-                  <small>{i.exists ? (i.files > 0 ? `Encontrada: ${i.files} arquivo(s)` : "Encontrada") : "Ainda não existe neste PC"}</small>
-                </span>
-              </label>
-            ))}
-            <button type="button" className="btn fraco" data-f onClick={outraPasta}>
-              Adicionar outra pasta de save…
-            </button>
+            {descobrindo ? (
+              <div className="coluna" role="status" aria-live="polite">
+                <p>
+                  Estou comparando as pastas comuns de save antes e depois do jogo. Dentro dele, jogue e salve o progresso uma vez; depois feche o jogo e aguarde.
+                </p>
+                <div className="linha">
+                  <button type="button" className="btn fraco" data-f onClick={cancelarDescoberta}>
+                    Cancelar descoberta
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {itens.length === 0 && <p className="dica">Nenhuma pasta de save conhecida. Use “Adicionar outra pasta de save” ou “Descobrir onde o jogo salva”.</p>}
+                {itens.map((i) => (
+                  <label key={i.logical} className="opcao">
+                    <input type="checkbox" data-f checked={i.marcado} onChange={(e) => setItens((l) => l.map((x) => (x.logical === i.logical ? { ...x, marcado: e.target.checked } : x)))} />
+                    <span>
+                      <code className="caminho">{i.logical}</code>
+                      <small>{i.exists ? (i.files > 0 ? `Encontrada: ${i.files} arquivo(s)` : "Encontrada") : "Ainda não existe neste PC"}</small>
+                    </span>
+                  </label>
+                ))}
+                <button type="button" className="btn fraco" data-f onClick={outraPasta}>
+                  Adicionar outra pasta de save…
+                </button>
+                <button
+                  type="button"
+                  className="btn fraco"
+                  data-f
+                  onClick={descobrir}
+                  disabled={!exe || ocupado}
+                  title={exe ? "Abre o jogo para descobrir onde ele guarda o save" : "Escolha o executável do jogo antes"}
+                >
+                  Descobrir onde o jogo salva…
+                </button>
+              </>
+            )}
           </fieldset>
           {semSave && <p className="dica">Sem uma pasta de save marcada, o jogo abre, mas o save não é sincronizado. Você pode indicar a pasta depois.</p>}
           {erro && (
@@ -192,7 +268,7 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
             <button type="button" className="btn fraco" data-f onClick={onClose}>
               Cancelar
             </button>
-            <button type="submit" className="btn primario" data-f disabled={ocupado || nome.trim() === "" || !exe}>
+            <button type="submit" className="btn primario" data-f disabled={ocupado || descobrindo || nome.trim() === "" || !exe}>
               {ocupado ? "Adicionando…" : "Adicionar jogo"}
             </button>
           </div>

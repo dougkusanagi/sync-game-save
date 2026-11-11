@@ -74,6 +74,18 @@ impl AchievementsView {
     }
 }
 
+/// Uma pasta de save descoberta pela mudança entre a captura e o fim do jogo.
+#[derive(Debug, PartialEq, Eq, Serialize)]
+pub struct DiscoveredSave {
+    /// Pasta com marcador, pronta para entrar como caminho de save do jogo.
+    pub logical: String,
+    /// O caminho real desta pasta neste PC.
+    pub resolved: String,
+    pub added: u64,
+    pub removed: u64,
+    pub bytes: u64,
+}
+
 /// Resultado de conferir a pasta de sync no assistente de primeiro uso.
 #[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct SyncDirCheck {
@@ -645,6 +657,55 @@ impl Service {
         self.registrar_sync_ok();
         let ao_fechar = if created { "Save enviado para a pasta de sincronização." } else { "Save sem mudanças depois de jogar." };
         Ok(Play::Finished { exit_code: code, synced: true, notice: format!("{ao_abrir}{ao_fechar}") })
+    }
+
+    // ---- Descoberta de save por mudança ----
+
+    /// Captura de estado dos saves, guardada por jogo (pelo hash do executável).
+    fn captura_path(&self, exe: &Path) -> PathBuf {
+        self.data_dir.join("discover").join(format!("{}.json", sgs_core::discover::hex_key(&exe.to_string_lossy())))
+    }
+
+    /// Captura o estado das pastas comuns de save, abre o jogo e espera ele fechar.
+    /// Nada é sincronizado: a descoberta só registra o estado e lista os candidatos.
+    pub fn discover_run(&self, exe: &Path, args: &[String], quiet_secs: u64) -> Result<i32> {
+        if !exe.is_file() {
+            return Err(Error::Other("Não encontrei este executável. Confira o caminho e tente de novo.".into()));
+        }
+        let exe_str = exe.to_string_lossy().into_owned();
+        if sgs_core::process::em_execucao(&exe_str).map_err(Error::Other)? {
+            return Err(Error::Other("Este programa já está aberto. Feche-o antes de descobrir onde ele salva.".into()));
+        }
+        let captura = sgs_core::discover::capture(&(self.env)(exe.parent().map(PathBuf::from)));
+        let dir = self.data_dir.join("discover");
+        std::fs::create_dir_all(&dir).map_err(|e| Error::Other(format!("Não consegui preparar a pasta de descoberta: {e}")))?;
+        let json = serde_json::to_vec(&captura).map_err(|e| Error::Other(format!("Não consegui guardar a captura: {e}")))?;
+        std::fs::write(self.captura_path(exe), json).map_err(|e| Error::Other(format!("Não consegui guardar a captura: {e}")))?;
+        let quiet = Duration::from_secs(if quiet_secs == 0 { 5 } else { quiet_secs });
+        sgs_core::process::run(&exe_str, args, None, quiet).map_err(|m| {
+            Error::Other(format!("Não consegui acompanhar o jogo durante a descoberta: {m}. Confira o caminho do executável."))
+        })
+    }
+
+    /// Lista as pastas que mudaram desde a captura, das mais prováveis às menos.
+    /// O usuário confirma ou edita: nada entra na biblioteca sem este passo.
+    pub fn discover_candidates(&self, exe: &Path) -> Result<Vec<DiscoveredSave>> {
+        let bytes = std::fs::read(self.captura_path(exe))
+            .map_err(|_| Error::Other("Não há captura guardada deste jogo. Comece a descoberta de novo.".into()))?;
+        let before: sgs_core::discover::Capture =
+            serde_json::from_slice(&bytes).map_err(|e| Error::Other(format!("A captura guardada não pôde ser lida: {e}. Comece a descoberta de novo.")))?;
+        let env = (self.env)(exe.parent().map(PathBuf::from));
+        Ok(sgs_core::discover::compare(&before, &env)
+            .into_iter()
+            .map(|c| DiscoveredSave {
+                resolved: sgs_core::paths::resolve(&c.logical, &env).map(|p| p.display().to_string()).unwrap_or_default(),
+                logical: c.logical,
+                added: c.added,
+                removed: c.removed,
+                bytes: c.bytes,
+            })
+            .take(12)
+            .collect())
     }
 
     // ---- Versões ----

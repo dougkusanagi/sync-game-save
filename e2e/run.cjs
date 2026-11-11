@@ -293,6 +293,46 @@ teste("tema rapido fica disponivel na barra superior", async (page) => {
   await page.waitForFunction(() => localStorage.getItem("sgs.mock.tema") === "claro");
   await seletor.selectOption("escuro");
 });
+teste("descobrir save: compara as pastas depois do jogo e marca a sugestão", async (page) => {
+  await page.goto(`${BASE}?cenario=vazio`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Escolher pasta do jogo/ }).click();
+  await page.getByText("Reconheci este jogo").waitFor();
+  const dlg = page.getByRole("dialog", { name: "Adicionar jogo" });
+  await dlg.getByRole("button", { name: /Descobrir onde o jogo salva/ }).click();
+  const opcao = dlg.locator("label.opcao", { hasText: "Rogue Legacy/Saves" });
+  await opcao.waitFor();
+  assert.equal(await opcao.locator("input").isChecked(), true, "o candidato mais provável vem marcado para o usuário confirmar");
+  // Confirmar é manual: nada entra na biblioteca sem o clique em Adicionar.
+  await dlg.getByRole("button", { name: "Adicionar jogo", exact: true }).click();
+  await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor();
+});
+
+teste("descobrir save: sem mudanças avisa com o que fazer e mantém o formulário", async (page) => {
+  await page.goto(`${BASE}?cenario=sem-descoberta`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Escolher pasta do jogo/ }).click();
+  await page.getByText("Reconheci este jogo").waitFor();
+  const dlg = page.getByRole("dialog", { name: "Adicionar jogo" });
+  await dlg.getByRole("button", { name: /Descobrir onde o jogo salva/ }).click();
+  await dlg.getByText(/Nenhum arquivo mudou/).waitFor();
+  assert.equal(await dlg.getByRole("button", { name: "Adicionar jogo", exact: true }).isEnabled(), true, "o formulário continua completo");
+  await dlg.getByLabel("Nome do jogo").fill("Nome preservado");
+  assert.equal(await dlg.getByLabel("Nome do jogo").inputValue(), "Nome preservado");
+});
+
+teste("descobrir save: cancelar durante o jogo devolve o formulário", async (page) => {
+  await page.goto(`${BASE}?cenario=descoberta-enrolada`);
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Escolher pasta do jogo/ }).click();
+  await page.getByText("Reconheci este jogo").waitFor();
+  const dlg = page.getByRole("dialog", { name: "Adicionar jogo" });
+  await dlg.getByRole("button", { name: /Descobrir onde o jogo salva/ }).click();
+  await dlg.getByRole("status").getByRole("button", { name: "Cancelar descoberta" }).click();
+  await dlg.getByRole("button", { name: /Descobrir onde o jogo salva/ }).waitFor();
+  assert.equal(await dlg.getByRole("button", { name: "Adicionar jogo", exact: true }).isEnabled(), true, "o formulário volta a funcionar após cancelar");
+});
+
 teste("adicionar jogo aceita selecionar diretamente o executavel", async (page) => {
   await page.goto(`${BASE}?cenario=vazio`);
   await page.getByRole("button", { name: "Adicionar jogo" }).first().click();

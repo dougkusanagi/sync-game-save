@@ -10,6 +10,8 @@ Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) 
 
 As artes de cada jogo (capa, fundo, logo e capa vertical) vêm da Steam CDN. Quando o catálogo não conhece o jogo, o app procura o nome na loja da Steam. Sem arte, o app mostra as iniciais do jogo sobre uma cor. As conquistas da Steam usam a conta da Steam instalada neste PC e o perfil público, sem chave de API; o perfil precisa mostrar os detalhes dos jogos como públicos. Os temas trocam as cores e medidas da interface; o app traz o escuro (padrão) e o claro. Falta o assistente de varredura de pastas.
 
+Na tela de adicionar jogo, quando o catálogo não indica onde o jogo salva, o botão “Descobrir onde o jogo salva” abre o jogo, espera ele fechar e lista as pastas com arquivos novos ou alterados, ignorando caches e logs. O caminho só entra no jogo após a sua confirmação; nada é salvo por conta própria.
+
 No Windows, ao parar um jogo o app pede que ele feche normalmente. Se continuar aberto após 10 segundos, é possível confirmar o fechamento forçado, que pode danificar o save. O sync espera o grupo de processos terminar e verifica se os arquivos pararam de mudar antes de criar uma nova versão.
 
 ## Conquistas do HUB

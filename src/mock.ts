@@ -228,6 +228,19 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "converter_caminho":
       return r(String(args.caminho));
+    case "descobrir_save":
+      if (cenario === "descoberta-enrolada") {
+        // Uma descoberta de verdade só termina quando o usuário fecha o jogo.
+        await new Promise<void>(() => {});
+      }
+      return r(0);
+    case "candidatos_save": {
+      if (cenario === "sem-descoberta") return r([]);
+      return r([
+        { logical: "<winDocuments>/SavedGames/RogueLegacy", resolved: "C:/Users/voce/Documents/SavedGames/RogueLegacy", added: 3, removed: 0, bytes: 2048 },
+        { logical: "<winAppData>/Rogue Legacy/Saves", resolved: "C:/Users/voce/AppData/Roaming/Rogue Legacy/Saves", added: 1, removed: 0, bytes: 128 },
+      ]);
+    }
     case "listar_jogos":
       return r(jogos);
     case "adicionar_jogo": {

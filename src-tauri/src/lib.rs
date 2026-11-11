@@ -106,6 +106,18 @@ async fn converter_caminho(svc: Svc<'_>, caminho: String) -> Result<String, Stri
     blocking(&svc, move |s| Ok(s.logical_path(&PathBuf::from(caminho)))).await
 }
 
+/// Abre o jogo para descobrir onde ele salva (por mudança) e espera fechar.
+#[tauri::command]
+async fn descobrir_save(svc: Svc<'_>, exe: String) -> Result<i32, String> {
+    blocking(&svc, move |s| s.discover_run(&PathBuf::from(exe), &[], 5)).await
+}
+
+/// Pastas que mudaram desde a captura, das mais prováveis às menos.
+#[tauri::command]
+async fn candidatos_save(svc: Svc<'_>, exe: String) -> Result<Vec<sgs_service::DiscoveredSave>, String> {
+    blocking(&svc, move |s| s.discover_candidates(&PathBuf::from(exe))).await
+}
+
 #[tauri::command]
 async fn listar_jogos(svc: Svc<'_>) -> Result<Vec<Game>, String> {
     blocking(&svc, |s| s.games()).await
@@ -354,6 +366,8 @@ pub fn run() {
             reconhecer_pasta,
             varrer_pasta,
             converter_caminho,
+            descobrir_save,
+            candidatos_save,
             listar_jogos,
             adicionar_jogo,
             editar_jogo,

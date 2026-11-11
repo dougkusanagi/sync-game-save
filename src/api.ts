@@ -96,6 +96,9 @@ export type VerificacaoPasta = {
 
 export type SaveCandidate = { logical: string; resolved: string; exists: boolean; files: number; selected: boolean };
 
+/** Pasta descoberta pela mudança entre a captura e o fim do jogo. */
+export type SaveDescoberto = { logical: string; resolved: string; added: number; removed: number; bytes: number };
+
 export type Reconhecimento = {
   name: string;
   catalog_id: number | null;
@@ -128,6 +131,8 @@ export const api = {
   atualizarCatalogo: () => call<number>("atualizar_catalogo"),
   reconhecerPasta: (pasta: string) => call<Reconhecimento>("reconhecer_pasta", { pasta }),
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),
+  descobrirPastaSave: (exe: string) => call<number>("descobrir_save", { exe }),
+  candidatosSave: (exe: string) => call<SaveDescoberto[]>("candidatos_save", { exe }),
   listarJogos: () => call<Game[]>("listar_jogos"),
   adicionarJogo: (jogo: NewGame) => call<number>("adicionar_jogo", { jogo }),
   editarJogo: (id: number, jogo: NewGame) => call<void>("editar_jogo", { id, jogo }),

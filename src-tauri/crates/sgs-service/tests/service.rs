@@ -254,7 +254,21 @@ fn restaurar_versao_antiga_com_backup_e_remover_nao_apaga_saves() {
     let snaps = a.snapshots(ia).unwrap();
     assert_eq!(snaps.len(), 2);
     let oldest = snaps.last().unwrap();
-    let backup = a.restore_snapshot(ia, oldest).unwrap();
+    // Os testes irmãos usam o mesmo executável ("powershell"); enquanto o play
+    // de um deles estiver na janela final de espera, o em_execucao deste teste
+    // também o enxerga. Espera a fila esvaziar em vez de flanquear.
+    let mut backup = None;
+    for _ in 0..200 {
+        match a.restore_snapshot(ia, oldest) {
+            Ok(b) => {
+                backup = Some(b);
+                break;
+            }
+            Err(sgs_service::Error::Other(m)) if m.contains("Feche o jogo") => std::thread::sleep(std::time::Duration::from_millis(100)),
+            Err(e) => panic!("erro inesperado na restauração: {e}"),
+        }
+    }
+    let backup = backup.expect("a restauração deve conseguir prosseguir");
     assert_eq!(read(t.path(), "A", "Jogo/s.sav"), "v1");
     assert!(!walk(&backup).is_empty(), "o save anterior deveria estar em backup");
     assert!(a.interrupted_operations().is_empty());

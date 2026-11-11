@@ -581,12 +581,13 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 - Implementar fechamento normal da janela do jogo no Windows; acompanhar o grupo durante a espera. Só disponibilizar encerramento forçado após o prazo e confirmação com aviso sobre saves. Manter a interface responsiva, evitar pedidos duplicados e tratar jogo já encerrado.
 - Concluído quando: testes cobrem fechamento normal, jogo que ignora fechamento, confirmação/cancelamento e sync somente após o grupo terminar. Verificar diálogo e foco por E2E e capturas mobile/desktop.
 
-### 3. Descobrir saves por mudança
+### 3. Descobrir saves por mudança — concluído (2026-11-11)
 
 - Estado: catálogo e seleção manual existem; não há fluxo de captura antes/depois.
 - Implementar comparação de arquivos nas pastas definidas na seção “Onde encontrar o save”, com exclusão de caches/logs e erros de acesso tratados. Executar fora da thread da interface. Reutilizar resolução de caminhos lógicos; não sincronizar candidatos automaticamente.
 - Expor pelo serviço e Tauri; adicionar ação em `AddGame.tsx`: registrar estado inicial, abrir jogo, aguardar fechamento, listar candidatos com evidência e permitir confirmar/editar. Não salvar caminhos sem confirmação; preservar o formulário em falhas.
 - Concluído quando: testes com diretórios temporários cobrem novos/alterados/inalterados, acesso negado e exclusões; E2E cobre confirmação e cancelamento; inspeção mobile/desktop aprovada.
+- Resultado: núcleo em `sgs-core/src/discover.rs` (captura/comparação por raízes com profundidade, filtro de ruído, caminhos lógicos com marcadores), serviço `discover_run`/`discover_candidates`, comandos Tauri `descobrir_save`/`candidatos_save` e painel em `AddGame.tsx` com cancelamento e confirmação manual. 8 testes do núcleo, teste do serviço com falso jogo, 3 testes E2E novos (25/25) e capturas 390×844/1280×720 aprovadas. Flake de `service.rs` irmãos com `ATIVOS` compartilhado tratado por retry no teste. Pendente da descrição original: exibir tamanho dos candidatos (evidência mostra contagem de arquivos; `DiscoveredSave.bytes` já carrega o dado no serviço).
 
 ### 4. Busca, filtros e ordenação da biblioteca
 
@@ -616,7 +617,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Implementar o item 1: Job Object no acompanhamento Windows, começando por `sgs-core/src/process.rs` e seus testes de launcher. Depois seguir o item 2. Steam Deck fica fora desta sequência até definição de escopo; essa dúvida não bloqueia Windows/Linux desktop.
+Implementar o item 4: busca, filtros e ordenação da biblioteca (`src/screens/Biblioteca.tsx`). Itens 1–3 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em 2026-11-11).
 
 ### Acompanhamento de processos no Windows
 
