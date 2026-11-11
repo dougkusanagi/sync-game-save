@@ -9,7 +9,7 @@ import { voltar } from "./voltar";
 import { som } from "./som";
 import { acharTema, aplicarTema } from "./temas";
 import { AddGame } from "./screens/AddGame";
-import { Biblioteca, type EstadoCard } from "./screens/Biblioteca";
+import { Biblioteca, type EstadoCard, type FiltroLib, type OrdemLib } from "./screens/Biblioteca";
 import { Conquistas } from "./screens/Conquistas";
 import { ConquistasHub } from "./screens/ConquistasHub";
 import { Conflito, Configuracoes, EditarJogo, Opcoes, PararJogo, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
@@ -50,6 +50,11 @@ export default function App() {
   const [agora, setAgora] = useState(() => new Date());
   const [tela, setTela] = useState<"inicio" | "biblioteca">("inicio");
   const [secao, setSecao] = useState(0);
+  // Busca, filtro e ordenação da Biblioteca ficam aqui para continuarem quando
+  // o usuário vai ao Início e volta (ou abre e fecha um diálogo).
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<FiltroLib>("todos");
+  const [ordem, setOrdem] = useState<OrdemLib>("nome");
   const [dispositivo, setDispositivo] = useState<"keyboard" | "xbox" | "ps">("keyboard");
   // Sem escolha (ou com a escolhida removida), o destaque é o primeiro jogo da seção do Início.
   const destaque = escolhido ?? jogosDaSecao(secao, jogos)[0] ?? null;
@@ -226,6 +231,25 @@ export default function App() {
       case "addGame":
         abrir({ tipo: "adicionar" });
         break;
+      case "search":
+        if (tela === "biblioteca") {
+          window.requestAnimationFrame(() => {
+            const campo = raiz.current?.querySelector<HTMLInputElement>("input[aria-label='Buscar jogo pelo nome']");
+            if (campo) focus.focus(campo);
+          });
+        }
+        break;
+      case "filter":
+        if (tela === "biblioteca") {
+          window.requestAnimationFrame(() => {
+            const grupo = raiz.current?.querySelector<HTMLElement>("[data-group='lib-tools']");
+            if (grupo) {
+              const chip = grupo.querySelector<HTMLElement>("[data-libtab='todos']") ?? focus.focusables(grupo)[0];
+              if (chip) focus.focus(chip);
+            }
+          });
+        }
+        break;
       case "settings":
         abrir({ tipo: "config" });
         break;
@@ -306,7 +330,7 @@ export default function App() {
       ? [["addGame", "Adicionar jogo"]]
       : tela === "inicio"
       ? [["confirm", "Jogar"], ["options", "Opções"], ["details", "Versões"], ["nextTab", "Seção"], ["library", "Biblioteca"]]
-      : [["confirm", "Abrir"], ["options", "Opções"], ["details", "Versões"], ["back", "Início"]];
+      : [["confirm", "Abrir"], ["options", "Opções"], ["details", "Versões"], ["search", "Buscar"], ["filter", "Filtros"], ["back", "Início"]];
   const irPara = (t: "inicio" | "biblioteca") => acoes.current(t === "inicio" ? "home" : "library");
 
   return (
@@ -418,6 +442,12 @@ export default function App() {
             key={String(estado.steamgriddb_configurada)}
             jogos={jogos}
             estados={cards}
+            busca={busca}
+            filtro={filtro}
+            ordem={ordem}
+            onBusca={setBusca}
+            onFiltro={setFiltro}
+            onOrdem={setOrdem}
             onAbrir={(j) => abrir({ tipo: "opcoes", jogo: j })}
             onDestacar={setDestaque}
             onAdicionar={() => abrir({ tipo: "adicionar" })}

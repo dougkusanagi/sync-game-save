@@ -180,7 +180,9 @@ let jogos: Game[] =
           jogo(3, "Celeste", { playtime_secs: 25200, last_sync_at: Math.floor(Date.now() / 1000) - 86400 }),
           jogo(4, "Hades", { playtime_secs: 61200 }),
           jogo(5, "Animal Well", { playtime_secs: 78700, last_played_at: Math.floor(Date.now() / 1000) - 600 }),
-          jogo(6, "Sea of Stars", { playtime_secs: 57600, last_sync_at: null }),
+          // Sea of Stars foi adicionado e nunca aberto pelo app: fica sem sync
+          // e nunca jogado, para exercitar os filtros da biblioteca.
+          jogo(6, "Sea of Stars", { playtime_secs: 0, last_sync_at: null, last_played_at: null }),
         ]
       : [
         jogo(1, "Rogue Legacy", { playtime_secs: 41000 }),

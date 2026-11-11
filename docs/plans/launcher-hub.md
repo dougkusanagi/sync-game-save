@@ -589,11 +589,12 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 - Concluído quando: testes com diretórios temporários cobrem novos/alterados/inalterados, acesso negado e exclusões; E2E cobre confirmação e cancelamento; inspeção mobile/desktop aprovada.
 - Resultado: núcleo em `sgs-core/src/discover.rs` (captura/comparação por raízes com profundidade, filtro de ruído, caminhos lógicos com marcadores), serviço `discover_run`/`discover_candidates`, comandos Tauri `descobrir_save`/`candidatos_save` e painel em `AddGame.tsx` com cancelamento e confirmação manual. 8 testes do núcleo, teste do serviço com falso jogo, 3 testes E2E novos (25/25) e capturas 390×844/1280×720 aprovadas. Flake de `service.rs` irmãos com `ATIVOS` compartilhado tratado por retry no teste. Pendente da descrição original: exibir tamanho dos candidatos (evidência mostra contagem de arquivos; `DiscoveredSave.bytes` já carrega o dado no serviço).
 
-### 4. Busca, filtros e ordenação da biblioteca
+### 4. Busca, filtros e ordenação da biblioteca — concluído (2026-11-11)
 
 - Estado: `src/screens/Biblioteca.tsx` mostra grade ordenada por nome; faltam controles de busca/filtros.
 - Implementar busca por nome e filtros que os dados atuais permitem, com ordenação e estados vazios distintos. Conferir modelo em `src/api.ts` e `sgs-library` antes de prometer favoritos/ocultos; esses campos exigem persistência e migração se ainda não existirem.
 - Preservar consulta/filtros ao abrir e voltar; integrar foco e atalhos em `src/nav/`. E2E deve cobrir resultados, limpar filtros e retorno com contexto; inspecionar mobile/desktop e atualizar miniatura se a tela principal mudar.
+- Resultado: busca por nome sem acentos, filtros Todos/Sincronizados/Sem sincronização/Nunca jogados (campos já existentes em `Game`; favoritos/ocultos continuam fora, pois não há persistência) e ordenação por nome, jogado recentemente e tempo de jogo. Estado vazio próprio ("Nenhum jogo com estes filtros" + Limpar filtros) e contagem "N de M jogos". Busca/filtro/ordem ficam no `App.tsx` para sobreviver a Início↔Biblioteca e diálogos. Atalhos `/` (search) e `F` (filter) ligados em `App.tsx`/legenda; nova semente no cenário preview (Sea of Stars nunca jogado). 2 testes E2E novos (27/27); capturas 1280×720 e 390×844 sem rolagem horizontal (chips rolam dentro da própria linha no celular).
 
 ### 5. Varredura em lote, menu e central rápida
 
@@ -617,7 +618,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Implementar o item 4: busca, filtros e ordenação da biblioteca (`src/screens/Biblioteca.tsx`). Itens 1–3 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em 2026-11-11).
+Implementar o item 5: varredura em lote, menu e central rápida. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
 
 ### Acompanhamento de processos no Windows
 

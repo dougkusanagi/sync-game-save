@@ -6,7 +6,7 @@ Launcher/HUB de jogos para PC que sincroniza o save com uma pasta de nuvem (OneD
 
 ## Estado
 
-Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). Estão prontos o núcleo de sync em Rust (`sgs-core`), o catálogo (`sgs-catalog`), a biblioteca local (`sgs-library`), o serviço (`sgs-service`), a CLI `sgs` e as telas: primeiro uso, Início (arte do jogo em destaque e faixa de jogos por seção), Biblioteca em grade de capas, adicionar jogo, conquistas do jogo e do HUB, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
+Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). Estão prontos o núcleo de sync em Rust (`sgs-core`), o catálogo (`sgs-catalog`), a biblioteca local (`sgs-library`), o serviço (`sgs-service`), a CLI `sgs` e as telas: primeiro uso, Início (arte do jogo em destaque e faixa de jogos por seção), Biblioteca em grade de capas com busca, filtros e ordenação, adicionar jogo, conquistas do jogo e do HUB, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
 
 As artes de cada jogo (capa, fundo, logo e capa vertical) vêm da Steam CDN. Quando o catálogo não conhece o jogo, o app procura o nome na loja da Steam. Sem arte, o app mostra as iniciais do jogo sobre uma cor. As conquistas da Steam usam a conta da Steam instalada neste PC e o perfil público, sem chave de API; o perfil precisa mostrar os detalhes dos jogos como públicos. Os temas trocam as cores e medidas da interface; o app traz o escuro (padrão) e o claro. Falta o assistente de varredura de pastas.
 

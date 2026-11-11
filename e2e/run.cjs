@@ -342,6 +342,43 @@ teste("adicionar jogo aceita selecionar diretamente o executavel", async (page) 
   await page.getByRole("dialog", { name: "Adicionar jogo" }).getByRole("button", { name: "Adicionar jogo", exact: true }).click();
   await page.getByRole("button", { name: /^Rogue Legacy/ }).waitFor();
 });
+teste("biblioteca: busca acha mesmo com acento e filtro sem resultado limpa", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.waitForSelector(".cap");
+  await page.keyboard.press("l");
+  await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
+  assert.equal(await page.locator(".card").count(), 4);
+  await page.getByLabel("Buscar jogo pelo nome").fill("céleste");
+  assert.equal(await page.locator(".card").count(), 1, "a busca sem acento acha o jogo");
+  await page.getByRole("button", { name: "Sincronizados" }).click();
+  await page.getByRole("heading", { name: "Nenhum jogo com estes filtros" }).waitFor();
+  assert.ok(await page.getByRole("button", { name: "Limpar filtros" }).isVisible());
+  await page.getByRole("button", { name: "Limpar filtros" }).click();
+  assert.equal(await page.locator(".card").count(), 4, "limpar filtros devolve todos os jogos");
+  assert.equal(await page.getByLabel("Buscar jogo pelo nome").inputValue(), "");
+  await page.getByText("4 jogos", { exact: true }).waitFor();
+});
+
+teste("biblioteca: filtros contam, ordena e devolve os filtros ao voltar", async (page) => {
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.waitForSelector(".cap");
+  await page.keyboard.press("l");
+  await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
+  await page.getByRole("button", { name: "Sem sincronização" }).click();
+  await page.getByText("1 de 4 jogos").waitFor();
+  assert.equal(await page.locator(".card-name").first().textContent(), "Celeste");
+  await page.getByRole("button", { name: "Todos" }).click();
+  await page.getByLabel("Ordenar por").selectOption({ label: "Mais tempo de jogo" });
+  assert.equal(await page.locator(".card-name").first().textContent(), "Rogue Legacy");
+  await page.getByRole("button", { name: "Sem sincronização" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByRole("heading", { name: "Jogados recentemente" }).waitFor();
+  await page.keyboard.press("l");
+  await page.getByRole("heading", { name: "Biblioteca" }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Sem sincronização" }).getAttribute("aria-pressed"), "true", "o filtro continua marcado ao voltar");
+  assert.equal(await page.locator(".card").count(), 1);
+});
+
 teste("editar jogo salva nome e caminhos de save", async (page) => {
   await page.goto(`${BASE}?cenario=jogos`);
   await page.getByRole("button", { name: /^Rogue Legacy/ }).hover();
