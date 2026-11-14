@@ -77,6 +77,21 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
   - Release: o Go não tem etapa de LTO; ~2,5 min de compilação contra ~32 min do `cargo build --release`. Ganho claro.
   - Debug incremental: 22 s no Go contra 13 s no Rust. **Pior**, porque o pacote `mygo` é grande e cada build refaz o link. A PoC ainda não tem o núcleo portado; o código do app deve pesar pouco nesse tempo, mas isso só se confirma no passo 2.
   - Pendente: conferir a bandeja, `capa://` e o binding com a interface aberta.
+- [x] Comparação com Wails v3.1.0 (2026-11-14): a mesma PoC (janela, binding, evento, bandeja, fechar para a bandeja, `/capa/` por middleware do servidor de assets), feita fora do repositório a partir de `wails3 init -t react` com o frontend do projeto. O executável abre e cria a pasta `art`. Uma rodada, cache do Go isolado:
+
+  | | Tauri (Rust) | MyGo 0.9.0 | Wails 3.1.0 |
+  |---|---|---|---|
+  | Espaço do build | 4,8–7,8 GB | 262 MB | 134 MB |
+  | Compilação Go/Rust do zero | 225 s (debug) | 148 s | 167 s |
+  | Incremental só do compilador | 13 s | 22 s | 21 s |
+  | Build completo do CLI do framework, incremental | — | 74 s (`mygo build -skip-installer`) | 99 s (`wails3 build`, refaz bindings e frontend) |
+  | Build completo do zero | — | 381 s (com 1ª geração de bindings e download do NSIS) | 346 s |
+  | Release | ~32 min (LTO) | ~2,5 min | já incluso no `wails3 build` (`-ldflags "-w -s"`) |
+  | Executável | 10,1 MB | 10,4 MB | 10,7 MB |
+  | Instalador NSIS | não medido | 3,5 MB (NSIS baixado pelo CLI) | 6,1 MB (inclui o instalador do WebView2; NSIS precisa estar instalado; `wails3 package` 61 s) |
+  | Instalar o CLI | — | < 1 min | > 10 min |
+
+  Em espaço e tempo, MyGo e Wails ficam no mesmo patamar; a escolha entre os dois depende de maturidade (Wails: 37 mil estrelas, v3 estável; MyGo: 6 mil, 0.x), mobile (Wails: experimental; MyGo: nenhum), AppImage (Wails: sim; MyGo: não) e cgo no Linux.
 
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
