@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=Sync Game Save
+Comment=Launcher de jogos com sincronização segura de saves
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/sync-game-save %u
+Terminal=false
+Type=Application
+Icon=sync-game-save
+Categories=Utility;
+StartupWMClass=sync-game-save
+
+ 

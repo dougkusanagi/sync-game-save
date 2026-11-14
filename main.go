@@ -1,96 +1,84 @@
-// Prova de conceito do app em MyGo (passo 1 de docs/plans/migracao-mygo.md).
-// Convive com src-tauri/ até a migração terminar.
 package main
 
 import (
-	_ "embed"
+	"embed"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/egoist/mygo"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-const versao = "1.0.0"
+//go:embed all:dist
+var assets embed.FS
 
-//go:embed resources/tray.png
+//go:embed build/tray.png
 var iconeBandeja []byte
 
-// App reúne os comandos que a interface chama.
 type App struct{}
 
-// Versao devolve a versão do app.
-func (App) Versao() string { return versao }
+func (App) Versao() string { return "1.0.0" }
 
-// JogoEstado avisa a interface quando um jogo abre ou fecha.
 type JogoEstado struct {
 	ID     int64  `json:"id"`
 	Estado string `json:"estado"`
 }
 
-var EventoJogoEstado = mygo.NewEvent[JogoEstado]("jogo-estado")
+func init() { application.RegisterEvent[JogoEstado]("jogo-estado") }
 
-// pastaDados é a mesma pasta usada pelo Tauri (app_data_dir com o identificador do app).
-func pastaDados() (string, error) {
+func pastaDados() string {
 	if d := os.Getenv("SGS_DATA_DIR"); d != "" {
-		return d, nil
+		return d
 	}
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "com.syncgamesave.app"), nil
+	base, _ := os.UserConfigDir()
+	return filepath.Join(base, "com.syncgamesave.app")
 }
 
 func main() {
-	dados, err := pastaDados()
-	if err != nil {
-		log.Fatal(err)
-	}
-	arte := filepath.Join(dados, "art")
+	arte := filepath.Join(pastaDados(), "art")
 	_ = os.MkdirAll(arte, 0o755)
-	// A interface só lê as artes baixadas (capa://localhost/<arquivo>), não o resto dos dados.
-	if err := mygo.Protocol.Handle("capa", http.FileServer(http.Dir(arte))); err != nil {
-		log.Fatal(err)
-	}
-
-	mygo.Bind(App{})
+	capas := http.StripPrefix("/capa/", http.FileServer(http.Dir(arte)))
 
 	var saindo bool
-	mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { saindo = true })
-
-	mygo.App.WhenReady(func() {
-		win := mygo.NewWindow(mygo.WindowOptions{
-			Title:    "Sync Game Save",
-			Width:    1280,
-			Height:   720,
-			StateKey: "principal",
-			URL:      "/",
-		})
-		// Fechar a janela esconde o app na bandeja; sair só pelo menu da bandeja.
-		win.OnClose(func(e *mygo.CloseEvent) {
-			if !saindo {
-				e.PreventDefault()
-				win.Hide()
-			}
-		})
-		tray, err := mygo.NewTray(mygo.TrayOptions{
-			Icon:    iconeBandeja,
-			ToolTip: "Sync Game Save",
-			Menu: mygo.NewMenu([]*mygo.MenuItem{
-				{Label: "Abrir", Click: func(*mygo.MenuItem, *mygo.Window) { win.Show() }},
-				mygo.Separator(),
-				{Label: "Sair", Role: mygo.RoleQuit},
-			}),
-		})
-		if err != nil {
-			log.Println("bandeja:", err)
-			return
-		}
-		_ = tray
+	app := application.New(application.Options{
+		Name:     "Sync Game Save",
+		Services: []application.Service{application.NewService(&App{})},
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+			// A interface só lê as artes baixadas (/capa/<arquivo>), não o resto dos dados.
+			Middleware: func(next http.Handler) http.Handler {
+				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if strings.HasPrefix(r.URL.Path, "/capa/") {
+						capas.ServeHTTP(w, r)
+						return
+					}
+					next.ServeHTTP(w, r)
+				})
+			},
+		},
+		OnShutdown: func() { saindo = true },
 	})
-	if err := mygo.App.Run(); err != nil {
+
+	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: "Sync Game Save", Width: 1280, Height: 720, URL: "/",
+	})
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		if !saindo {
+			e.Cancel()
+			win.Hide()
+		}
+	})
+
+	menu := app.NewMenu()
+	menu.Add("Abrir").OnClick(func(*application.Context) { win.Show() })
+	menu.AddSeparator()
+	menu.Add("Sair").OnClick(func(*application.Context) { saindo = true; app.Quit() })
+	app.SystemTray.New().SetIcon(iconeBandeja).SetMenu(menu).OnClick(func() { win.Show() })
+
+	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

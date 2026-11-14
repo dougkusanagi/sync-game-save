@@ -4,6 +4,8 @@ out
 .DS_Store
 *.log*
 target
-build
-.mygo
-.mygo-medida
+bin
+bindings
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+*.syso
+.task
