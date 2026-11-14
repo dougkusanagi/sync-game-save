@@ -70,6 +70,9 @@ func RunProcess(prog string, args []string, cwd string, quiet, every time.Durati
 		}
 		if !finished || tracked || active {
 			_ = control.takeRequest(func() error { return group.requestClose() }, time.Now)
+			if control.takeForce() {
+				control.completeForce(group.forceStop())
+			}
 			gone = time.Time{}
 		} else if gone.IsZero() {
 			control.finish()

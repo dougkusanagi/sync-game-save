@@ -19,6 +19,20 @@ Restrições:
 
 Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e passa; `bun run e2e` e o E2E do app real passam no Windows; o instalador NSIS atualiza uma instalação v1.x sem perder dados; as medições de espaço e tempo estão registradas neste plano.
 
+## Progressão por etapa
+
+- [ ] **0. Medir a base:** medição do Tauri concluída; falta o tamanho do instalador.
+- [ ] **1. Prova de conceito:** framework escolhido e builds feitos; falta a conferência visual.
+- [ ] **2. Núcleo:** caminhos, diário, índice, trava, snapshots, sincronização e descoberta portados; processos e testes de paridade em andamento.
+  - [x] Acompanhamento do processo e seus descendentes, registro de execuções e heartbeat.
+  - [x] Pedido de fechamento e fechamento forçado dos processos no Job Object do Windows, com teste de executável temporário para a força.
+  - [ ] Fechamento de processos rastreados fora do Job; teste de janela real; força no Linux; integração ao engine e paridade dos testes.
+- [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
+- [ ] **4. CLI:** porte pendente.
+- [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
+- [ ] **6. Frontend:** ponte Wails e testes E2E pendentes.
+- [ ] **7. Distribuição e atualização:** instaladores e atualização a partir da v1 pendentes.
+- [ ] **8. Remoção do Tauri e documentação:** pendentes após validar a paridade.
 ## Estado atual (2026-11-14)
 
 - ~5.240 linhas de Rust em 7 crates (`src-tauri/`):
@@ -95,7 +109,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 - [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
 - [x] Ambiente e descoberta portados: marcadores locais, Documentos redirecionada, captura e comparação das pastas de save, exclusão de ruído e agrupamento por jogo. Testes locais no Windows e Linux; ainda sem integração com o aplicativo.
 - [x] Registro das execuções ativas ligado ao acompanhamento, incluindo o intervalo de espera e execuções simultâneas do mesmo programa; testes verificam registro e remoção.
-- [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. Ainda faltam fechamento de processos rastreados fora do Job, teste com janela real e integração da parada forçada. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
+- [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. A parada forçada foi integrada no Windows ao Job Object, após dez segundos, com teste de processo temporário. Ainda faltam fechamento de processos rastreados fora do Job, teste com janela real e parada forçada no Linux. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
 - [ ] Porte parcial de processos: rastreador de descendentes, PID reutilizado e executáveis relançados; listagem pelo ToolHelp no Windows e `/proc` no Linux; abertura com associação prévia ao Job Object, espera do grupo e heartbeat. Testes locais cobrem launcher e descendente. Faltam pedidos de fechamento normal e forçado, demais testes de integração e ligação com o engine.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
@@ -167,4 +181,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Completar o fechamento normal para processos rastreados fora do Job, testar uma janela real e integrar a parada forçada com testes isolados em executáveis temporários; completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Completar o fechamento normal e forçado para processos rastreados fora do Job, testar uma janela real e implementar parada forçada no Linux; completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

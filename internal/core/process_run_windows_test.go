@@ -64,3 +64,56 @@ func TestRunProcessAguardaDescendente(t *testing.T) {
 		t.Fatal("descendente ainda não terminou", err)
 	}
 }
+
+func TestForceStopProcessEncerraGrupoTemporario(t *testing.T) {
+	t.Setenv("SGS_PROCESS_TEST_HELPER", "1")
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	game := filepath.Join(dir, "jogo.exe")
+	if err := os.WriteFile(game, data, 0755); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := RunProcess(game, []string{"-test.run=^TestProcessHelper$", "--", "5000"}, "", 100*time.Millisecond, time.Hour, nil)
+		done <- err
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	var control *stopControl
+	for control == nil {
+		activeProcesses.Lock()
+		if items := activeProcesses.items[game]; len(items) > 0 {
+			control = items[0]
+		}
+		activeProcesses.Unlock()
+		if time.Now().After(deadline) {
+			t.Fatal("jogo não iniciou")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if ok, err := ForceStopProcess(game); ok || err == nil {
+		t.Fatal("força aceita antes do pedido normal", ok, err)
+	}
+	// O relógio é antecipado para testar o prazo sem encerrar outros processos.
+	control.mu.Lock()
+	control.sent = time.Now().Add(-11 * time.Second)
+	control.mu.Unlock()
+	if ok, err := ForceStopProcess(game); !ok || err != nil {
+		t.Fatal(ok, err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(4 * time.Second):
+		t.Fatal("grupo não terminou")
+	}
+}

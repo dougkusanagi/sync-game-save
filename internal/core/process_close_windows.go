@@ -54,3 +54,11 @@ func (j *processJob) requestClose() error {
 	}
 	return ctx.err
 }
+
+func forceStopAvailable() error { return nil }
+func (j *processJob) forceStop() error {
+	if err := j.terminate(); err != nil {
+		return fmt.Errorf("não foi possível forçar o fechamento do jogo: %w", err)
+	}
+	return nil
+}
