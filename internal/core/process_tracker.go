@@ -27,7 +27,7 @@ func processPath(path string) string {
 }
 func NewProcessTracker(root uint32, dir string) *ProcessTracker {
 	normalized := processPath(dir)
-	if strings.Count(normalized, "/") < 2 {
+	if strings.Count(normalized, "/") < 2 || protectedProcessDirectory(normalized) {
 		normalized = ""
 	}
 	return &ProcessTracker{pids: map[uint32]struct{}{root: {}}, starts: map[uint32]uint64{}, dir: normalized}

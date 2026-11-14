@@ -153,6 +153,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Tentativas que falharam
 
+- O teste de parada usou `PING.EXE` diretamente em `System32`. Como o rastreador inclui executáveis na pasta do jogo, o fechamento normal e o forçado podiam atingir processos do sistema. A integração de parada e seu teste foram removidos antes de commit; o rastreador passou a excluir a inclusão por pasta dentro de `SystemRoot`, com regressão sem encerrar processos. Na inspeção de 14/11/2026 às 17:26, o Explorer tinha iniciado às 17:23:58 e o boot do Windows era de 16:56:03; os registros consultados não identificaram quais processos o teste atingiu. A parada exige nova implementação e revisão antes de uso.
 - `wails3 init -t react-ts`: falha com "invalid remote git URL". O modelo `react-ts` não existe na v3.1; o nome certo é `react` (lista em `wails3 init -l`).
 - Remover `build/darwin`: a tarefa de ícones do Wails grava nela, e o build falha.
 
