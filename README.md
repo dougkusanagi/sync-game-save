@@ -71,6 +71,7 @@ bun install
 bun run tauri dev          # app Tauri + React
 cd src-tauri && cargo test --workspace   # núcleo, catálogo, biblioteca, serviço e CLI
 bun run e2e                # testes E2E da interface (dados simulados)
+bun run e2e:wails          # Windows: smoke do WebView Wails real durante a migração
 (cd src-tauri && cargo build) && bun run e2e:app   # abre o app real e confere o fluxo (Windows)
 ```
 

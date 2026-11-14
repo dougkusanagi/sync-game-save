@@ -45,6 +45,7 @@ func main() {
 	var saindo bool
 	app := application.New(application.Options{
 		Name:     "Sync Game Save",
+		Windows:  opcoesWindowsTeste(),
 		Services: []application.Service{application.NewService(&App{})},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),

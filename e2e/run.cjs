@@ -265,7 +265,8 @@ teste("Wails em migração não apresenta dados simulados como biblioteca real",
   const chamadas = [];
   await page.route("**/wails/runtime", async (route) => {
     chamadas.push(route.request().postDataJSON());
-    await route.fulfill({ json: "C:/Jogos/Teste" });
+    const chamada = route.request().postDataJSON();
+    await route.fulfill({ json: chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste" });
   });
   const resultado = await page.evaluate(async () => {
     const ponte = await import("/src/api.ts");
@@ -275,12 +276,13 @@ teste("Wails em migração não apresenta dados simulados como biblioteca real",
     cancelar();
     window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "salvando" } });
     const atualizacao = await ponte.verificarAtualizacao().then(() => "sem erro", (e) => e.message);
-    return { eventos, pasta: await ponte.escolherPasta("Escolher pasta"), atualizacao };
+    return { eventos, pasta: await ponte.escolherPasta("Escolher pasta"), sobre: await ponte.api.sobre(), atualizacao };
   });
   assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
   assert.equal(resultado.pasta, "C:/Jogos/Teste");
   assert.equal(resultado.atualizacao, "A atualização ainda não está disponível nesta versão.");
-  assert.equal(chamadas.length, 1);
+  assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.0.0", build: "" });
+  assert.equal(chamadas.length, 2);
   assert.equal(chamadas[0].args.CanChooseDirectories, true);
   assert.equal(chamadas[0].args.CanChooseFiles, false);
 });

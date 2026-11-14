@@ -152,15 +152,18 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ### 6. Frontend
 
-- [x] Distinguir Wails, Tauri e navegador simulado; Wails sem os serviços não apresenta dados fictícios como biblioteca real.
+- [x] Distinguir Wails, Tauri e navegador simulado, inclusive antes da configuração do runtime; teste no WebView real confirma que Wails sem os serviços não apresenta dados fictícios.
 - [x] Usar os diálogos nativos do Wails para selecionar pasta e executável, preservando a ponte Tauri durante o porte.
 - [x] Preparar inscrição e cancelamento dos eventos `jogo-estado` e `controle-acao` pelo runtime Wails; a emissão de controle no Go ainda falta.
 - [x] Converter caminhos locais de arte para `/capa/<arquivo>` no Wails, com teste de codificação e nomes inválidos; preservar a conversão Tauri e o mock.
 - [x] Executar os 27 cenários E2E mock existentes; regressão adicional valida a identificação Wails simulada. Layout de indisponibilidade verificado em 390 e 1280 px.
-- [ ] Integrar os 28 comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
+- [x] Integrar a versão da tela Sobre ao binding real `App.Versao`; teste de runtime real e regressão da ponte passaram.
+- [ ] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
 - [ ] Integrar o atualizador Wails quando o provedor e a ponte de atualização estiverem definidos na etapa 7.
 - [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
-- [ ] Adaptar e executar `e2e/app-real.cjs` com o aplicativo Go e os serviços reais. O build Go passou, mas a porta de depuração WebView2 não abriu no teste de 14/11/2026; `wails3 build` parou após gerar os bindings e foi interrompido.
+- [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`.
+- [ ] Adaptar e executar os fluxos completos de `e2e/app-real.cjs` com os serviços Go reais.
+
 ### 7. Distribuição e atualização
 
 - [ ] Windows: NSIS do Wails (`build/windows/nsis/project.nsi`). Mesmo nome de produto e instalação por usuário, como o NSIS atual; conferir se o caminho de instalação muda e se os dados em `AppData` continuam no mesmo lugar. Definir como obter o `makensis` (instalar o NSIS na máquina de build).
@@ -189,6 +192,9 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - O teste de parada usou `PING.EXE` diretamente em `System32`. Como o rastreador inclui executáveis na pasta do jogo, o fechamento normal e o forçado podiam atingir processos do sistema. A integração de parada e seu teste foram removidos antes de commit; o rastreador passou a excluir a inclusão por pasta dentro de `SystemRoot`, com regressão sem encerrar processos. Na inspeção de 14/11/2026 às 17:26, o Explorer tinha iniciado às 17:23:58 e o boot do Windows era de 16:56:03; os registros consultados não identificaram quais processos o teste atingiu. A parada exige nova implementação e revisão antes de uso.
 - `wails3 init -t react-ts`: falha com "invalid remote git URL". O modelo `react-ts` não existe na v3.1; o nome certo é `react` (lista em `wails3 init -l`).
 - Remover `build/darwin`: a tarefa de ícones do Wails grava nela, e o build falha.
+
+- A variável WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS é limpa pelo carregador do Wails; WindowsOptions.AdditionalBrowserArgs, em build tag exclusiva de teste, abriu a porta CDP e permitiu o teste real.
+- Rodar go test ao mesmo tempo que un run build causou erro temporário ao limpar dist, usado pelo go:embed. Os comandos passaram em sequência.
 
 ## Dúvidas abertas
 

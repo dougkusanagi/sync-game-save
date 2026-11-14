@@ -115,9 +115,14 @@ export type ResultadoJogar =
 
 export type OpcoesJogar = { forcar?: boolean; conflito?: "local" | "nuvem"; sem_sincronizar?: boolean };
 
-/** O Wails injeta a configuração do ambiente antes de carregar a página. */
-export const emWails = typeof window !== "undefined" && !!(window as Window & { _wails?: { environment?: unknown } })._wails?.environment;
+/** O WebView nativo pode estar disponível antes da configuração do runtime Wails. */
 export const noTauri = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
+const janelaNativa = typeof window === "undefined" ? undefined : window as Window & {
+  _wails?: { environment?: unknown };
+  chrome?: { webview?: unknown };
+  webkit?: { messageHandlers?: { external?: unknown } };
+};
+export const emWails = noTauri && !!(janelaNativa?._wails?.environment || janelaNativa?.chrome?.webview || janelaNativa?.webkit?.messageHandlers?.external);
 const emMock = noTauri && !emWails;
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -125,7 +130,14 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   return emMock ? mock<T>(cmd, args) : invoke<T>(cmd, args);
 }
 export const api = {
-  sobre: () => call<{ nome: string; versao: string; build: string }>("sobre"),
+  sobre: async () => {
+    if (emWails) {
+      const { Call } = await import("@wailsio/runtime");
+      const versao = await Call.ByName("main.App.Versao") as string;
+      return { nome: "Sync Game Save", versao, build: "" };
+    }
+    return call<{ nome: string; versao: string; build: string }>("sobre");
+  },
   estado: () => call<Estado>("estado"),
   verificarPastaSync: (pasta: string) => call<VerificacaoPasta>("verificar_pasta_sync", { pasta }),
   definirPastaSync: (pasta: string) => call<VerificacaoPasta>("definir_pasta_sync", { pasta }),
