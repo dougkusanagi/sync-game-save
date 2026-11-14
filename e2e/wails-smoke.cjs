@@ -53,12 +53,16 @@ async function aguardarDepurador(url, app) {
         const cancelar = runtime.Events.On("jogo-estado", (e) => { clearTimeout(timeout); cancelar(); resolve(e.data); });
         runtime.Events.Emit("jogo-estado", { id: 17, estado: "jogando" }).catch(reject);
       });
-      return { ambiente: window._wails?.environment?.OS, versao: await runtime.Call.ByName("main.App.Versao"), evento: await evento };
+      const id = await runtime.Call.ByName("main.App.AdicionarJogo", { name: "Jogo de teste", exe: "jogo.exe", install_dir: null, catalog_id: null, save_paths: ["<base>/save"] });
+      const jogos = await runtime.Call.ByName("main.App.ListarJogos");
+      return { ambiente: window._wails?.environment?.OS, versao: await runtime.Call.ByName("main.App.Versao"), evento: await evento, id, jogos };
     });
     if (info.ambiente !== "windows" || info.versao !== "1.0.0") throw new Error(`Binding ou ambiente inesperado: ${JSON.stringify(info)}`);
     console.log("ok   WebView Wails real reconhece o ambiente e chama o binding de versão");
     if (info.evento.id !== 17 || info.evento.estado !== "jogando") throw new Error(`Evento inesperado: ${JSON.stringify(info.evento)}`);
+    if (info.jogos.length !== 1 || info.jogos[0].id !== info.id || info.jogos[0].name !== "Jogo de teste" || info.jogos[0].save_paths[0] !== "<base>/save") throw new Error(`Biblioteca inesperada: ${JSON.stringify(info.jogos)}`);
     console.log("ok   o evento de jogo trafega pelo runtime Wails real");
+    console.log("ok   adicionar e listar jogos usam a biblioteca SQLite temporária");
     console.log("ok   ausência dos serviços não apresenta uma biblioteca simulada");
     console.log(`Capturas: ${pasta}`);
   } finally {

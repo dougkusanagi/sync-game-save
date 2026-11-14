@@ -266,7 +266,9 @@ teste("Wails em migração não apresenta dados simulados como biblioteca real",
   await page.route("**/wails/runtime", async (route) => {
     chamadas.push(route.request().postDataJSON());
     const chamada = route.request().postDataJSON();
-    await route.fulfill({ json: chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste" });
+    const metodo = chamada.args?.methodName;
+    const resposta = metodo === "main.App.AdicionarJogo" ? 42 : metodo === "main.App.ListarJogos" ? [{ id: 42, name: "Jogo", save_paths: [] }] : chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste";
+    await route.fulfill({ json: resposta });
   });
   const resultado = await page.evaluate(async () => {
     const ponte = await import("/src/api.ts");
@@ -276,15 +278,23 @@ teste("Wails em migração não apresenta dados simulados como biblioteca real",
     cancelar();
     window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "salvando" } });
     const atualizacao = await ponte.verificarAtualizacao().then(() => "sem erro", (e) => e.message);
-    return { eventos, pasta: await ponte.escolherPasta("Escolher pasta"), sobre: await ponte.api.sobre(), atualizacao };
+    const jogo = { name: "Jogo", exe: "jogo.exe", install_dir: null, catalog_id: null, save_paths: [] };
+    const id = await ponte.api.adicionarJogo(jogo);
+    const jogos = await ponte.api.listarJogos();
+    return { eventos, pasta: await ponte.escolherPasta("Escolher pasta"), sobre: await ponte.api.sobre(), atualizacao, id, jogos };
   });
   assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
   assert.equal(resultado.pasta, "C:/Jogos/Teste");
   assert.equal(resultado.atualizacao, "A atualização ainda não está disponível nesta versão.");
   assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.0.0", build: "" });
-  assert.equal(chamadas.length, 2);
-  assert.equal(chamadas[0].args.CanChooseDirectories, true);
-  assert.equal(chamadas[0].args.CanChooseFiles, false);
+  assert.equal(resultado.id, 42);
+  assert.equal(resultado.jogos[0].name, "Jogo");
+  assert.equal(chamadas.length, 4);
+  assert.equal(chamadas[0].args.methodName, "main.App.AdicionarJogo");
+  assert.equal(chamadas[0].args.args[0].exe, "jogo.exe");
+  assert.equal(chamadas[1].args.methodName, "main.App.ListarJogos");
+  assert.equal(chamadas[2].args.CanChooseDirectories, true);
+  assert.equal(chamadas[2].args.CanChooseFiles, false);
 });
 (async () => {
   const servidor = await subirServidor();

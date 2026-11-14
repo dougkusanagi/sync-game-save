@@ -126,7 +126,14 @@ export const emWails = noTauri && !!(janelaNativa?._wails?.environment || janela
 const emMock = noTauri && !emWails;
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (emWails) return Promise.reject(new Error("Esta versão ainda não consegue abrir sua biblioteca."));
+  if (emWails) {
+    if (cmd === "listar_jogos" || cmd === "adicionar_jogo") {
+      return import("@wailsio/runtime").then(({ Call }) =>
+        cmd === "listar_jogos" ? Call.ByName("main.App.ListarJogos") : Call.ByName("main.App.AdicionarJogo", args?.jogo)
+      ) as Promise<T>;
+    }
+    return Promise.reject(new Error("Esta versão ainda não consegue abrir sua biblioteca."));
+  }
   return emMock ? mock<T>(cmd, args) : invoke<T>(cmd, args);
 }
 export const api = {
