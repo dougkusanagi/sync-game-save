@@ -95,7 +95,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 - [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
 - [x] Ambiente e descoberta portados: marcadores locais, Documentos redirecionada, captura e comparação das pastas de save, exclusão de ruído e agrupamento por jogo. Testes locais no Windows e Linux; ainda sem integração com o aplicativo.
 - [x] Registro das execuções ativas ligado ao acompanhamento, incluindo o intervalo de espera e execuções simultâneas do mesmo programa; testes verificam registro e remoção.
-- [ ] Controle de parada iniciado em `process_stop.go`: pedidos concorrentes, envio normal e espera de dez segundos antes da força, com testes sem encerrar processos. Ainda não está ligado ao acompanhamento nem envia sinais ou mensagens do sistema. `go test ./...` passou; `go test -race` não rodou porque CGO está desativado.
+- [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. Ainda faltam fechamento de processos rastreados fora do Job, teste com janela real e integração da parada forçada. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
 - [ ] Porte parcial de processos: rastreador de descendentes, PID reutilizado e executáveis relançados; listagem pelo ToolHelp no Windows e `/proc` no Linux; abertura com associação prévia ao Job Object, espera do grupo e heartbeat. Testes locais cobrem launcher e descendente. Faltam pedidos de fechamento normal e forçado, demais testes de integração e ligação com o engine.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
@@ -167,4 +167,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Ligar os pedidos de parada ao registro e ao acompanhamento e implementar fechamento normal e forçado com testes isolados em executáveis temporários; completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Completar o fechamento normal para processos rastreados fora do Job, testar uma janela real e integrar a parada forçada com testes isolados em executáveis temporários; completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

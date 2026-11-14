@@ -22,6 +22,11 @@ func TestStopControlAguardaEnvioEDezSegundos(t *testing.T) {
 	if _, err := c.requestForce(start.Add(time.Hour)); err == nil {
 		t.Fatal("força aceita após falha")
 	}
+	if _, _, err := c.status(); err == nil {
+		t.Fatal("falha não disponível ao solicitante")
+	}
+	c = stopControl{}
+	c.request()
 	calls := 0
 	send := func() error { calls++; return nil }
 	if err := c.takeRequest(send, func() time.Time { return start }); err != nil {

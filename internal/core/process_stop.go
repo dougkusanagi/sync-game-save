@@ -14,6 +14,7 @@ type stopControl struct {
 	sent      time.Time
 	force     bool
 	finished  bool
+	stopErr   error
 }
 
 func (c *stopControl) request() bool {
@@ -30,10 +31,11 @@ func (c *stopControl) request() bool {
 func (c *stopControl) takeRequest(send func() error, now func() time.Time) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.finished || !c.requested || !c.sent.IsZero() {
+	if c.finished || !c.requested || !c.sent.IsZero() || c.stopErr != nil {
 		return nil
 	}
 	if err := send(); err != nil {
+		c.stopErr = err
 		return err
 	}
 	c.sent = now()
@@ -67,4 +69,10 @@ func (c *stopControl) finish() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.finished = true
+}
+
+func (c *stopControl) status() (bool, time.Time, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.finished, c.sent, c.stopErr
 }

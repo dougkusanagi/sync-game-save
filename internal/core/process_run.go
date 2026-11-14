@@ -69,8 +69,10 @@ func RunProcess(prog string, args []string, cwd string, quiet, every time.Durati
 			return 0, fmt.Errorf("não foi possível verificar o grupo do jogo: %w", err)
 		}
 		if !finished || tracked || active {
+			_ = control.takeRequest(func() error { return group.requestClose() }, time.Now)
 			gone = time.Time{}
 		} else if gone.IsZero() {
+			control.finish()
 			gone = now
 		} else if now.Sub(gone) >= quiet {
 			break
