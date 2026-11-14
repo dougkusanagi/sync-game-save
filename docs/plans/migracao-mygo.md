@@ -59,10 +59,24 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ### 1. Prova de conceito (descarta ou continua)
 
-- [ ] Instalar Go 1.27.3+ e o CLI do MyGo; criar `go.mod` na raiz e `mygo.config.ts` com `devUrl: http://localhost:1420`.
-- [ ] Janela única carregando o React atual, um binding (`app_version`), um evento, a bandeja com fechar para a bandeja e uma capa local servida por protocolo próprio.
-- [ ] Gerar o NSIS e medir espaço e tempo como no passo 0.
-- [ ] **Ponto de decisão**: se o ganho não compensar ou faltar uma função essencial (protocolo, bandeja, updater), parar aqui e registrar o resultado.
+- [x] Go 1.27.3 e CLI `mygo` 0.9.0 instalados (`go install github.com/egoist/mygo/cmd/mygo@latest`). `go.mod`, `main.go` e `mygo.config.ts` na raiz, ao lado de `src-tauri/`.
+- [x] `main.go`: janela 1280×720 com o React atual, binding `App.Versao`, evento `jogo-estado`, bandeja com "Abrir"/"Sair", fechar para a bandeja e protocolo `capa://` restrito à pasta `art`. `SGS_DATA_DIR` troca a pasta de dados (como nos testes do Tauri). O executável abre e cria a pasta `art`. Ainda não conferido a olho: bandeja, capa por `capa://` e a interface chamando o binding (o `api.ts` ainda usa o Tauri, então roda no modo mock).
+- [x] Medição (2026-11-14, cache do Go isolado em `.mygo-medida/`, uma rodada):
+
+  | Etapa | Tempo | Espaço |
+  |---|---|---|
+  | `mygo build` do zero (gera `src/mygo.ts` 3m04s na 1ª vez, frontend 14 s, Go 2m15s, baixa NSIS 13 s, instalador 19 s) | 381 s | cache Go 262 MB + `build/` 14 MB |
+  | `go build` do zero (só Go) | 148 s | cache Go 133 MB |
+  | `go build` incremental (1 linha em `main.go`) | 22 s | — |
+  | `mygo build -skip-installer` incremental | 74 s | — |
+  | `bun run build` (frontend) | 23 s | — |
+
+  Executável 10,4 MB; instalador NSIS 3,5 MB.
+- [x] **Ponto de decisão** — leitura dos números:
+  - Espaço: ~0,26 GB contra 4,8–7,8 GB de `target` por perfil no Rust (≈ 20–30× menor). Ganho claro.
+  - Release: o Go não tem etapa de LTO; ~2,5 min de compilação contra ~32 min do `cargo build --release`. Ganho claro.
+  - Debug incremental: 22 s no Go contra 13 s no Rust. **Pior**, porque o pacote `mygo` é grande e cada build refaz o link. A PoC ainda não tem o núcleo portado; o código do app deve pesar pouco nesse tempo, mas isso só se confirma no passo 2.
+  - Pendente: conferir a bandeja, `capa://` e o binding com a interface aberta.
 
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
@@ -132,4 +146,4 @@ Nenhuma até agora.
 
 ## Próximo passo
 
-Passo 1: instalar o CLI do MyGo e fazer a prova de conceito.
+Decidir se a migração continua (ver o ponto de decisão do passo 1). Se continuar: conferir a bandeja, `capa://` e o binding com a interface aberta e começar o passo 2 pelos testes de `sgs-core`.

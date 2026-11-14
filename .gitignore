@@ -4,3 +4,6 @@ out
 .DS_Store
 *.log*
 target
+build
+.mygo
+.mygo-medida
