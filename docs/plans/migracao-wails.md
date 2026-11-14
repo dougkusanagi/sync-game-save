@@ -91,7 +91,8 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 - [x] Portados índice, decisão em três vias e trava com heartbeat; testes Go cobrem hashes, decisões e posse da trava.
 - [x] Snapshots: criação, verificação, restauração com backup, listagem e retenção; testes de falha de cópia e fixture gerada pelo Rust, lida e atualizada pelo Go. Ainda não estão ligados ao aplicativo.
 - [x] Tentativas de leitura e cópia para arquivos ocupados, incluindo teste de compartilhamento no Windows.
-- [ ] Resolver diferenças de compatibilidade antes da integração: a varredura Go rejeita diretórios simbólicos e a verificação de snapshots rejeita `:` em nomes; a versão Rust não impõe essas restrições.
+- [x] A varredura segue diretórios simbólicos e detecta ciclos; no Unix, snapshots aceitam `:` e `\` em nomes de arquivos. No Windows, a verificação continua recusando nomes incompatíveis com a plataforma.
+- [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
@@ -161,4 +162,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Resolver as diferenças de compatibilidade e portar o engine com seus testes; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Portar `env`, descoberta e processos, completar os testes de paridade do engine e integrá-lo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

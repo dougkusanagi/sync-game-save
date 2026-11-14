@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,11 +41,11 @@ func ReadHead(dir string) (*Head, error) {
 	return &Head{*v.Snapshot, *v.IndexDigest, *v.Device}, nil
 }
 func safeKey(key string) bool {
-	if key == "" || strings.Contains(key, `\`) || strings.HasPrefix(key, "/") {
+	if key == "" || strings.HasPrefix(key, "/") || (runtime.GOOS == "windows" && strings.Contains(key, `\`)) {
 		return false
 	}
 	for _, part := range strings.Split(key, "/") {
-		if part == "" || part == "." || part == ".." || strings.Contains(part, ":") {
+		if part == "" || part == "." || part == ".." || (runtime.GOOS == "windows" && strings.Contains(part, ":")) {
 			return false
 		}
 	}

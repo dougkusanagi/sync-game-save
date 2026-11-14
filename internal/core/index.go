@@ -53,34 +53,47 @@ func Scan(root string) (Index, error) {
 	if !info.IsDir() {
 		return idx, nil
 	}
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	var walk func(string, []os.FileInfo) error
+	walk = func(dir string, parents []os.FileInfo) error {
+		info, err := os.Stat(dir)
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			return nil
+		for _, parent := range parents {
+			if os.SameFile(parent, info) {
+				return fmt.Errorf("ciclo em pasta simbólica: %s", dir)
+			}
 		}
-		// Walk does not follow symlinked directories; Rust follows them.
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Stat(path)
+		parents = append(parents, info)
+		items, err := os.ReadDir(dir)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			path := filepath.Join(dir, item.Name())
+			info, err := os.Stat(path)
 			if err != nil {
 				return err
 			}
-			if target.IsDir() {
-				return fmt.Errorf("pasta simbólica não suportada: %s", path)
+			if info.IsDir() {
+				if err := walk(path, parents); err != nil {
+					return err
+				}
+				continue
 			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			entry, err := HashFile(path)
+			if err != nil {
+				return err
+			}
+			idx.Files[filepath.ToSlash(rel)] = entry
 		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		entry, err := HashFile(path)
-		if err != nil {
-			return err
-		}
-		idx.Files[filepath.ToSlash(rel)] = entry
 		return nil
-	})
+	}
+	err = walk(root, nil)
 	return idx, err
 }
 func Prefix(label string) string {
