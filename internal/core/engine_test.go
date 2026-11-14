@@ -251,3 +251,53 @@ func TestEngineConfirmaAberturaComTravaDeOutroPC(t *testing.T) {
 		t.Fatal(lock, err)
 	}
 }
+
+func TestEngineConflitoUsaLocalSemPerderVersaoDaNuvem(t *testing.T) {
+	dir := t.TempDir()
+	a := enginePC(dir, "A", 1000)
+	enginePut(t, a, "base")
+	if _, err := a.BeforeLaunch(false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.afterExit(nil, noSleep); err != nil {
+		t.Fatal(err)
+	}
+	b := enginePC(dir, "B", 2000)
+	if _, err := b.BeforeLaunch(false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.afterExit(nil, noSleep); err != nil {
+		t.Fatal(err)
+	}
+	enginePut(t, a, "local")
+	enginePut(t, b, "nuvem")
+	if _, err := b.afterExit(nil, noSleep); err != nil {
+		t.Fatal(err)
+	}
+	cloud, err := ReadHead(a.GameDir)
+	if err != nil || cloud == nil {
+		t.Fatal(cloud, err)
+	}
+	a.Now = 4000
+	result, err := a.BeforeLaunch(false)
+	if err != nil || result.Status != SyncConflict {
+		t.Fatal(result, err)
+	}
+	if err := a.Resolve(UseLocal); err != nil {
+		t.Fatal(err)
+	}
+	newHead, err := ReadHead(a.GameDir)
+	if err != nil || newHead == nil || newHead.Snapshot == cloud.Snapshot {
+		t.Fatal(newHead, err)
+	}
+	for _, item := range []struct{ id, want string }{{cloud.Snapshot, "nuvem"}, {newHead.Snapshot, "local"}} {
+		data, err := os.ReadFile(filepath.Join(a.GameDir, "snapshots", item.id, "files", "s.sav"))
+		if err != nil || string(data) != item.want {
+			t.Fatal(item.id, string(data), err)
+		}
+	}
+	lock, err := ReadLock(a.GameDir)
+	if err != nil || lock == nil || lock.Device != "A" {
+		t.Fatal(lock, err)
+	}
+}
