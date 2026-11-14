@@ -88,6 +88,9 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
 - [x] Início do porte: caminhos lógicos e diário de operações em `internal/core`, com testes de portabilidade, rejeição de `..` e formato JSON do diário. Ainda não estão ligados ao aplicativo.
+- [x] Portados índice, decisão em três vias e trava com heartbeat; testes Go cobrem hashes, decisões e posse da trava.
+- [ ] Porte parcial de snapshots: criação, verificação e restauração com backup; faltam listagem, retenção, testes de falhas de cópia e fixture gerada pelo Rust. Nenhuma destas funções está ligada ao aplicativo.
+- [ ] Resolver diferenças de compatibilidade antes da integração: a varredura Go rejeita diretórios simbólicos e a verificação de snapshots rejeita `:` em nomes; a versão Rust não impõe essas restrições. Portar também as tentativas para arquivos ocupados.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
@@ -157,4 +160,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Continuar o passo 2 pelos testes e pelo porte de índice, trava, snapshots e sincronização; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Concluir snapshots e as diferenças de compatibilidade, portar os testes de falha e integrar o núcleo ao engine; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
