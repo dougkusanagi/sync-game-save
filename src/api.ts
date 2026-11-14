@@ -115,13 +115,15 @@ export type ResultadoJogar =
 
 export type OpcoesJogar = { forcar?: boolean; conflito?: "local" | "nuvem"; sem_sincronizar?: boolean };
 
-/** Dentro do Tauri existe `__TAURI_INTERNALS__`; no navegador (testes e capturas) usa dados simulados. */
+/** O Wails injeta a configuração do ambiente antes de carregar a página. */
+export const emWails = typeof window !== "undefined" && !!(window as Window & { _wails?: { environment?: unknown } })._wails?.environment;
 export const noTauri = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
+const emMock = noTauri && !emWails;
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  return noTauri ? mock<T>(cmd, args) : invoke<T>(cmd, args);
+  if (emWails) return Promise.reject(new Error("Esta versão ainda não consegue abrir sua biblioteca."));
+  return emMock ? mock<T>(cmd, args) : invoke<T>(cmd, args);
 }
-
 export const api = {
   sobre: () => call<{ nome: string; versao: string; build: string }>("sobre"),
   estado: () => call<Estado>("estado"),
@@ -161,7 +163,8 @@ export type Atualizacao = {
 
 /** Procura uma atualização no canal configurado. No navegador simulado nunca há uma. */
 export async function verificarAtualizacao(): Promise<Atualizacao | null> {
-  if (noTauri) return null;
+  if (emWails) throw new Error("A atualização ainda não está disponível nesta versão.");
+  if (emMock) return null;
   const { check } = await import("@tauri-apps/plugin-updater");
   const u = await check();
   if (!u) return null;
@@ -170,7 +173,8 @@ export async function verificarAtualizacao(): Promise<Atualizacao | null> {
 
 /** Baixa, instala e reabre o app. Só termina se algo der errado (o app reinicia). */
 export async function instalarAtualizacao(): Promise<void> {
-  if (noTauri) return;
+  if (emWails) throw new Error("A atualização ainda não está disponível nesta versão.");
+  if (emMock) return;
   const { check } = await import("@tauri-apps/plugin-updater");
   const { relaunch } = await import("@tauri-apps/plugin-process");
   const u = await check();
@@ -181,19 +185,33 @@ export async function instalarAtualizacao(): Promise<void> {
 
 /** Abre o seletor nativo de pasta. No navegador simulado devolve um caminho de exemplo. */
 export async function escolherPasta(titulo: string): Promise<string | null> {
-  if (noTauri) return "C:/Exemplo/Pasta";
+  if (emWails) {
+    const { Dialogs } = await import("@wailsio/runtime");
+    return (await Dialogs.OpenFile({ Title: titulo, CanChooseDirectories: true, CanChooseFiles: false })) || null;
+  }
+  if (emMock) return "C:/Exemplo/Pasta";
   const r = await open({ directory: true, multiple: false, title: titulo });
   return typeof r === "string" ? r : null;
 }
 
 export async function escolherArquivoExe(titulo: string): Promise<string | null> {
-  if (noTauri) return "C:/Exemplo/jogo.exe";
+  if (emWails) {
+    const { Dialogs } = await import("@wailsio/runtime");
+    return (await Dialogs.OpenFile({ Title: titulo, CanChooseFiles: true, Filters: [{ DisplayName: "Programas", Pattern: "*.exe" }] })) || null;
+  }
+  if (emMock) return "C:/Exemplo/jogo.exe";
   const r = await open({ multiple: false, title: titulo, filters: [{ name: "Programas", extensions: ["exe"] }] });
   return typeof r === "string" ? r : null;
 }
 
 export function aoMudarEstadoDoJogo(fn: (id: number, estado: string) => void): Promise<() => void> {
-  if (noTauri) {
+  if (emWails) {
+    return import("@wailsio/runtime").then(({ Events }) => Events.On("jogo-estado", (e) => {
+      const dados = e.data as { id: number; estado: string };
+      fn(dados.id, dados.estado);
+    }));
+  }
+  if (emMock) {
     const tratar = (e: Event) => { const { id, estado } = (e as CustomEvent<{ id: number; estado: string }>).detail; fn(id, estado); };
     window.addEventListener("sgs:mock-jogo", tratar);
     return Promise.resolve(() => window.removeEventListener("sgs:mock-jogo", tratar));
@@ -210,6 +228,12 @@ export function textoDoErro(e: unknown): string {
 
 /** Ações do controle lidas no Rust (só chegam com a janela visível e focada). */
 export function aoUsarControle(fn: (acao: string, dispositivo: string) => void): Promise<() => void> {
-  if (noTauri) return Promise.resolve(() => {});
+  if (emWails) {
+    return import("@wailsio/runtime").then(({ Events }) => Events.On("controle-acao", (e) => {
+      const dados = e.data as { acao: string; dispositivo: string };
+      fn(dados.acao, dados.dispositivo);
+    }));
+  }
+  if (emMock) return Promise.resolve(() => {});
   return listen<{ acao: string; dispositivo: string }>("controle-acao", (e) => fn(e.payload.acao, e.payload.dispositivo));
 }

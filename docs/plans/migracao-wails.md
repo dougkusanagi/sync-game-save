@@ -36,7 +36,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
 - [ ] **4. CLI:** porte pendente.
 - [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
-- [ ] **6. Frontend:** ponte Wails e testes E2E pendentes.
+- [ ] **6. Frontend:** diálogos, eventos e arte preparados; comandos, atualizador e E2E do aplicativo real dependem dos serviços Go.
 - [ ] **7. Distribuição e atualização:** instaladores e atualização a partir da v1 pendentes.
 - [ ] **8. Remoção do Tauri e documentação:** pendentes após validar a paridade.
 ## Estado atual (2026-11-14)
@@ -152,11 +152,15 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ### 6. Frontend
 
-- [ ] Trocar em `src/api.ts` `invoke`/`listen`/`open`/updater pelos clientes de `bindings/` e `@wailsio/runtime`; manter a mesma interface pública de `api.ts` para não mexer nas telas.
-- [ ] Trocar `convertFileSrc` em `src/useCapa.ts` por `/capa/<arquivo>`.
-- [ ] Manter o modo mock funcionando; remover os pacotes `@tauri-apps/*` do `package.json`.
-- [ ] Rodar `bun run e2e` (mock) e adaptar `e2e/app-real.cjs` para o executável Go (conferir como ligar a porta de depuração do WebView2).
-
+- [x] Distinguir Wails, Tauri e navegador simulado; Wails sem os serviços não apresenta dados fictícios como biblioteca real.
+- [x] Usar os diálogos nativos do Wails para selecionar pasta e executável, preservando a ponte Tauri durante o porte.
+- [x] Preparar inscrição e cancelamento dos eventos `jogo-estado` e `controle-acao` pelo runtime Wails; a emissão de controle no Go ainda falta.
+- [x] Converter caminhos locais de arte para `/capa/<arquivo>` no Wails, com teste de codificação e nomes inválidos; preservar a conversão Tauri e o mock.
+- [x] Executar os 27 cenários E2E mock existentes; regressão adicional valida a identificação Wails simulada. Layout de indisponibilidade verificado em 390 e 1280 px.
+- [ ] Integrar os 28 comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
+- [ ] Integrar o atualizador Wails quando o provedor e a ponte de atualização estiverem definidos na etapa 7.
+- [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
+- [ ] Adaptar e executar `e2e/app-real.cjs` com o aplicativo Go e os serviços reais. O build Go passou, mas a porta de depuração WebView2 não abriu no teste de 14/11/2026; `wails3 build` parou após gerar os bindings e foi interrompido.
 ### 7. Distribuição e atualização
 
 - [ ] Windows: NSIS do Wails (`build/windows/nsis/project.nsi`). Mesmo nome de produto e instalação por usuário, como o NSIS atual; conferir se o caminho de instalação muda e se os dados em `AppData` continuam no mesmo lugar. Definir como obter o `makensis` (instalar o NSIS na máquina de build).
@@ -194,4 +198,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Portar os serviços Go para ligar os comandos e concluir o frontend; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

@@ -257,6 +257,33 @@ teste("parada: cancelar mantém o jogo e força exige confirmação", async (pag
   await page.getByRole("button", { name: "Jogar" }).first().waitFor();
 });
 
+teste("Wails em migração não apresenta dados simulados como biblioteca real", async (page) => {
+  await page.addInitScript(() => { window._wails = { environment: { OS: "windows", Arch: "amd64", Debug: true } }; });
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("alert").getByText("Esta versão ainda não consegue abrir sua biblioteca.").waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Rogue Legacy" }).count(), 0);
+  const chamadas = [];
+  await page.route("**/wails/runtime", async (route) => {
+    chamadas.push(route.request().postDataJSON());
+    await route.fulfill({ json: "C:/Jogos/Teste" });
+  });
+  const resultado = await page.evaluate(async () => {
+    const ponte = await import("/src/api.ts");
+    const eventos = [];
+    const cancelar = await ponte.aoMudarEstadoDoJogo((id, estado) => eventos.push([id, estado]));
+    window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "jogando" } });
+    cancelar();
+    window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "salvando" } });
+    const atualizacao = await ponte.verificarAtualizacao().then(() => "sem erro", (e) => e.message);
+    return { eventos, pasta: await ponte.escolherPasta("Escolher pasta"), atualizacao };
+  });
+  assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
+  assert.equal(resultado.pasta, "C:/Jogos/Teste");
+  assert.equal(resultado.atualizacao, "A atualização ainda não está disponível nesta versão.");
+  assert.equal(chamadas.length, 1);
+  assert.equal(chamadas[0].args.CanChooseDirectories, true);
+  assert.equal(chamadas[0].args.CanChooseFiles, false);
+});
 (async () => {
   const servidor = await subirServidor();
   const browser = await chromium.launch();

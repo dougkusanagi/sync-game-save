@@ -14,6 +14,8 @@ Na tela de adicionar jogo, quando o catálogo não indica onde o jogo salva, o b
 
 No Windows, ao parar um jogo o app pede que ele feche normalmente. Se continuar aberto após 10 segundos, é possível confirmar o fechamento forçado, que pode danificar o save. O sync espera o grupo de processos terminar e verifica se os arquivos pararam de mudar antes de criar uma nova versão.
 
+A migração para Wails está em andamento neste branch; o aplicativo Go ainda não acessa a biblioteca real. O estado e os testes pendentes estão no [plano de migração](docs/plans/migracao-wails.md).
+
 ## Conquistas do HUB
 
 Em **Meu progresso**, o app mostra marcos válidos para qualquer jogo: horas jogadas, jogos na biblioteca, sequência de sincronizações concluídas sem erro e jogos com todas as conquistas da Steam desbloqueadas. O progresso é calculado da biblioteca local e do cache de conquistas; a sequência atual zera quando uma sincronização falha, e o melhor resultado fica guardado.

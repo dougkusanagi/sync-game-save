@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Dialog } from "../Dialog";
-import { api, escolherArquivoExe, escolherPasta, instalarAtualizacao, textoDoErro, verificarAtualizacao, type Atualizacao, type Estado, type Game, type Temas } from "../api";
+import { api, emWails, escolherArquivoExe, escolherPasta, instalarAtualizacao, textoDoErro, verificarAtualizacao, type Atualizacao, type Estado, type Game, type Temas } from "../api";
 import { versaoLegivel } from "../format";
 import { som, type ConfigSom } from "../som";
 import { acharTema, aplicarTema } from "../temas";
@@ -548,7 +548,7 @@ export function Sobre({ onClose }: { onClose: () => void }) {
       setAtualizacao(await verificarAtualizacao());
     } catch (e) {
       console.error(e);
-      setErro("Não foi possível verificar atualizações agora. Confira sua conexão e tente de novo.");
+      setErro(emWails ? textoDoErro(e) : "Não foi possível verificar atualizações agora. Confira sua conexão e tente de novo.");
     } finally {
       setVerificando(false);
     }
@@ -592,7 +592,7 @@ export function Sobre({ onClose }: { onClose: () => void }) {
           </>
         ) : (
           <div className="linha">
-            <span>{verificando ? "Procurando atualização…" : "Você está na versão mais recente."}</span>
+            <span>{verificando ? "Procurando atualização…" : erro ? "Não foi possível verificar." : "Você está na versão mais recente."}</span>
             <button className="btn fraco" data-f disabled={verificando || instalando} onClick={() => void verificar()}>
               Verificar de novo
             </button>
