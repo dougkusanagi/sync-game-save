@@ -45,8 +45,17 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ### 0. Medir a base
 
-- [ ] Registrar neste plano, com a versão Tauri: tamanho de `src-tauri/target` após `cargo clean` + `cargo build` (debug), + `cargo test --workspace`, + `bun run tauri build`; tempo de build limpo, build incremental (uma linha alterada em `sgs-service`) e release.
-- [ ] Registrar o tamanho do instalador NSIS e do executável.
+- [x] Medição da versão Tauri (2026-11-14, Windows, worktree sem `target`, uma rodada só; o tamanho de `target` é acumulado e foi lido com `du`):
+
+  | Etapa | Tempo | `target` depois |
+  |---|---|---|
+  | `cargo build` (debug, do zero) | 225 s | 4.768 MB |
+  | `cargo test --workspace --no-run` | 30 s | 7.466 MB |
+  | `cargo build` incremental (1 linha em `sgs-service`) | 13 s | 5.926 MB (leitura duvidosa: menor que a anterior) |
+  | `cargo build --release` (LTO, `codegen-units = 1`) | 1.948 s (~32 min) | 7.790 MB |
+
+  Executável release: 10,1 MiB (`sync-game-save.exe`). O `target` do checkout principal, com builds acumulados, chegou a 31,87 GiB.
+- [ ] Tamanho do instalador NSIS (`bun run tauri build`; exige a chave de assinatura).
 
 ### 1. Prova de conceito (descarta ou continua)
 
@@ -123,4 +132,4 @@ Nenhuma até agora.
 
 ## Próximo passo
 
-Passo 0: medir a base da versão Tauri.
+Passo 1: instalar o CLI do MyGo e fazer a prova de conceito.
