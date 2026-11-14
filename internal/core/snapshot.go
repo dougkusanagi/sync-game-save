@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -50,6 +51,10 @@ func safeKey(key string) bool {
 	return true
 }
 func copyFile(src, dst string) error {
+	return retryFile(func() error { return copyFileOnce(src, dst) })
+}
+
+func copyFileOnce(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
@@ -70,6 +75,10 @@ func copyFile(src, dst string) error {
 	return closeErr
 }
 func CreateSnapshot(dir string, roots []Root, id, device string, expected *Index) (*Head, error) {
+	return createSnapshot(dir, roots, id, device, expected, copyFile)
+}
+
+func createSnapshot(dir string, roots []Root, id, device string, expected *Index, copyFn func(string, string) error) (*Head, error) {
 	if !safeKey(id) || strings.Contains(id, "/") {
 		return nil, errors.New("identificador de snapshot inválido")
 	}
@@ -100,7 +109,7 @@ func CreateSnapshot(dir string, roots []Root, id, device string, expected *Index
 		if !ok {
 			return nil, fmt.Errorf("origem ausente: %s", key)
 		}
-		if err := copyFile(src, filepath.Join(files, filepath.FromSlash(key))); err != nil {
+		if err := copyFn(src, filepath.Join(files, filepath.FromSlash(key))); err != nil {
 			return nil, err
 		}
 	}
@@ -163,6 +172,10 @@ func VerifySnapshot(snap string) (Index, error) {
 	return idx, nil
 }
 func RestoreSnapshot(snap string, roots []Root, backup string) error {
+	return restoreSnapshot(snap, roots, backup, copyFile)
+}
+
+func restoreSnapshot(snap string, roots []Root, backup string, copyFn func(string, string) error) error {
 	idx, err := VerifySnapshot(snap)
 	if err != nil {
 		return err
@@ -193,7 +206,7 @@ func RestoreSnapshot(snap string, roots []Root, backup string) error {
 		if !ok {
 			return errors.New("origem ausente")
 		}
-		if err := copyFile(src, filepath.Join(backup, filepath.FromSlash(key))); err != nil {
+		if err := copyFn(src, filepath.Join(backup, filepath.FromSlash(key))); err != nil {
 			return err
 		}
 	}
@@ -210,9 +223,89 @@ func RestoreSnapshot(snap string, roots []Root, backup string) error {
 		if !ok {
 			continue
 		}
-		if err := copyFile(filepath.Join(snap, "files", filepath.FromSlash(key)), dst); err != nil {
+		if err := copyFn(filepath.Join(snap, "files", filepath.FromSlash(key)), dst); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// ListSnapshots omite snapshots incompletos e prioriza o head, seguido do instante e da sequência.
+func ListSnapshots(dir string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(dir, "snapshots"))
+	if errors.Is(err, os.ErrNotExist) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ids := []string{}
+	for _, entry := range entries {
+		info, err := os.Stat(filepath.Join(dir, "snapshots", entry.Name(), "index.json"))
+		if err == nil && info.Mode().IsRegular() {
+			ids = append(ids, entry.Name())
+		}
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	}
+	head, err := ReadHead(dir)
+	if err != nil {
+		return nil, err
+	}
+	parse := func(id string) (uint64, uint64) {
+		ts, err := strconv.ParseUint(strings.SplitN(id, "_", 2)[0], 10, 64)
+		if err != nil {
+			ts = 0
+		}
+		var seq uint64
+		if pos := strings.LastIndex(id, "~sgs-"); pos >= 0 {
+			seq, err = strconv.ParseUint(id[pos+5:], 10, 64)
+			if err != nil {
+				seq = 0
+			}
+		}
+		return ts, seq
+	}
+	sort.SliceStable(ids, func(i, j int) bool {
+		ih, jh := head != nil && ids[i] == head.Snapshot, head != nil && ids[j] == head.Snapshot
+		if ih != jh {
+			return ih
+		}
+		a, b := parse(ids[i])
+		c, d := parse(ids[j])
+		if a != c {
+			return a > c
+		}
+		return b > d
+	})
+	return ids, nil
+}
+
+func PruneSnapshots(dir string, keep int) ([]string, error) {
+	ids, err := ListSnapshots(dir)
+	if err != nil {
+		return nil, err
+	}
+	if keep < 1 {
+		keep = 1
+	}
+	removed := []string{}
+	if keep >= len(ids) {
+		return removed, nil
+	}
+	head, err := ReadHead(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids[keep:] {
+		if head != nil && head.Snapshot == id {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(dir, "snapshots", id)); err != nil {
+			return removed, err
+		}
+		removed = append(removed, id)
+	}
+	return removed, nil
 }

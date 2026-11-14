@@ -80,3 +80,132 @@ func TestSnapshotRecusaCaminhoInseguro(t *testing.T) {
 		t.Fatal("travessia aceita")
 	}
 }
+
+func TestRetencaoPreservaHeadERecentes(t *testing.T) {
+	dir := t.TempDir()
+	save := filepath.Join(dir, "save")
+	cloud := filepath.Join(dir, "cloud")
+	if err := os.Mkdir(save, 0755); err != nil {
+		t.Fatal(err)
+	}
+	roots := []Root{{Path: save}}
+	for _, id := range []string{"100_PC", "200_PC", "300_PC", "400_PC"} {
+		if err := os.WriteFile(filepath.Join(save, "a"), []byte(id), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := CreateSnapshot(cloud, roots, id, "PC", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(cloud, "snapshots", "999_PC"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := ListSnapshots(cloud)
+	if err != nil || len(ids) != 4 || ids[0] != "400_PC" {
+		t.Fatal(ids, err)
+	}
+	removed, err := PruneSnapshots(cloud, 2)
+	if err != nil || len(removed) != 2 || removed[0] != "200_PC" || removed[1] != "100_PC" {
+		t.Fatal(removed, err)
+	}
+}
+func TestFalhaDeCopiaPreservaSaveEHead(t *testing.T) {
+	dir := t.TempDir()
+	save := filepath.Join(dir, "save")
+	cloud := filepath.Join(dir, "cloud")
+	if err := os.Mkdir(save, 0755); err != nil {
+		t.Fatal(err)
+	}
+	roots := []Root{{Path: save}}
+	for _, name := range []string{"a", "b"} {
+		if err := os.WriteFile(filepath.Join(save, name), []byte("nuvem"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	head, err := CreateSnapshot(cloud, roots, "1_PC", "PC", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"a", "b"} {
+		if err := os.WriteFile(filepath.Join(save, name), []byte("local"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	calls := 0
+	fail := func(src, dst string) error {
+		calls++
+		if calls == 2 {
+			return os.ErrPermission
+		}
+		return copyFile(src, dst)
+	}
+	if err := restoreSnapshot(filepath.Join(cloud, "snapshots", "1_PC"), roots, filepath.Join(dir, "backup"), fail); err == nil {
+		t.Fatal("falha de backup ignorada")
+	}
+	for _, name := range []string{"a", "b"} {
+		b, err := os.ReadFile(filepath.Join(save, name))
+		if err != nil || string(b) != "local" {
+			t.Fatal(name, string(b), err)
+		}
+	}
+	calls = 0
+	if _, err := createSnapshot(cloud, roots, "2_PC", "PC", nil, fail); err == nil {
+		t.Fatal("falha de snapshot ignorada")
+	}
+	got, err := ReadHead(cloud)
+	if err != nil || *got != *head {
+		t.Fatal(got, err)
+	}
+}
+func TestFixtureGeradaPeloRust(t *testing.T) {
+	cloud := filepath.Join("testdata", "rust", "cloud")
+	head, err := ReadHead(cloud)
+	if err != nil || head == nil {
+		t.Fatal(head, err)
+	}
+	snap := filepath.Join(cloud, "snapshots", head.Snapshot)
+	idx, err := VerifySnapshot(snap)
+	if err != nil || idx.Digest() != head.IndexDigest {
+		t.Fatal(idx, head, err)
+	}
+	dir := t.TempDir()
+	save := filepath.Join(dir, "save")
+	if err := RestoreSnapshot(snap, []Root{{Path: save}}, filepath.Join(dir, "backup")); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(filepath.Join(save, "pasta", "ação.sav"))
+	if err != nil || string(b) != "progresso do Rust\n" {
+		t.Fatal(string(b), err)
+	}
+	// Atualiza uma cópia da nuvem legada e preserva o snapshot original.
+	cloudCopy := filepath.Join(dir, "cloud")
+	if err := filepath.Walk(cloud, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(cloud, path)
+		if err != nil {
+			return err
+		}
+		dst := filepath.Join(cloudCopy, rel)
+		if info.IsDir() {
+			return os.MkdirAll(dst, 0755)
+		}
+		return copyFile(path, dst)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(save, "pasta", "ação.sav"), []byte("progresso Go"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	newHead, err := CreateSnapshot(cloudCopy, []Root{{Path: save}}, "200_PC", "PC", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newHead.Snapshot != "200_PC" {
+		t.Fatal(newHead)
+	}
+	if _, err := VerifySnapshot(filepath.Join(cloudCopy, "snapshots", head.Snapshot)); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -33,7 +33,8 @@ func (i Index) Digest() string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 func HashFile(path string) (IndexEntry, error) {
-	b, err := os.ReadFile(path)
+	var b []byte
+	err := retryFile(func() error { var err error; b, err = os.ReadFile(path); return err })
 	if err != nil {
 		return IndexEntry{}, err
 	}
