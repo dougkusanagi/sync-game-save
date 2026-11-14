@@ -87,6 +87,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
+- [x] Início do porte: caminhos lógicos e diário de operações em `internal/core`, com testes de portabilidade, rejeição de `..` e formato JSON do diário. Ainda não estão ligados ao aplicativo.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
@@ -156,4 +157,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Conferir na tela a bandeja, as capas e o binding (fim do passo 1) e começar o passo 2 pelos testes de `sgs-core`.
+Continuar o passo 2 pelos testes e pelo porte de índice, trava, snapshots e sincronização; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
