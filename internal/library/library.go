@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -20,6 +21,8 @@ var migrations = []string{
  ALTER TABLE games ADD COLUMN last_played_at INTEGER;`,
 	`CREATE TABLE achievements_cache(game_id INTEGER PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE, fetched_at INTEGER NOT NULL, json TEXT NOT NULL);`,
 }
+
+var migrationMu sync.Mutex
 
 type Library struct{ db *sql.DB }
 
@@ -35,6 +38,8 @@ func Open(path string) (*Library, error) {
 	// PRAGMA foreign_keys pertence à conexão; uma conexão mantém a mesma regra em todas as operações.
 	db.SetMaxOpenConns(1)
 	lib := &Library{db: db}
+	migrationMu.Lock()
+	defer migrationMu.Unlock()
 	if err := lib.init(); err != nil {
 		db.Close()
 		return nil, err
@@ -48,6 +53,9 @@ func (l *Library) SchemaVersion() (int, error) {
 	return version, err
 }
 func (l *Library) init() error {
+	if _, err := l.db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		return err
+	}
 	if _, err := l.db.Exec("PRAGMA foreign_keys=ON"); err != nil {
 		return err
 	}

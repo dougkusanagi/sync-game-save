@@ -257,19 +257,24 @@ teste("parada: cancelar mantém o jogo e força exige confirmação", async (pag
   await page.getByRole("button", { name: "Jogar" }).first().waitFor();
 });
 
-teste("Wails em migração não apresenta dados simulados como biblioteca real", async (page) => {
+teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (page) => {
   await page.addInitScript(() => { window._wails = { environment: { OS: "windows", Arch: "amd64", Debug: true } }; });
-  await page.goto(`${BASE}?cenario=jogos`);
-  await page.getByRole("alert").getByText("Esta versão ainda não consegue abrir sua biblioteca.").waitFor();
-  assert.equal(await page.getByRole("heading", { name: "Rogue Legacy" }).count(), 0);
   const chamadas = [];
+  let testePonte = false;
   await page.route("**/wails/runtime", async (route) => {
-    chamadas.push(route.request().postDataJSON());
     const chamada = route.request().postDataJSON();
+    if (testePonte) chamadas.push(chamada);
     const metodo = chamada.args?.methodName;
-    const resposta = metodo === "main.App.AdicionarJogo" ? 42 : metodo === "main.App.ListarJogos" ? [{ id: 42, name: "Jogo", save_paths: [] }] : chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste";
+    const resposta = metodo === "main.App.Estado" ? { pasta_sync: null, nome_pc: "PC", catalogo_pronto: false, operacoes_interrompidas: [], steam_configurada: false, steam_id: null, steamgriddb_configurada: false }
+      : metodo === "main.App.AdicionarJogo" ? 42
+      : metodo === "main.App.ListarJogos" ? (testePonte ? [{ id: 42, name: "Jogo", save_paths: [] }] : [])
+      : chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste";
     await route.fulfill({ json: resposta });
   });
+  await page.goto(`${BASE}?cenario=jogos`);
+  await page.getByRole("heading", { name: "Vamos guardar seus saves com segurança" }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Rogue Legacy" }).count(), 0);
+  testePonte = true;
   const resultado = await page.evaluate(async () => {
     const ponte = await import("/src/api.ts");
     const eventos = [];

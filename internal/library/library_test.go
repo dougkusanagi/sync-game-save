@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -238,5 +239,29 @@ func TestTempoSyncECacheDaBiblioteca(t *testing.T) {
 	}
 	if err := lib.AddPlaytime(id, 5, 1); !errors.Is(err, ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+func TestAberturasConcorrentesDeBancoNovo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "library.db")
+	var wg sync.WaitGroup
+	errorsOut := make(chan error, 12)
+	for i := 0; i < 12; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			lib, err := Open(path)
+			if err == nil {
+				err = lib.Close()
+			}
+			errorsOut <- err
+		}()
+	}
+	wg.Wait()
+	close(errorsOut)
+	for err := range errorsOut {
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }

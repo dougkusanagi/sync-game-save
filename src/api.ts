@@ -127,10 +127,17 @@ const emMock = noTauri && !emWails;
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (emWails) {
-    if (cmd === "listar_jogos" || cmd === "adicionar_jogo") {
-      return import("@wailsio/runtime").then(({ Call }) =>
-        cmd === "listar_jogos" ? Call.ByName("main.App.ListarJogos") : Call.ByName("main.App.AdicionarJogo", args?.jogo)
-      ) as Promise<T>;
+    const comandos: Record<string, { metodo: string; argumentos: unknown[] }> = {
+      estado: { metodo: "Estado", argumentos: [] },
+      verificar_pasta_sync: { metodo: "VerificarPastaSync", argumentos: [args?.pasta] },
+      definir_pasta_sync: { metodo: "DefinirPastaSync", argumentos: [args?.pasta] },
+      definir_nome_pc: { metodo: "DefinirNomePc", argumentos: [args?.nome] },
+      listar_jogos: { metodo: "ListarJogos", argumentos: [] },
+      adicionar_jogo: { metodo: "AdicionarJogo", argumentos: [args?.jogo] },
+    };
+    const comando = comandos[cmd];
+    if (comando) {
+      return import("@wailsio/runtime").then(({ Call }) => Call.ByName(`main.App.${comando.metodo}`, ...comando.argumentos)) as Promise<T>;
     }
     return Promise.reject(new Error("Esta versão ainda não consegue abrir sua biblioteca."));
   }

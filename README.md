@@ -14,7 +14,7 @@ Na tela de adicionar jogo, quando o catálogo não indica onde o jogo salva, o b
 
 No Windows, ao parar um jogo o app pede que ele feche normalmente. Se continuar aberto após 10 segundos, é possível confirmar o fechamento forçado, que pode danificar o save. O sync espera o grupo de processos terminar e verifica se os arquivos pararam de mudar antes de criar uma nova versão.
 
-A migração para Wails está em andamento neste branch; o aplicativo Go ainda não acessa a biblioteca real. O estado e os testes pendentes estão no [plano de migração](docs/plans/migracao-wails.md).
+A migração para Wails está em andamento neste branch; o aplicativo Go já abre a biblioteca e o primeiro uso, mas ainda não oferece todos os recursos da versão Tauri. O estado e os testes pendentes estão no [plano de migração](docs/plans/migracao-wails.md).
 
 ## Conquistas do HUB
 
