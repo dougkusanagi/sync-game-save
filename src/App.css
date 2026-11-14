@@ -793,6 +793,11 @@ select:focus-visible {
   font-weight: 600;
 }
 
+/* O realce por sombra permanece visível sem ampliar botões até fora do diálogo. */
+.dialogo-corpo .btn.is-focused:not(:disabled),
+.dialogo-corpo .btn:focus-visible {
+  transform: none;
+}
 .dialogo-corpo {
   min-height: 0;
   padding-right: 0.25rem;
