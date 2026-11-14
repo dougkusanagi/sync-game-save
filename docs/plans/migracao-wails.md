@@ -93,6 +93,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 - [x] Tentativas de leitura e cópia para arquivos ocupados, incluindo teste de compartilhamento no Windows.
 - [x] A varredura segue diretórios simbólicos e detecta ciclos; no Unix, snapshots aceitam `:` e `\` em nomes de arquivos. No Windows, a verificação continua recusando nomes incompatíveis com a plataforma.
 - [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
+- [x] Ambiente e descoberta portados: marcadores locais, Documentos redirecionada, captura e comparação das pastas de save, exclusão de ruído e agrupamento por jogo. Testes locais no Windows e Linux; ainda sem integração com o aplicativo.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
@@ -162,4 +163,4 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 ## Próximo passo
 
-Portar `env`, descoberta e processos, completar os testes de paridade do engine e integrá-lo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Portar processos, completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
