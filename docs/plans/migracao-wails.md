@@ -31,7 +31,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
   - [x] Fechamento normal e forçado de processos rastreados fora do Job no Windows, com verificação do horário de criação; teste de força com processos temporários e identidade divergente.
   - [x] Parada forçada no Linux via pidfd, com teste no WSL para processo temporário e identidade divergente.
   - [x] Teste de janela real: fechamento normal do jogo sem atingir outra janela temporária.
-  - [ ] Integração ao engine e paridade dos testes.
+  - [x] Engine: cenários de nuvem incompleta, save ausente, alterações contínuas e abertura com trava de outro PC testados no Windows e Linux.
+  - [ ] Integrar o núcleo ao serviço e completar a paridade dos demais testes.
 - [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
 - [ ] **4. CLI:** porte pendente.
 - [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
@@ -111,7 +112,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Snapshots: criação, verificação, restauração com backup, listagem e retenção; testes de falha de cópia e fixture gerada pelo Rust, lida e atualizada pelo Go. Ainda não estão ligados ao aplicativo.
 - [x] Tentativas de leitura e cópia para arquivos ocupados, incluindo teste de compartilhamento no Windows.
 - [x] A varredura segue diretórios simbólicos e detecta ciclos; no Unix, snapshots aceitam `:` e `\` em nomes de arquivos. No Windows, a verificação continua recusando nomes incompatíveis com a plataforma.
-- [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
+- [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava, abertura forçada, estabilização, alterações contínuas, nuvem incompleta e save ausente. Os testes do engine passaram no Windows e no WSL; ainda não está ligado ao aplicativo.
 - [x] Ambiente e descoberta portados: marcadores locais, Documentos redirecionada, captura e comparação das pastas de save, exclusão de ruído e agrupamento por jogo. Testes locais no Windows e Linux; ainda sem integração com o aplicativo.
 - [x] Registro das execuções ativas ligado ao acompanhamento, incluindo o intervalo de espera e execuções simultâneas do mesmo programa; testes verificam registro e remoção.
 - [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. A parada forçada foi integrada no Windows ao Job Object, após dez segundos, com teste de processo temporário. No Windows, o fechamento também cobre processos rastreados fora do Job após conferir a identidade pelo horário de criação; teste com executáveis temporários cobre a força e PID com identidade divergente. No Linux, a força usa pidfd e confirma a identidade antes do sinal; teste de processo temporário passou no WSL. O teste com duas janelas reais e ocultas confirmou o fechamento do jogo e a preservação da outra janela. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
@@ -186,4 +187,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
