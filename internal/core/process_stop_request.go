@@ -31,7 +31,7 @@ func StopProcess(prog string) (found, stillRunning bool, err error) {
 }
 
 // ForceStopProcess só aceita a força após o prazo do pedido normal. No Windows,
-// a ação atinge apenas os processos associados ao grupo do jogo.
+// a ação atinge os processos identificados como pertencentes ao jogo.
 func ForceStopProcess(prog string) (bool, error) {
 	if err := forceStopAvailable(); err != nil {
 		return false, err

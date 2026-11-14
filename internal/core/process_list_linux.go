@@ -3,6 +3,7 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,19 +26,7 @@ func ListProcesses() ([]ProcessInfo, error) {
 		if err != nil {
 			continue
 		}
-		close := strings.LastIndexByte(string(data), ')')
-		if close < 0 {
-			continue
-		}
-		fields := strings.Fields(string(data[close+1:]))
-		if len(fields) < 20 {
-			continue
-		}
-		parent, err := strconv.ParseUint(fields[1], 10, 32)
-		if err != nil {
-			continue
-		}
-		started, err := strconv.ParseUint(fields[19], 10, 64)
+		parent, started, err := parseProcessStat(data)
 		if err != nil {
 			continue
 		}
@@ -45,4 +34,21 @@ func ListProcesses() ([]ProcessInfo, error) {
 		result = append(result, ProcessInfo{PID: uint32(pid), Parent: uint32(parent), Started: started, Executable: exe})
 	}
 	return result, nil
+}
+
+func parseProcessStat(data []byte) (uint64, uint64, error) {
+	close := strings.LastIndexByte(string(data), ')')
+	if close < 0 {
+		return 0, 0, fmt.Errorf("stat sem nome de processo válido")
+	}
+	fields := strings.Fields(string(data[close+1:]))
+	if len(fields) < 20 {
+		return 0, 0, fmt.Errorf("stat incompleto")
+	}
+	parent, err := strconv.ParseUint(fields[1], 10, 32)
+	if err != nil {
+		return 0, 0, err
+	}
+	started, err := strconv.ParseUint(fields[19], 10, 64)
+	return parent, started, err
 }
