@@ -30,7 +30,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
   - [x] Pedido de fechamento e fechamento forçado dos processos no Job Object do Windows, com teste de executável temporário para a força.
   - [x] Fechamento normal e forçado de processos rastreados fora do Job no Windows, com verificação do horário de criação; teste de força com processos temporários e identidade divergente.
   - [x] Parada forçada no Linux via pidfd, com teste no WSL para processo temporário e identidade divergente.
-  - [ ] Teste de janela real; integração ao engine e paridade dos testes.
+  - [x] Teste de janela real: fechamento normal do jogo sem atingir outra janela temporária.
+  - [ ] Integração ao engine e paridade dos testes.
 - [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
 - [ ] **4. CLI:** porte pendente.
 - [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
@@ -113,7 +114,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Engine de sincronização portado, com testes de dois PCs, conflito com backup, trava e estabilização. Ainda não está ligado ao aplicativo.
 - [x] Ambiente e descoberta portados: marcadores locais, Documentos redirecionada, captura e comparação das pastas de save, exclusão de ruído e agrupamento por jogo. Testes locais no Windows e Linux; ainda sem integração com o aplicativo.
 - [x] Registro das execuções ativas ligado ao acompanhamento, incluindo o intervalo de espera e execuções simultâneas do mesmo programa; testes verificam registro e remoção.
-- [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. A parada forçada foi integrada no Windows ao Job Object, após dez segundos, com teste de processo temporário. No Windows, o fechamento também cobre processos rastreados fora do Job após conferir a identidade pelo horário de criação; teste com executáveis temporários cobre a força e PID com identidade divergente. No Linux, a força usa pidfd e confirma a identidade antes do sinal; teste de processo temporário passou no WSL. Ainda falta o teste com janela real. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
+- [ ] Controle de parada ligado ao acompanhamento: `StopProcess` espera o fim ou dez segundos após o pedido; no Windows, envia `WM_CLOSE` somente às janelas dos processos no Job Object. Testes cobrem o pedido, falha e execução temporária sem janela. A parada forçada foi integrada no Windows ao Job Object, após dez segundos, com teste de processo temporário. No Windows, o fechamento também cobre processos rastreados fora do Job após conferir a identidade pelo horário de criação; teste com executáveis temporários cobre a força e PID com identidade divergente. No Linux, a força usa pidfd e confirma a identidade antes do sinal; teste de processo temporário passou no WSL. O teste com duas janelas reais e ocultas confirmou o fechamento do jogo e a preservação da outra janela. No Linux, o pedido normal segue sem sinal, como no Rust. `go test -race` não rodou porque CGO está desativado.
 - [ ] Porte parcial de processos: rastreador de descendentes, PID reutilizado e executáveis relançados; listagem pelo ToolHelp no Windows e `/proc` no Linux; abertura com associação prévia ao Job Object, espera do grupo e heartbeat. Testes locais cobrem launcher e descendente. Faltam pedidos de fechamento normal e forçado, demais testes de integração e ligação com o engine.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
@@ -185,4 +186,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Testar o fechamento de uma janela real no Windows; completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Completar os testes de paridade do engine e integrar o núcleo ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
