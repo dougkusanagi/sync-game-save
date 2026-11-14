@@ -121,7 +121,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Implementar a parada forçada no Linux com pidfd e verificar a identidade, com teste no WSL. O fechamento normal segue sem sinal, como no Rust.
 - [x] Testar o fechamento de uma janela real no Windows e confirmar que outra janela temporária permanece aberta.
 - [ ] Completar os demais testes de integração e concorrência da parada; `go test -race` ainda não rodou porque CGO está desativado.
-- [ ] Integrar o acompanhamento e a parada ao engine e ao serviço.
+- [x] Testar em conjunto o engine, o processo real e a renovação da trava: um jogo com saída de erro ainda sincroniza e libera a trava após encerrar; validado no Windows e no WSL.
+- [ ] Integrar o acompanhamento e a parada ao serviço Go, ainda não portado.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).

@@ -301,3 +301,72 @@ func TestEngineConflitoUsaLocalSemPerderVersaoDaNuvem(t *testing.T) {
 		t.Fatal(lock, err)
 	}
 }
+
+func TestEngineJogoHelper(t *testing.T) {
+	if os.Getenv("SGS_ENGINE_GAME_HELPER") != "1" {
+		return
+	}
+	for i, arg := range os.Args {
+		if arg == "--" && i+1 < len(os.Args) {
+			if err := os.WriteFile(os.Args[i+1], []byte("save após o jogo"), 0644); err != nil {
+				os.Exit(2)
+			}
+			time.Sleep(500 * time.Millisecond)
+			os.Exit(7)
+		}
+	}
+	os.Exit(3)
+}
+
+func TestEngineProcessoComErroSincronizaDepoisDeEncerrar(t *testing.T) {
+	t.Setenv("SGS_ENGINE_GAME_HELPER", "1")
+	a := enginePC(t.TempDir(), "A", 1000)
+	enginePut(t, a, "save anterior")
+	if _, err := a.BeforeLaunch(false); err != nil {
+		t.Fatal(err)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A cópia isola o rastreamento por pasta dos demais processos de teste.
+	binary, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	game := filepath.Join(t.TempDir(), "jogo"+filepath.Ext(exe))
+	if err := os.WriteFile(game, binary, 0755); err != nil {
+		t.Fatal(err)
+	}
+	ticks := 0
+	var heartbeatErr error
+	code, err := RunProcess(game, []string{"-test.run=^TestEngineJogoHelper$", "--", filepath.Join(a.Roots[0].Path, "s.sav")}, "", 100*time.Millisecond, 100*time.Millisecond, func() {
+		ticks++
+		if heartbeatErr == nil {
+			heartbeatErr = HeartbeatLock(a.GameDir, a.Device, 1100)
+		}
+	})
+	if err != nil || code != 7 || ticks == 0 || heartbeatErr != nil {
+		t.Fatal(code, ticks, heartbeatErr, err)
+	}
+	lock, err := ReadLock(a.GameDir)
+	if err != nil || lock == nil || lock.Heartbeat != 1100 {
+		t.Fatal(lock, err)
+	}
+	created, err := a.afterExit(nil, noSleep)
+	if err != nil || !created {
+		t.Fatal(created, err)
+	}
+	head, err := ReadHead(a.GameDir)
+	if err != nil || head == nil {
+		t.Fatal(head, err)
+	}
+	data, err := os.ReadFile(filepath.Join(a.GameDir, "snapshots", head.Snapshot, "files", "s.sav"))
+	if err != nil || string(data) != "save após o jogo" {
+		t.Fatal(string(data), err)
+	}
+	lock, err = ReadLock(a.GameDir)
+	if err != nil || lock != nil {
+		t.Fatal(lock, err)
+	}
+}
