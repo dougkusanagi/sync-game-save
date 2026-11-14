@@ -120,6 +120,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Implementar a parada forçada no Windows após a espera de dez segundos, com teste de processos temporários e identidade divergente.
 - [x] Implementar a parada forçada no Linux com pidfd e verificar a identidade, com teste no WSL. O fechamento normal segue sem sinal, como no Rust.
 - [x] Testar o fechamento de uma janela real no Windows e confirmar que outra janela temporária permanece aberta.
+- [x] Testar o fechamento normal de uma janela rastreada fora do Job no Windows.
 - [ ] Completar os demais testes de integração e concorrência da parada; `go test -race` ainda não rodou porque CGO está desativado.
 - [x] Testar em conjunto o engine, o processo real e a renovação da trava: um jogo com saída de erro ainda sincroniza e libera a trava após encerrar; validado no Windows e no WSL.
 - [ ] Integrar o acompanhamento e a parada ao serviço Go, ainda não portado.

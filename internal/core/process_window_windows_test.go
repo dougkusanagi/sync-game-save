@@ -150,3 +150,65 @@ func TestStopProcessFechaJanelaSemAtingirOutra(t *testing.T) {
 		t.Fatal("outra janela foi fechada", state, err)
 	}
 }
+
+func TestRequestCloseFechaJanelaRastreadaForaDoJob(t *testing.T) {
+	t.Setenv("SGS_WINDOW_HELPER", "1")
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	game := filepath.Join(dir, "jogo.exe")
+	marker := filepath.Join(dir, "pronto")
+	if err := os.WriteFile(game, data, 0755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(game, "-test.run=^TestWindowHelper$", "--", marker)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("janela não ficou pronta")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(cmd.Process.Pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, err := processStarted(h)
+	windows.CloseHandle(h)
+	if err != nil || started == 0 {
+		t.Fatal(started, err)
+	}
+	job, err := newProcessJob()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer job.close()
+	tracker := NewProcessTracker(uint32(cmd.Process.Pid), "")
+	tracker.Refresh([]ProcessInfo{{PID: uint32(cmd.Process.Pid), Started: started}})
+	if err := job.requestClose(tracker, []ProcessInfo{{PID: uint32(cmd.Process.Pid), Started: started}}); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("janela rastreada continuou aberta")
+	}
+}
