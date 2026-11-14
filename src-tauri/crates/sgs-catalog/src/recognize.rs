@@ -213,18 +213,30 @@ pub struct ScanResult {
     pub needs_confirmation: Vec<(PathBuf, Recognition)>,
     /// Pastas com executável que o catálogo não conhece.
     pub unknown: Vec<(PathBuf, Recognition)>,
+    /// Pastas que não puderam ser examinadas ou reconhecidas.
+    pub errors: Vec<(PathBuf, String)>,
 }
 
-fn has_exe(dir: &Path, depth: u32) -> bool {
-    let Ok(rd) = std::fs::read_dir(dir) else { return false };
-    rd.flatten().any(|e| {
-        let p = e.path();
-        if p.is_dir() {
-            depth < 2 && has_exe(&p, depth + 1)
-        } else {
-            p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) && !is_bad_exe(&e.file_name().to_string_lossy())
+fn has_exe(dir: &Path, depth: u32, errors: &mut Vec<(PathBuf, String)>) -> bool {
+    let rd = match std::fs::read_dir(dir) {
+        Ok(rd) => rd,
+        Err(e) => { errors.push((dir.to_path_buf(), e.to_string())); return false; }
+    };
+    let mut found = false;
+    for entry in rd {
+        match entry {
+            Ok(e) => {
+                let p = e.path();
+                if p.is_dir() {
+                    if depth < 2 && has_exe(&p, depth + 1, errors) { found = true; }
+                } else if p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) && !is_bad_exe(&e.file_name().to_string_lossy()) {
+                    found = true;
+                }
+            }
+            Err(e) => errors.push((dir.to_path_buf(), e.to_string())),
         }
-    })
+    }
+    found
 }
 
 /// Varre as subpastas de `root` até `depth` níveis (1 = filhas diretas). Cada pasta com
@@ -232,12 +244,25 @@ fn has_exe(dir: &Path, depth: u32) -> bool {
 pub fn scan_folder(cat: &Catalog, root: &Path, depth: u32, env: &Env, windows: bool) -> Result<ScanResult> {
     let mut out = ScanResult::default();
     fn walk(cat: &Catalog, dir: &Path, left: u32, env: &Env, windows: bool, out: &mut ScanResult) -> Result<()> {
-        let Ok(rd) = std::fs::read_dir(dir) else { return Ok(()) };
-        let mut dirs: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        let rd = match std::fs::read_dir(dir) {
+            Ok(rd) => rd,
+            Err(e) => { out.errors.push((dir.to_path_buf(), e.to_string())); return Ok(()); }
+        };
+        let mut dirs = Vec::new();
+        for entry in rd {
+            match entry {
+                Ok(e) if e.path().is_dir() => dirs.push(e.path()),
+                Ok(_) => {},
+                Err(e) => out.errors.push((dir.to_path_buf(), e.to_string())),
+            }
+        }
         dirs.sort();
         for d in dirs {
-            if has_exe(&d, 0) {
-                let r = recognize(cat, &d, env, windows)?;
+            if has_exe(&d, 0, &mut out.errors) {
+                let r = match recognize(cat, &d, env, windows) {
+                    Ok(r) => r,
+                    Err(e) => { out.errors.push((d, e.to_string())); continue; }
+                };
                 match r.confidence {
                     Confidence::High => out.recognized.push((d, r)),
                     Confidence::Low => out.needs_confirmation.push((d, r)),

@@ -598,6 +598,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ### 5. Varredura em lote, menu e central rápida
 
+- Em andamento: o resultado da varredura agora registra erros de leitura e reconhecimento por caminho, permitindo continuar com os demais jogos; testes de catálogo passaram. Falta expor esses erros e os resultados na interface, selecionar e adicionar os jogos, e validar os fluxos.
 - Varredura: reutilizar `sgs-service::scan_library_folder` e comando `varrer_pasta`; criar resultado selecionável com confirmação dos candidatos, caminhos de save e erros por jogo. Não adicionar registros sem saves válidos.
 - Menu/central: implementar as ações especificadas na seção de interface, usando estados reais do app. Sincronização não pode sobrescrever saves de jogo em execução. Preservar navegação por controle, teclado e retorno de foco.
 - Entregar cada fluxo separadamente com regressões E2E, capturas e README/changelog correspondentes.

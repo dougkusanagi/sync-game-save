@@ -107,3 +107,12 @@ fn varre_pasta_com_varios_jogos() {
     let r1 = scan_folder(&cat, &lib, 1, &env, true).unwrap();
     assert_eq!((r1.recognized.len(), r1.unknown.len()), (1, 2));
 }
+
+#[test]
+fn varredura_informa_pasta_inacessivel() {
+    let (t, cat, env) = setup();
+    let inexistente = t.path().join("nao-existe");
+    let resultado = sgs_catalog::recognize::scan_folder(&cat, &inexistente, 2, &env, true).unwrap();
+    assert_eq!(resultado.errors.len(), 1);
+    assert_eq!(resultado.errors[0].0, inexistente);
+}
