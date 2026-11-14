@@ -135,7 +135,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - [x] Adicionar SQLite Go puro (`modernc.org/sqlite`) e testar FTS5 localmente.
 - [x] Abrir biblioteca SQLite e aplicar migrações atômicas 1–3; testes cobrem preservação de dados de esquema 1, persistência e recusa de esquema futuro.
-- [ ] Testar leitura de bancos existentes gerados pela versão Rust e concluir biblioteca e catálogo sem migração destrutiva (ADR 0002).
+- [x] Portar operações da biblioteca de jogos, configurações, estado de sync, tempo jogado e cache de conquistas; testes cobrem edição, duplicidade, exclusão e persistência.
+- [ ] Testar leitura de bancos existentes gerados pela versão Rust e concluir a integração da biblioteca e do catálogo sem migração destrutiva (ADR 0002).
 - [ ] Manifesto do Ludusavi com `gopkg.in/yaml.v3`; medir tempo e memória da importação (30 MB).
 - [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [ ] Portar os testes de cada crate antes do código.
@@ -206,4 +207,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Portar as operações da biblioteca Go, validar dados reais existentes e ligar os serviços aos comandos do frontend; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Validar a biblioteca Go com dados gerados pela versão Rust e ligar os serviços aos comandos do frontend; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
