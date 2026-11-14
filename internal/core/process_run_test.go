@@ -27,9 +27,10 @@ func TestRunProcessEsperaEEnviaHeartbeat(t *testing.T) {
 		t.Fatal(err)
 	}
 	beats := 0
+	observed := false
 	start := time.Now()
-	code, err := RunProcess(exe, []string{"-test.run=^TestProcessHelper$", "--", "500"}, "", 200*time.Millisecond, 100*time.Millisecond, func() { beats++ })
-	if err != nil || code != 7 || beats == 0 || time.Since(start) < 700*time.Millisecond {
+	code, err := RunProcess(exe, []string{"-test.run=^TestProcessHelper$", "--", "500"}, "", 200*time.Millisecond, 100*time.Millisecond, func() { beats++; observed = observed || ProcessRunning(exe) })
+	if err != nil || code != 7 || beats == 0 || !observed || ProcessRunning(exe) || time.Since(start) < 700*time.Millisecond {
 		t.Fatal(code, beats, err, time.Since(start))
 	}
 }

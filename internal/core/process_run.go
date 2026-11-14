@@ -37,6 +37,8 @@ func RunProcess(prog string, args []string, cwd string, quiet, every time.Durati
 	if err := group.attach(cmd); err != nil {
 		return 0, fmt.Errorf("não foi possível acompanhar o jogo: %w", err)
 	}
+	control := &stopControl{}
+	defer registerProcess(prog, control)()
 	tracker := NewProcessTracker(uint32(cmd.Process.Pid), dir)
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
