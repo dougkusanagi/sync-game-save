@@ -81,7 +81,6 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 - [ ] Bandeja, fechar para a bandeja, notificações, diálogo de pasta.
 - [ ] Capas locais: protocolo próprio restrito à pasta de arte (equivale ao `asset_protocol_scope` atual). Atualizar a CSP.
 - [ ] Controle (`controle.rs`): XInput no Windows via `x/sys/windows`; evdev no Linux. Conferir os mapeamentos de botões atuais.
-- [ ] Instância única, se a versão Tauri tiver esse comportamento (conferir em `lib.rs`).
 
 ### 6. Frontend
 
@@ -120,7 +119,6 @@ Nenhuma até agora.
 ## Dúvidas abertas
 
 - Manter AppImage (montagem manual) ou aceitar os formatos Linux do MyGo?
-- O app Tauri tem instância única? (conferir `lib.rs`).
 - O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão? Confirmar na PoC.
 
 ## Próximo passo
