@@ -127,6 +127,39 @@ async function aguardarDepurador(url, app) {
     if (fs.readFileSync(save, "utf8") !== "progresso preservado") throw new Error("O save foi alterado ao remover o jogo.");
     console.log("ok   remoção preserva o save fora da biblioteca");
 
+    // Jogar pela interface: o programa de teste (cmd.exe) fecha logo, e o save sobe para a nuvem.
+    const cmd = path.join(process.env.SystemRoot || "C:\Windows", "System32", "cmd.exe");
+    const idReal = await page.evaluate(async ([exe, saves]) => {
+      const runtime = await import("/wails/runtime.js");
+      return runtime.Call.ByName("main.App.AdicionarJogo", { name: "Jogo Real", exe, install_dir: null, catalog_id: null, save_paths: [saves] });
+    }, [cmd, saveDir.replaceAll("\\", "/")]);
+    await page.reload();
+    await page.getByRole("heading", { name: "Jogo Real" }).waitFor({ timeout: 15000 });
+    await page.getByRole("button", { name: /^Jogo Real/ }).hover();
+    await page.getByRole("button", { name: "Jogar" }).first().click();
+    const snaps = path.join(nuvem, "SyncGameSave", "games", "Jogo Real", "snapshots");
+    for (let i = 0; i < 160 && !(fs.existsSync(snaps) && fs.readdirSync(snaps).length > 0); i++) await new Promise((r) => setTimeout(r, 500));
+    if (!fs.existsSync(snaps) || fs.readdirSync(snaps).length === 0) throw new Error("Jogar pela interface não enviou o save para a nuvem.");
+    console.log("ok   jogar pela interface envia o save para a pasta de sync");
+    await page.getByRole("button", { name: /^Jogo Real/ }).hover();
+    await page.getByRole("button", { name: "Versões" }).first().click();
+    await page.getByRole("button", { name: "Restaurar" }).waitFor({ timeout: 15000 });
+    console.log("ok   o diálogo de versões lista o snapshot criado pelo backend Go");
+    await page.keyboard.press("Escape");
+
+    // Capa local: a interface a carrega por /capa/<arquivo>, só da pasta de arte.
+    const arte = path.join(pasta, "dados", "art");
+    fs.mkdirSync(arte, { recursive: true });
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+    fs.writeFileSync(path.join(arte, idReal + ".jpg"), png);
+    const resp = await page.evaluate(async (id) => {
+      const ok = await fetch("/capa/" + id + ".jpg");
+      const fora = await fetch("/capa/../library.db");
+      return { ok: ok.status, tipo: ok.headers.get("content-type"), foraStatus: fora.status, foraTipo: fora.headers.get("content-type") };
+    }, idReal);
+    if (resp.ok !== 200 || resp.foraTipo?.includes("octet-stream") || resp.foraTipo?.includes("sqlite")) throw new Error("Capa local inesperada: " + JSON.stringify(resp));
+    console.log("ok   a capa local é servida de /capa/ e o banco de dados não");
+
     console.log(`Capturas: ${pasta}`);
   } finally {
     if (browser) await browser.close();

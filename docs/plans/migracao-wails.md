@@ -174,7 +174,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Atualizador Wails ligado ao `api.ts` (`VerificarAtualizacao`, `InstalarAtualizacao`, `app_update.go`): manifesto assinado Ed25519 pelo provedor `endpoint`, recusa com jogo aberto e erros em linguagem simples (ADR 0009). Testado com atualizador falso e com o provedor real do Wails contra um manifesto gerado por `cmd/assinar`; a troca do executável não foi testada.
 - [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
 - [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`. A janela do teste nasce fora da área visível (x e y = -32000), para não atrapalhar quem usa o PC; `SGS_E2E_VISIVEL=1` a traz de volta. Janela oculta (`Hidden`) não serve: o WebView2 deixa de renderizar e a captura de tela expira.
-- [ ] Adaptar e executar os fluxos completos de `e2e/app-real.cjs` com os serviços Go reais.
+- [x] Fluxos de `e2e/app-real.cjs` adaptados em `e2e/wails-smoke.cjs` com os serviços Go reais: primeiro uso, cadastro, edição, remoção, jogar pela interface (sync para a pasta temporária), diálogo de versões e capa local por `/capa/` (o banco não é servido). Fora do teste: a arte baixada pela busca na loja da Steam (depende da rede) e o conflito de save pela interface.
+- [ ] Remover `app-real.cjs` e o script `e2e:app` quando o Tauri sair (passo 8).
 
 ### 7. Distribuição e atualização
 
