@@ -12,6 +12,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"sync-game-save/internal/achievements"
 	"sync-game-save/internal/core"
 	"sync-game-save/internal/library"
 )
@@ -71,6 +72,11 @@ func (App) Jogar(id int64, opcoes *OpcoesJogar) (ResultadoJogar, error) {
 	} else {
 		emit("pronto")
 	}
+	if err == nil && r.Kind == "finished" {
+		// Depois de jogar, as conquistas mudam: atualiza o cache sem travar a resposta.
+		go func() { _, _ = conquistasDoJogo(id, true, achievements.NetHTTP{}, int64(agora())) }()
+	}
+	avisarResultadoDoJogo(r, err)
 	return r, err
 }
 

@@ -141,6 +141,12 @@ func (s *steamFalsa) Get(url string) (int, string, error) {
 	if s.falha {
 		return 0, "", errors.New("sem internet")
 	}
+	if strings.Contains(url, "GetSchemaForGame") {
+		return 200, `{"game":{"availableGameStats":{"achievements":[{"name":"a","displayName":"Um"}]}}}`, nil
+	}
+	if strings.Contains(url, "GetPlayerAchievements") {
+		return 200, `{"playerstats":{"success":true,"achievements":[{"apiname":"a","achieved":1,"unlocktime":5}]}}`, nil
+	}
 	if strings.Contains(url, "GlobalAchievementPercentages") {
 		return 200, `{"achievementpercentages":{"achievements":[{"name":"a","percent":10}]}}`, nil
 	}
