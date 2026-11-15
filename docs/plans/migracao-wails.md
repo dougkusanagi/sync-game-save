@@ -171,7 +171,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Integrar cadastro manual sem catálogo, reconhecimento da pasta e conversão do caminho de save; fluxo verificado no WebView real. A consulta de catálogo existente ainda não foi portada.
 - [x] Integrar edição e remoção de jogos; testes no WebView real e no backend cobrem preservação dos saves, invalidação de base e rollback após edição inválida.
 - [ ] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
-- [ ] Integrar o atualizador Wails quando o provedor e a ponte de atualização estiverem definidos na etapa 7.
+- [x] Atualizador Wails ligado ao `api.ts` (`VerificarAtualizacao`, `InstalarAtualizacao`, `app_update.go`): manifesto assinado Ed25519 pelo provedor `endpoint`, recusa com jogo aberto e erros em linguagem simples (ADR 0009). Testado com atualizador falso e com o provedor real do Wails contra um manifesto gerado por `cmd/assinar`; a troca do executável não foi testada.
 - [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
 - [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`. A janela do teste nasce fora da área visível (x e y = -32000), para não atrapalhar quem usa o PC; `SGS_E2E_VISIVEL=1` a traz de volta. Janela oculta (`Hidden`) não serve: o WebView2 deixa de renderizar e a captura de tela expira.
 - [ ] Adaptar e executar os fluxos completos de `e2e/app-real.cjs` com os serviços Go reais.
@@ -180,8 +180,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - [ ] Windows: NSIS do Wails (`build/windows/nsis/project.nsi`). Mesmo nome de produto e instalação por usuário, como o NSIS atual; conferir se o caminho de instalação muda e se os dados em `AppData` continuam no mesmo lugar. Definir como obter o `makensis` (instalar o NSIS na máquina de build).
 - [ ] Linux: AppImage pelo Wails (`build/linux/appimage`), mantendo a ADR 0006. Testar no Ubuntu.
-- [ ] Atualizador: o Tauri usa minisign + `latest.json`. Planejar a ponte: uma última versão Tauri (v1.x) cujo `latest.json`, assinado com a chave atual, entrega o instalador Go; a partir dela, o atualizador do Wails assume. Testar de ponta a ponta numa máquina com a v1.x instalada.
-- [ ] Chave de assinatura do novo atualizador fora do repositório; registrar o local no `MEMORY.md`.
+- [ ] Atualizador (ponte v1.x → Go; o lado Go está na ADR 0009): o Tauri usa minisign + `latest.json`. Planejar a ponte: uma última versão Tauri (v1.x) cujo `latest.json`, assinado com a chave atual, entrega o instalador Go; a partir dela, o atualizador do Wails assume. Testar de ponta a ponta numa máquina com a v1.x instalada.
+- [x] Chave de assinatura do novo atualizador: gerada com `go run ./cmd/assinar chaves`; a privada fica em `C:\Users\dl_ag\.sgs\updater-ed25519.pem` (fora do repositório, registrada no `MEMORY.md`) e a pública em `build/updater-public.pem`. Falta guardar uma cópia da privada em local seguro (backup).
 
 ### 8. Remoção do Tauri e documentação
 
