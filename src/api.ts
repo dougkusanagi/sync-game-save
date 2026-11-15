@@ -137,6 +137,7 @@ export const api = {
   atualizarCatalogo: () => call<number>("atualizar_catalogo"),
   escolherCandidatoCatalogo: (pasta: string, id: number) => call<Reconhecimento>("escolher_candidato_catalogo", { pasta, id }),
   varrerPasta: (pasta: string, profundidade: number) => call<ResultadoVarredura>("varrer_pasta", { pasta, profundidade }),
+  sairDoApp: () => call<void>("sair_app"),
   primeiroBackup: (id: number) => call<ResultadoPrimeiroBackup>("primeiro_backup", { id }),
   reconhecerPasta: (pasta: string) => call<Reconhecimento>("reconhecer_pasta", { pasta }),
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),

@@ -190,6 +190,11 @@ impl Service {
         Ok(Operacao { id, ativos: &self.operacoes })
     }
 
+    /// Há jogo aberto ou sincronizando neste app.
+    pub fn ocupado(&self) -> bool {
+        self.operacoes.lock().map(|a| !a.is_empty()).unwrap_or(true)
+    }
+
     fn lib(&self) -> std::sync::MutexGuard<'_, Library> {
         self.lib.lock().unwrap_or_else(|p| p.into_inner())
     }

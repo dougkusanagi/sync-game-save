@@ -136,6 +136,29 @@ teste("varredura: backup recusado por outro PC pode ser repetido sem recriar o j
   assert.equal(await page.getByText("Adicionado à biblioteca.").count(), 1);
 });
 
+teste("central rápida: F1 mostra o estado, envia os saves e devolve o foco", async (page) => {
+  await page.goto(BASE);
+  await page.getByRole("button", { name: /Jogar/ }).first().waitFor();
+  await page.keyboard.press("F1");
+  const dialogo = page.getByRole("dialog", { name: "Central rápida" });
+  await dialogo.waitFor();
+  await dialogo.getByText(/Sincronizado|Ainda não sincronizado/).first().waitFor();
+  await dialogo.getByRole("button", { name: "Sincronizar tudo agora" }).click();
+  await dialogo.getByText("Save enviado.").first().waitFor();
+  await dialogo.getByRole("checkbox", { name: /Música ambiente/ }).waitFor();
+  await page.keyboard.press("Escape");
+  await dialogo.waitFor({ state: "detached" });
+});
+
+teste("central rápida: no celular não rola para os lados", async (page) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(BASE);
+  await page.getByRole("button", { name: /Jogar/ }).first().waitFor();
+  await page.keyboard.press("F1");
+  await page.getByRole("dialog", { name: "Central rápida" }).waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+});
+
 teste("adicionar jogo: nome vazio bloqueia o envio", async (page) => {
   await page.goto(`${BASE}?cenario=vazio`);
   await page.getByRole("button", { name: "Adicionar jogo" }).first().click();

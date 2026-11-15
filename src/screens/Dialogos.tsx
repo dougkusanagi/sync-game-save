@@ -415,7 +415,7 @@ function TemaConfig() {
   );
 }
 
-function SomConfig() {
+export function SomConfig() {
   const [c, setC] = useState<ConfigSom>(() => som.obter());
   const mudar = (p: Partial<ConfigSom>) => {
     som.definir(p);

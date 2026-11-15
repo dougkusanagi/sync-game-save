@@ -252,6 +252,8 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "listar_jogos":
       return r(jogos);
+    case "sair_app":
+      return r(undefined);
     case "primeiro_backup": {
       await espera(200);
       const g = jogos.find((j) => j.id === args.id);

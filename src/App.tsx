@@ -10,6 +10,7 @@ import { som } from "./som";
 import { acharTema, aplicarTema } from "./temas";
 import { AddGame } from "./screens/AddGame";
 import { Biblioteca, type EstadoCard, type FiltroLib, type OrdemLib } from "./screens/Biblioteca";
+import { Central } from "./screens/Central";
 import { Conquistas } from "./screens/Conquistas";
 import { ConquistasHub } from "./screens/ConquistasHub";
 import { Conflito, Configuracoes, EditarJogo, Opcoes, PararJogo, Remover, SemSync, Sobre, Travado, Versoes } from "./screens/Dialogos";
@@ -23,6 +24,7 @@ let entradaIniciada = false;
 
 type Camada =
   | { tipo: "adicionar" }
+  | { tipo: "central" }
   | { tipo: "config" }
   | { tipo: "sobre" }
   | { tipo: "conquistas"; jogo: Game }
@@ -250,6 +252,9 @@ export default function App() {
           });
         }
         break;
+      case "quick":
+        abrir({ tipo: "central" });
+        break;
       case "settings":
         abrir({ tipo: "config" });
         break;
@@ -329,8 +334,8 @@ export default function App() {
     jogos.length === 0
       ? [["addGame", "Adicionar jogo"]]
       : tela === "inicio"
-      ? [["confirm", "Jogar"], ["options", "Opções"], ["details", "Versões"], ["nextTab", "Seção"], ["library", "Biblioteca"]]
-      : [["confirm", "Abrir"], ["options", "Opções"], ["details", "Versões"], ["search", "Buscar"], ["filter", "Filtros"], ["back", "Início"]];
+      ? [["confirm", "Jogar"], ["options", "Opções"], ["details", "Versões"], ["nextTab", "Seção"], ["library", "Biblioteca"], ["quick", "Central"]]
+      : [["confirm", "Abrir"], ["options", "Opções"], ["details", "Versões"], ["search", "Buscar"], ["filter", "Filtros"], ["back", "Início"], ["quick", "Central"]];
   const irPara = (t: "inicio" | "biblioteca") => acoes.current(t === "inicio" ? "home" : "library");
 
   return (
@@ -491,6 +496,8 @@ export default function App() {
                 }}
               />
             );
+          case "central":
+            return <Central key={i} jogos={jogos} estados={cards} onClose={fechar} onMudou={() => void carregar()} />;
           case "config":
             return <Configuracoes key={i} estado={estado} onClose={fechar} onMudou={() => void carregar()} onSobre={() => abrir({ tipo: "sobre" })} />;
           case "sobre":
