@@ -24,11 +24,11 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 Painel visual: [progresso da migração](progresso-wails.html). As barras contam os itens marcados nos passos abaixo, com a etapa de processos dividida em entregas verificáveis. Os itens têm tamanhos diferentes e não representam uma estimativa de tempo. A mudança da contagem anterior (12 de 45) reflete essa divisão, não trabalho novo.
 
 - [x] **0. Medir a base:** medição do Tauri concluída (o tamanho do instalador do Tauri não foi medido).
-- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; falta ver na tela a bandeja e o fechar para a bandeja.
+- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; o fechar para a bandeja e o ícone na bandeja foram conferidos no Windows em 2026-11-15; falta o clique no ícone para restaurar a janela.
 - [x] **2. Núcleo:** tudo portado e testado no Windows e no Linux (WSL), inclusive com `go test -race` (sem corridas).
 - [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
 - [x] **4. CLI:** portado (`cmd/sgs`).
-- [x] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle (Windows e Linux) estão prontos; falta ver na tela a bandeja e o toast.
+- [x] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle (Windows e Linux) estão prontos; o ícone da bandeja aparece e some ao sair; falta ver o toast (exige o app instalado).
 - [x] **6. Frontend:** todos os comandos, o atualizador e os E2E no app real ligados aos serviços Go; sem código Tauri.
 - [x] **7. Distribuição e atualização:** release 2.0.1 publicado e testado de ponta a ponta: o atualizador Go (consulta, download, resumo e assinatura Ed25519) e a ponte com um Tauri 1.1.0 real. Repositório público (ADR 0010). Falta apenas abrir o AppImage num Ubuntu real.
 - [x] **8. Remoção do Tauri e documentação:** feitas; versão 2.0.0 lançada em 2026-11-15 (commit de versão `8b2d485`, tag `v2.0.0`).
@@ -228,6 +228,6 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 ## Próximo passo
 
 1. Abrir o AppImage num Ubuntu real (fora do WSL) e testar o fluxo completo.
-2. Ver na tela a bandeja e o toast, com a interface aberta.
+2. Clicar no ícone da bandeja para restaurar a janela e ver o toast com o app instalado (o ícone e o fechar para a bandeja já foram conferidos: a janela fica oculta e o processo continua vivo; o ícone some ao sair).
 3. Quando houver um controle físico, conferir a leitura (XInput no Windows e evdev no Linux).
 4. Se a migração for considerada concluída, apagar este plano (mover o que for durável para a memória do projeto), conforme as regras.
