@@ -4,7 +4,7 @@ members = [".", "crates/sgs-core", "crates/sgs-catalog", "crates/sgs-cli", "crat
 
 [package]
 name = "sync-game-save"
-version = "1.0.0"
+version = "1.1.0"
 description = "Launcher de jogos com sincronização segura de saves"
 edition = "2024"
 

@@ -1,1 +1,0 @@
-- Adicionado: busca pelo nome (ignora acentos), filtros (sincronizados, sem sincronização, nunca jogados) e ordenação (nome, jogado recentemente, tempo de jogo) na Biblioteca; os filtros continuam escolhidos quando você sai e volta.

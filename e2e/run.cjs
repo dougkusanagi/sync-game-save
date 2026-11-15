@@ -320,7 +320,7 @@ teste("sobre: mostra a versão e procura atualização", async (page) => {
   await page.getByRole("button", { name: "Configurações" }).click();
   await page.getByRole("dialog", { name: "Configurações" }).getByRole("button", { name: "Sobre" }).click();
   const dlg = page.getByRole("dialog", { name: "Sobre" });
-  await dlg.getByText(/Versão 1\.0\.0/).waitFor();
+  await dlg.getByText(/Versão 1.1.0/).waitFor();
   await dlg.getByText("Você está na versão mais recente.").waitFor();
 });
 
