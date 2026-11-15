@@ -106,6 +106,36 @@ teste("varredura: erro parcial preserva os jogos adicionados e permite corrigir"
   await page.getByRole("button", { name: /Outro jogo/ }).first().waitFor();
 });
 
+teste("varredura: primeiro backup informa o resultado de cada jogo sem abrir nada", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("checkbox", { name: "Adicionar Outro jogo" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText("Primeira cópia do save guardada na pasta de sincronização.").waitFor();
+  await page.getByText(/já tem outra versão deste save. Nada foi alterado/).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Tentar o backup de novo" }).count(), 0);
+});
+
+teste("varredura: backup recusado por outro PC pode ser repetido sem recriar o jogo", async (page) => {
+  await page.goto(BASE + "?cenario=backup-ocupado");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText(/PC-QUARTO está jogando agora/).waitFor();
+  await page.getByRole("button", { name: "Tentar o backup de novo" }).click();
+  await page.getByText("Primeira cópia do save guardada na pasta de sincronização.").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Tentar o backup de novo" }).count(), 0);
+  assert.equal(await page.getByText("Adicionado à biblioteca.").count(), 1);
+});
+
 teste("adicionar jogo: nome vazio bloqueia o envio", async (page) => {
   await page.goto(`${BASE}?cenario=vazio`);
   await page.getByRole("button", { name: "Adicionar jogo" }).first().click();

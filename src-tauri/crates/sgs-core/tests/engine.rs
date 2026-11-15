@@ -116,3 +116,54 @@ fn fechar_com_erro_ainda_salva_e_solta_a_trava() {
     assert!(!a.game_dir.join("lock.json").exists());
     assert!(read_head(&a.game_dir).unwrap().is_some());
 }
+
+#[test]
+fn primeiro_backup_cria_a_primeira_versao_e_solta_a_trava() {
+    use sgs_core::engine::FirstBackup;
+    let t = tempfile::tempdir().unwrap();
+    let a = pc(t.path(), "A", 1000);
+    assert_eq!(a.first_backup().unwrap(), FirstBackup::NothingToBackup);
+    put(&a, "v1");
+    assert_eq!(a.first_backup().unwrap(), FirstBackup::Created);
+    assert!(read_head(&a.game_dir).unwrap().is_some());
+    assert!(!a.game_dir.join("lock.json").exists());
+    // Repetir não cria outra versão.
+    assert_eq!(a.first_backup().unwrap(), FirstBackup::AlreadySynced);
+    assert_eq!(sgs_core::snapshot::list(&a.game_dir).unwrap().len(), 1);
+}
+
+#[test]
+fn primeiro_backup_nao_substitui_versao_existente_de_outro_pc() {
+    use sgs_core::engine::FirstBackup;
+    let t = tempfile::tempdir().unwrap();
+    let a = pc(t.path(), "A", 1000);
+    put(&a, "da-nuvem");
+    assert_eq!(a.first_backup().unwrap(), FirstBackup::Created);
+    let b = pc(t.path(), "B", 2000);
+    put(&b, "local-diferente");
+    assert_eq!(b.first_backup().unwrap(), FirstBackup::NeedsDecision);
+    assert_eq!(get(&b), "local-diferente");
+    assert_eq!(sgs_core::snapshot::list(&b.game_dir).unwrap().len(), 1);
+    // Mesmo conteúdo nos dois lados: só liga o PC à versão existente.
+    let c = pc(t.path(), "C", 3000);
+    put(&c, "da-nuvem");
+    assert_eq!(c.first_backup().unwrap(), FirstBackup::AlreadySynced);
+}
+
+#[test]
+fn primeiro_backup_recusa_com_trava_de_outro_pc_ou_deste() {
+    use sgs_core::engine::FirstBackup;
+    let t = tempfile::tempdir().unwrap();
+    let a = pc(t.path(), "A", 1000);
+    put(&a, "v1");
+    sgs_core::lock::acquire(&a.game_dir, "A", 1000).unwrap();
+    assert_eq!(a.first_backup().unwrap(), FirstBackup::InUse);
+    let b = pc(t.path(), "B", 1100);
+    put(&b, "v1");
+    assert_eq!(b.first_backup().unwrap(), FirstBackup::LockedByOther("A".into()));
+    assert!(read_head(&b.game_dir).unwrap().is_none());
+    // Trava antiga de outro PC é tratada como abandonada.
+    let c = pc(t.path(), "C", 1000 + 3600);
+    put(&c, "v1");
+    assert_eq!(c.first_backup().unwrap(), FirstBackup::Created);
+}

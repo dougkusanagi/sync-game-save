@@ -2,7 +2,15 @@
 import { Dialog } from "../Dialog";
 import { api, escolherArquivoExe, escolherPasta, textoDoErro, type Reconhecimento } from "../api";
 
-type Item = { pasta: string; rec: Reconhecimento; candidatos: { id: number; name: string }[]; grupo: string; marcado: boolean; saves: string[]; adicionado: boolean; erro?: string };
+type Item = { pasta: string; rec: Reconhecimento; candidatos: { id: number; name: string }[]; grupo: string; marcado: boolean; saves: string[]; adicionado: boolean; erro?: string; id?: number; backup?: string; backupRepetir?: boolean };
+const TEXTO_BACKUP: Record<string, string> = {
+  created: "Primeira cópia do save guardada na pasta de sincronização.",
+  already_synced: "A pasta de sincronização já tem este save.",
+  nothing_to_backup: "Ainda não há arquivos de save neste PC. A cópia será feita quando você jogar.",
+  needs_decision: "A pasta de sincronização já tem outra versão deste save. Nada foi alterado; você escolhe qual manter ao abrir o jogo.",
+  in_use: "O jogo está aberto ou sincronizando. Tente o backup de novo depois que ele fechar.",
+};
+
 type Props = { onClose: () => void; onVoltar: () => void; onAdicionado: () => void };
 
 export function Varredura({ onClose, onVoltar, onAdicionado }: Props) {
@@ -53,15 +61,32 @@ export function Varredura({ onClose, onVoltar, onAdicionado }: Props) {
     finally { setOcupado(false); }
   }
 
+  async function fazerBackup(pasta: string, id: number) {
+    mudar(pasta, (i) => ({ ...i, backup: "Guardando a primeira cópia do save…", backupRepetir: false }));
+    try {
+      const r = await api.primeiroBackup(id);
+      const texto = r.kind === "locked" ? `${r.pc} está jogando agora. Tente o backup de novo quando ele fechar o jogo.` : TEXTO_BACKUP[r.kind];
+      mudar(pasta, (i) => ({ ...i, backup: texto, backupRepetir: r.kind === "locked" || r.kind === "in_use" }));
+    } catch (e) { mudar(pasta, (i) => ({ ...i, backup: textoDoErro(e), backupRepetir: true })); }
+  }
+
+  async function repetirBackup(item: Item) {
+    if (item.id === undefined || ocupado) return;
+    setOcupado(true);
+    await fazerBackup(item.pasta, item.id);
+    setOcupado(false);
+  }
+
   async function adicionar() {
     if (!itens || ocupado) return;
     setOcupado(true);
     for (const item of itens.filter((i) => i.marcado && !i.adicionado)) {
       if (!item.rec.exe || !item.saves.length || !item.rec.name.trim()) continue;
       try {
-        await api.adicionarJogo({ name: item.rec.name.trim(), exe: item.rec.exe, install_dir: item.pasta, catalog_id: item.rec.catalog_id, save_paths: item.saves });
-        mudar(item.pasta, (i) => ({ ...i, adicionado: true, marcado: false, erro: undefined }));
+        const id = await api.adicionarJogo({ name: item.rec.name.trim(), exe: item.rec.exe, install_dir: item.pasta, catalog_id: item.rec.catalog_id, save_paths: item.saves });
+        mudar(item.pasta, (i) => ({ ...i, adicionado: true, marcado: false, erro: undefined, id }));
         setHouveAdicao(true);
+        await fazerBackup(item.pasta, id);
       } catch (e) { mudar(item.pasta, (i) => ({ ...i, erro: textoDoErro(e) })); }
     }
     setOcupado(false);
@@ -75,9 +100,9 @@ export function Varredura({ onClose, onVoltar, onAdicionado }: Props) {
         <button className="btn primario" data-f data-autofocus disabled={ocupado} onClick={procurar}>{ocupado ? "Procurando…" : "Escolher pasta e procurar…"}</button>
         <button className="btn fraco" data-f disabled={ocupado} onClick={onVoltar}>Voltar</button>
       </> : <>
-        <p>Marque os jogos que quer adicionar e confira os caminhos de save. Jogos sem executável ou caminho de save não podem ser adicionados aqui. A primeira sincronização será feita ao abrir cada jogo.</p>
+        <p>Marque os jogos que quer adicionar e confira os caminhos de save. Jogos sem executável ou caminho de save não podem ser adicionados aqui. Depois de adicionar, o app guarda a primeira cópia do save na pasta de sincronização, sem abrir o jogo e sem trocar versões que já existam.</p>
         {itens.length === 0 && <p>Nenhum jogo encontrado nesta pasta.</p>}
-        {["Reconhecidos", "Precisam de confirmação", "Não reconhecidos"].map((grupo) => itens.some((i) => i.grupo === grupo) && <section key={grupo} className="coluna"><h3>{grupo}</h3>{itens.filter((i) => i.grupo === grupo).map((i) => <fieldset className="campo" key={i.pasta} disabled={ocupado || i.adicionado}>
+        {["Reconhecidos", "Precisam de confirmação", "Não reconhecidos"].map((grupo) => itens.some((i) => i.grupo === grupo) && <section key={grupo} className="coluna"><h3>{grupo}</h3>{itens.filter((i) => i.grupo === grupo).map((i) => <div className="coluna" key={i.pasta}><fieldset className="campo" disabled={ocupado || i.adicionado}>
           <legend>{i.rec.name}</legend>
           {i.candidatos.length > 1 && <div className="campo"><span>Outros jogos possíveis</span><small>Ao trocar, o nome, o executável e os caminhos de save serão substituídos pelas sugestões do catálogo.</small>{i.candidatos.filter((c) => c.id !== i.rec.catalog_id).map((c) => <button type="button" className="btn fraco" data-f key={c.id} onClick={() => void escolherCandidato(i, c.id)}>Usar {c.name}</button>)}</div>}
           <label className="campo">Nome do jogo<input data-f value={i.rec.name} maxLength={120} onChange={(e) => { const nome = e.target.value; mudar(i.pasta, (x) => ({ ...x, rec: { ...x.rec, name: nome }, marcado: nome.trim() ? x.marcado : false })); }} /></label>
@@ -88,7 +113,7 @@ export function Varredura({ onClose, onVoltar, onAdicionado }: Props) {
           {i.rec.save_candidates.map((c) => <label className="opcao" key={c.logical}><input type="checkbox" data-f checked={i.saves.includes(c.logical)} onChange={(e) => { const marcado = e.target.checked; mudar(i.pasta, (x) => { const saves = marcado ? [...x.saves, c.logical] : x.saves.filter((s) => s !== c.logical); return { ...x, saves, marcado: saves.length ? x.marcado : false }; }); }} /><span><code className="caminho">{c.logical}</code><small>{c.exists ? `Encontrado: ${c.files} arquivo(s)` : "Ainda não existe neste PC"}</small></span></label>)}
           <button type="button" className="btn fraco" data-f onClick={() => void adicionarPasta(i)}>Adicionar pasta de save…</button>
           {i.adicionado && <p>Adicionado à biblioteca.</p>}{i.erro && <p className="erro" role="alert">{i.erro}</p>}
-        </fieldset>)}</section>)}
+        </fieldset>{i.backup && <p role="status">{i.backup}</p>}{i.backupRepetir && <button type="button" className="btn fraco" data-f disabled={ocupado} onClick={() => void repetirBackup(i)}>Tentar o backup de novo</button>}</div>)}</section>)}
         {erros.length > 0 && <section><h3>Pastas que não puderam ser examinadas</h3><ul>{erros.map(([p, e], idx) => <li key={idx}><code className="caminho">{p}</code>: {e}</li>)}</ul></section>}
         <div className="acoes"><button className="btn fraco" data-f disabled={ocupado} onClick={fechar}>Concluir</button><button className="btn primario" data-f disabled={ocupado || !itens.some((i) => i.marcado && !i.adicionado)} onClick={adicionar}>{ocupado ? "Adicionando…" : "Adicionar selecionados"}</button></div>
       </>}

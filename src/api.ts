@@ -115,6 +115,10 @@ export type ResultadoJogar =
   | { kind: "locked"; pc: string }
   | { kind: "finished"; exit_code: number; synced: boolean; notice: string };
 
+export type ResultadoPrimeiroBackup =
+  | { kind: "created" | "already_synced" | "nothing_to_backup" | "needs_decision" | "in_use" }
+  | { kind: "locked"; pc: string };
+
 export type OpcoesJogar = { forcar?: boolean; conflito?: "local" | "nuvem"; sem_sincronizar?: boolean };
 
 /** Dentro do Tauri existe `__TAURI_INTERNALS__`; no navegador (testes e capturas) usa dados simulados. */
@@ -133,6 +137,7 @@ export const api = {
   atualizarCatalogo: () => call<number>("atualizar_catalogo"),
   escolherCandidatoCatalogo: (pasta: string, id: number) => call<Reconhecimento>("escolher_candidato_catalogo", { pasta, id }),
   varrerPasta: (pasta: string, profundidade: number) => call<ResultadoVarredura>("varrer_pasta", { pasta, profundidade }),
+  primeiroBackup: (id: number) => call<ResultadoPrimeiroBackup>("primeiro_backup", { id }),
   reconhecerPasta: (pasta: string) => call<Reconhecimento>("reconhecer_pasta", { pasta }),
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),
   descobrirPastaSave: (exe: string) => call<number>("descobrir_save", { exe }),

@@ -4,6 +4,7 @@ import type { Conquista, Conquistas, ConquistasHub, Game, Estado, MarcoHub, Reco
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
 let terminarJogo: (() => void) | undefined;
+let backupLiberado = false;
 
 const STEAM: Record<string, number> = { "Rogue Legacy": 241600, "Hollow Knight": 367520, Celeste: 504230, Hades: 1145360, "Animal Well": 813230, "Sea of Stars": 1244090 };
 
@@ -251,6 +252,12 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "listar_jogos":
       return r(jogos);
+    case "primeiro_backup": {
+      await espera(200);
+      const g = jogos.find((j) => j.id === args.id);
+      if (cenario === "backup-ocupado" && !backupLiberado) { backupLiberado = true; return r({ kind: "locked", pc: "PC-QUARTO" }); }
+      return r(g?.name === "Outro jogo" ? { kind: "needs_decision" } : { kind: "created" });
+    }
     case "adicionar_jogo": {
       const g = args.jogo as Game;
       if (jogos.some((j) => j.name.toLowerCase() === g.name.toLowerCase())) throw "Já existe um jogo com este nome.";

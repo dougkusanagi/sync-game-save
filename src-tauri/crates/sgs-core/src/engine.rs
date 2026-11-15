@@ -33,6 +33,23 @@ pub enum Before {
     LockedByOther(String),
 }
 
+/// Resultado do primeiro backup de um jogo recém-adicionado.
+#[derive(Debug, PartialEq, Eq)]
+pub enum FirstBackup {
+    /// O save deste PC virou a primeira versão na pasta de sync.
+    Created,
+    /// A pasta de sync já tem exatamente este save.
+    AlreadySynced,
+    /// Não há arquivos de save ainda; nada foi feito.
+    NothingToBackup,
+    /// Já existe uma versão diferente na pasta de sync: o usuário decide ao abrir o jogo.
+    NeedsDecision,
+    /// Outro PC está jogando.
+    LockedByOther(String),
+    /// Este PC tem uma trava ativa (jogo aberto ou sync em andamento).
+    InUse,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Choice {
     UseLocal,
@@ -132,6 +149,40 @@ impl Ctx {
         };
         lock::acquire(&self.game_dir, &self.device, self.now)?;
         Ok(result)
+    }
+
+    /// Primeiro backup sem abrir o jogo. Só cria a primeira versão: nunca restaura,
+    /// nunca troca uma versão existente e recusa se houver trava. A trava é
+    /// pega só durante a cópia e solta ao fim, mesmo em erro.
+    pub fn first_backup(&self) -> Result<FirstBackup> {
+        match lock::state(&self.game_dir, &self.device, self.now)? {
+            LockState::HeldByOther(l) => return Ok(FirstBackup::LockedByOther(l.device)),
+            LockState::Own => return Ok(FirstBackup::InUse),
+            LockState::Free | LockState::Stale(_) => {}
+        }
+        let head = snapshot::read_head(&self.game_dir)?;
+        let local = scan_roots(&self.roots)?;
+        if local.files.is_empty() {
+            return Ok(FirstBackup::NothingToBackup);
+        }
+        let cloud = head.as_ref().map(|h| h.index_digest.as_str());
+        match decide(self.base()?.as_deref(), &local, cloud) {
+            Action::Nothing => {
+                if let Some(c) = cloud {
+                    self.set_base(c)?;
+                }
+                Ok(FirstBackup::AlreadySynced)
+            }
+            Action::UploadLocal => {
+                lock::acquire(&self.game_dir, &self.device, self.now)?;
+                let enviado = self.upload();
+                let solto = lock::release(&self.game_dir, &self.device);
+                enviado?;
+                solto?;
+                Ok(FirstBackup::Created)
+            }
+            Action::RestoreFromCloud | Action::Conflict => Ok(FirstBackup::NeedsDecision),
+        }
     }
 
     /// Resolve um conflito. O lado descartado continua recuperável

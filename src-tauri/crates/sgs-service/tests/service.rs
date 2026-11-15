@@ -422,3 +422,37 @@ fn remover_jogo_apaga_a_arte_para_o_id_nao_herdar() {
     s.remove_game(id).unwrap();
     assert_eq!(fs::read_dir(&art).unwrap().count(), 0);
 }
+
+#[test]
+fn primeiro_backup_nao_abre_nem_restaura_nem_troca_versao_existente() {
+    use sgs_service::FirstBackupResult as R;
+    let t = tempfile::tempdir().unwrap();
+    let relogio = clock();
+    let a = pc(t.path(), "A", &relogio);
+    let b = pc(t.path(), "B", &relogio);
+    let nuvem = t.path().join("nuvem");
+    fs::create_dir_all(&nuvem).unwrap();
+    a.set_sync_dir(&nuvem).unwrap();
+    b.set_sync_dir(&nuvem).unwrap();
+    let ida = a.add_game(&game()).unwrap();
+    let idb = b.add_game(&game()).unwrap();
+
+    // Sem arquivos de save ainda: nada a fazer.
+    assert_eq!(a.first_backup(ida).unwrap(), R::NothingToBackup);
+
+    let escrever = |pc: &str, corpo: &str| {
+        let p = t.path().join(pc).join("saves/Jogo/slot.sav");
+        fs::create_dir_all(p.parent().unwrap()).unwrap();
+        fs::write(p, corpo).unwrap();
+    };
+    escrever("A", "do-pc-a");
+    assert_eq!(a.first_backup(ida).unwrap(), R::Created);
+    assert!(a.games().unwrap()[0].last_sync_at.is_some());
+    assert_eq!(a.snapshots(ida).unwrap().len(), 1);
+
+    // Outro PC com save diferente: nada é restaurado nem trocado.
+    escrever("B", "do-pc-b");
+    assert_eq!(b.first_backup(idb).unwrap(), R::NeedsDecision);
+    assert_eq!(read(t.path(), "B", "Jogo/slot.sav"), "do-pc-b");
+    assert_eq!(b.snapshots(idb).unwrap().len(), 1);
+}

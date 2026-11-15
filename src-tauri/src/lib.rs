@@ -106,6 +106,12 @@ async fn varrer_pasta(svc: Svc<'_>, pasta: String, profundidade: u32) -> Result<
     blocking(&svc, move |s| s.scan_library_folder(&PathBuf::from(pasta), profundidade)).await
 }
 
+/// Primeiro backup de um jogo recém-adicionado, sem abrir o jogo.
+#[tauri::command]
+async fn primeiro_backup(svc: Svc<'_>, id: i64) -> Result<sgs_service::FirstBackupResult, String> {
+    blocking(&svc, move |s| s.first_backup(id)).await
+}
+
 #[tauri::command]
 async fn converter_caminho(svc: Svc<'_>, caminho: String) -> Result<String, String> {
     blocking(&svc, move |s| Ok(s.logical_path(&PathBuf::from(caminho)))).await
@@ -371,6 +377,7 @@ pub fn run() {
             reconhecer_pasta,
             escolher_candidato_catalogo,
             varrer_pasta,
+            primeiro_backup,
             converter_caminho,
             descobrir_save,
             candidatos_save,
