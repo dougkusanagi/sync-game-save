@@ -24,7 +24,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 Painel visual: [progresso da migração](progresso-wails.html). As barras contam os itens marcados nos passos abaixo, com a etapa de processos dividida em entregas verificáveis. Os itens têm tamanhos diferentes e não representam uma estimativa de tempo. A mudança da contagem anterior (12 de 45) reflete essa divisão, não trabalho novo.
 
 - [x] **0. Medir a base:** medição do Tauri concluída (o tamanho do instalador do Tauri não foi medido).
-- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; o fechar para a bandeja e o ícone na bandeja foram conferidos no Windows em 2026-11-15; falta o clique no ícone para restaurar a janela.
+- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; o fechar para a bandeja, o ícone e o clique que restaura a janela foram conferidos no Windows em 2026-11-15.
 - [x] **2. Núcleo:** tudo portado e testado no Windows e no Linux (WSL), inclusive com `go test -race` (sem corridas).
 - [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
 - [x] **4. CLI:** portado (`cmd/sgs`).
@@ -228,6 +228,6 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 ## Próximo passo
 
 1. Abrir o AppImage num Ubuntu real (fora do WSL) e testar o fluxo completo.
-2. Clicar no ícone da bandeja para restaurar a janela e ver o toast com o app instalado (o ícone e o fechar para a bandeja já foram conferidos: a janela fica oculta e o processo continua vivo; o ícone some ao sair).
+2. Ver o toast com o app instalado (o ícone, o fechar para a bandeja e o clique que restaura a janela já foram conferidos no Windows).
 3. Quando houver um controle físico, conferir a leitura (XInput no Windows e evdev no Linux).
 4. Se a migração for considerada concluída, apagar este plano (mover o que for durável para a memória do projeto), conforme as regras.
