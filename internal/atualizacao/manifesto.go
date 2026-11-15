@@ -120,3 +120,26 @@ func Gerar(e Entrada, priv ed25519.PrivateKey) ([]byte, error) {
 	}
 	return json.MarshalIndent(m, "", "  ")
 }
+
+// PonteTauri monta o latest.json que o atualizador do Tauri (v1.x) lê. Ele aponta para o instalador
+// da versão Go, assinado com a chave minisign do Tauri (comando `tauri signer sign`); assim quem usa
+// a v1.x recebe a versão Go sem precisar de uma nova versão do Tauri.
+func PonteTauri(versao, notas, url, assinatura string, agora time.Time) ([]byte, error) {
+	if versao == "" || url == "" || assinatura == "" {
+		return nil, errors.New("faltam versão, URL ou assinatura")
+	}
+	if agora.IsZero() {
+		agora = time.Now()
+	}
+	plataforma := map[string]string{"signature": assinatura, "url": url}
+	m := map[string]any{
+		"version":  versao,
+		"notes":    notas,
+		"pub_date": agora.UTC().Format(time.RFC3339),
+		"platforms": map[string]any{
+			"windows-x86_64":      plataforma,
+			"windows-x86_64-nsis": plataforma,
+		},
+	}
+	return json.MarshalIndent(m, "", "  ")
+}

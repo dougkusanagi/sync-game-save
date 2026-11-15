@@ -1,6 +1,7 @@
 // Comando assinar: gera o par de chaves do atualizador e o manifesto assinado de um release.
 //
 //	assinar chaves <privada.pem> <publica.pem>
+//	assinar ponte --versao X.Y.Z --url <url do instalador> --assinatura <instalador.sig> --saida latest.json
 //	assinar manifesto --chave <privada.pem> --versao X.Y.Z --arquivo <exe> --url <url do exe> [--notas <arquivo>] --saida latest-wails.json
 package main
 
@@ -9,6 +10,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"sync-game-save/internal/atualizacao"
 )
@@ -40,6 +43,33 @@ func executar(args []string) error {
 			return err
 		}
 		return os.WriteFile(args[2], pub, 0o644)
+	case "ponte":
+		fs := flag.NewFlagSet("ponte", flag.ContinueOnError)
+		versao := fs.String("versao", "", "versão do release")
+		url := fs.String("url", "", "URL pública do instalador no release")
+		sig := fs.String("assinatura", "", "arquivo .sig gerado por `tauri signer sign` para o instalador")
+		notas := fs.String("notas", "", "arquivo com as notas da versão")
+		saida := fs.String("saida", "latest.json", "arquivo de saída")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		bruto, err := os.ReadFile(*sig)
+		if err != nil {
+			return err
+		}
+		texto := ""
+		if *notas != "" {
+			b, err := os.ReadFile(*notas)
+			if err != nil {
+				return err
+			}
+			texto = string(b)
+		}
+		out, err := atualizacao.PonteTauri(*versao, texto, *url, strings.TrimSpace(string(bruto)), time.Time{})
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(*saida, out, 0o644)
 	case "manifesto":
 		fs := flag.NewFlagSet("manifesto", flag.ContinueOnError)
 		chave := fs.String("chave", "", "chave privada em PEM")

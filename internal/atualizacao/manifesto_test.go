@@ -5,12 +5,14 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/updater"
 	"github.com/wailsapp/wails/v3/pkg/updater/providers/endpoint"
@@ -92,5 +94,29 @@ func TestGerarRecusaDadosIncompletosEChaveInvalida(t *testing.T) {
 	}
 	if _, err := LerChavePrivada([]byte("não é pem")); err == nil {
 		t.Fatal("chave inválida aceita")
+	}
+}
+
+func TestPonteTauriGeraOLatestJSONDaV1(t *testing.T) {
+	agora := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	b, err := PonteTauri("2.0.0", "Versão em Go", "https://exemplo.test/instalador.exe", "ASSINATURA", agora)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Version   string                                     `json:"version"`
+		Notes     string                                     `json:"notes"`
+		PubDate   string                                     `json:"pub_date"`
+		Platforms map[string]struct{ Signature, URL string } `json:"platforms"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	p := m.Platforms["windows-x86_64"]
+	if m.Version != "2.0.0" || m.PubDate != "2026-11-15T12:00:00Z" || p.Signature != "ASSINATURA" || p.URL != "https://exemplo.test/instalador.exe" || m.Platforms["windows-x86_64-nsis"] != p {
+		t.Fatal(string(b))
+	}
+	if _, err := PonteTauri("2.0.0", "", "", "x", agora); err == nil {
+		t.Fatal("dados incompletos aceitos")
 	}
 }
