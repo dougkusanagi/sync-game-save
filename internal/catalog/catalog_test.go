@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -236,5 +238,45 @@ func TestVarrePastaComVariosJogos(t *testing.T) {
 	r1, err := c.ScanFolder(lib, 1, env, true)
 	if err != nil || len(r1.Recognized) != 1 || len(r1.Unknown) != 2 {
 		t.Fatal(r1, err)
+	}
+}
+
+func TestFetchUsaEtagETrocaAtomica(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.Header.Get("If-None-Match") == `"v1"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		w.Header().Set("ETag", `"v1"`)
+		w.Write([]byte(manifestYAML))
+	}))
+	defer srv.Close()
+	manifest := filepath.Join(t.TempDir(), "manifest.yaml")
+	if changed, err := Fetch(manifest, srv.URL); err != nil || !changed {
+		t.Fatal(changed, err)
+	}
+	if got, _ := os.ReadFile(manifest); string(got) != manifestYAML {
+		t.Fatal("conteúdo")
+	}
+	if changed, err := Fetch(manifest, srv.URL); err != nil || changed || calls != 2 {
+		t.Fatal(changed, err, calls)
+	}
+	if _, err := os.Stat(manifest + ".tmp"); !os.IsNotExist(err) {
+		t.Fatal("temporário ficou")
+	}
+}
+
+func TestFetchErroMantemManifestoAntigo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(500) }))
+	defer srv.Close()
+	manifest := filepath.Join(t.TempDir(), "manifest.yaml")
+	os.WriteFile(manifest, []byte("antigo"), 0644)
+	if _, err := Fetch(manifest, srv.URL); err == nil {
+		t.Fatal("erro HTTP aceito")
+	}
+	if got, _ := os.ReadFile(manifest); string(got) != "antigo" {
+		t.Fatal(string(got))
 	}
 }

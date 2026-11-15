@@ -132,6 +132,7 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
       verificar_pasta_sync: { metodo: "VerificarPastaSync", argumentos: [args?.pasta] },
       definir_pasta_sync: { metodo: "DefinirPastaSync", argumentos: [args?.pasta] },
       definir_nome_pc: { metodo: "DefinirNomePc", argumentos: [args?.nome] },
+      atualizar_catalogo: { metodo: "AtualizarCatalogo", argumentos: [] },
       reconhecer_pasta: { metodo: "ReconhecerPasta", argumentos: [args?.pasta] },
       converter_caminho: { metodo: "ConverterCaminho", argumentos: [args?.caminho] },
       listar_jogos: { metodo: "ListarJogos", argumentos: [] },

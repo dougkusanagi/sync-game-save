@@ -137,7 +137,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Abrir biblioteca SQLite e aplicar migrações atômicas 1–3; testes cobrem preservação de dados de esquema 1, persistência e recusa de esquema futuro.
 - [x] Portar operações da biblioteca de jogos, configurações, estado de sync, tempo jogado e cache de conquistas; testes cobrem edição, duplicidade, exclusão e persistência.
 - [ ] Testar leitura de bancos existentes gerados pela versão Rust e concluir a integração da biblioteca e do catálogo sem migração destrutiva (ADR 0002).
-- [x] Catálogo em `internal/catalog`: conversão do manifesto do Ludusavi (`gopkg.in/yaml.v3`) para SQLite com FTS5, consultas, reconhecimento de pasta e varredura, com os casos dos testes Rust portados e `ReconhecerPasta` ligado ao catálogo. Falta baixar o manifesto (ETag) e medir tempo e memória da importação (30 MB).
+- [x] Catálogo em `internal/catalog`: conversão do manifesto do Ludusavi (`gopkg.in/yaml.v3`) para SQLite com FTS5, consultas, reconhecimento de pasta e varredura, com os casos dos testes Rust portados e `ReconhecerPasta` ligado ao catálogo. Download do manifesto com ETag e `AtualizarCatalogo` ligados; falta medir tempo e memória da importação (30 MB). O E2E Wails falhou uma vez por tempo no primeiro uso e passou na repetição.
 - [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [ ] Portar os testes de cada crate antes do código.
 
@@ -211,4 +211,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Baixar o manifesto (ETag) e medir a importação; ligar varredura de pasta, sincronização e os demais comandos do frontend; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Medir a importação do catálogo; ligar varredura de pasta, sincronização e os demais comandos do frontend; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

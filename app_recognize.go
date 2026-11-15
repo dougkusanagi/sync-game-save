@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 
 	"sync-game-save/internal/catalog"
 	"sync-game-save/internal/core"
@@ -35,4 +36,27 @@ func (App) ConverterCaminho(path string) string {
 		return logical
 	}
 	return path
+}
+
+var atualizandoCatalogo sync.Mutex
+
+// AtualizarCatalogo baixa o manifesto, se mudou, e remonta o catálogo. Devolve o número de jogos
+// (0 quando nada mudou).
+func (App) AtualizarCatalogo() (int, error) {
+	atualizandoCatalogo.Lock()
+	defer atualizandoCatalogo.Unlock()
+	dados := pastaDados()
+	if err := os.MkdirAll(dados, 0755); err != nil {
+		return 0, err
+	}
+	db := filepath.Join(dados, "catalog.db")
+	changed, err := catalog.Fetch(filepath.Join(dados, "manifest.yaml"), catalog.ManifestURL)
+	if err != nil {
+		return 0, err
+	}
+	if _, statErr := os.Stat(db); !changed && statErr == nil {
+		return 0, nil
+	}
+	stats, err := catalog.Build(filepath.Join(dados, "manifest.yaml"), db)
+	return stats.Games, err
 }
