@@ -1,1 +1,0 @@
-- Adicionado: descoberta de onde o jogo salva: capture antes de abrir, lista de pastas com arquivos novos ou alterados ao fechar, e confirmação manual na tela de adicionar jogo.

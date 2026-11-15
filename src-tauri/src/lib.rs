@@ -97,8 +97,29 @@ async fn reconhecer_pasta(svc: Svc<'_>, pasta: String) -> Result<Recognition, St
 }
 
 #[tauri::command]
+async fn escolher_candidato_catalogo(svc: Svc<'_>, pasta: String, id: i64) -> Result<Recognition, String> {
+    blocking(&svc, move |s| s.recognize_catalog_choice(&PathBuf::from(pasta), id)).await
+}
+
+#[tauri::command]
 async fn varrer_pasta(svc: Svc<'_>, pasta: String, profundidade: u32) -> Result<ScanResult, String> {
     blocking(&svc, move |s| s.scan_library_folder(&PathBuf::from(pasta), profundidade)).await
+}
+
+/// Fecha o app, só se nenhum jogo estiver aberto ou sincronizando (senão o save não seria enviado).
+#[tauri::command]
+async fn sair_app(app: tauri::AppHandle, svc: Svc<'_>) -> Result<(), String> {
+    if svc.ocupado() {
+        return Err("Há um jogo aberto ou sincronizando. Feche o jogo e espere o save ser enviado antes de sair.".into());
+    }
+    app.exit(0);
+    Ok(())
+}
+
+/// Primeiro backup de um jogo recém-adicionado, sem abrir o jogo.
+#[tauri::command]
+async fn primeiro_backup(svc: Svc<'_>, id: i64) -> Result<sgs_service::FirstBackupResult, String> {
+    blocking(&svc, move |s| s.first_backup(id)).await
 }
 
 #[tauri::command]
@@ -364,7 +385,10 @@ pub fn run() {
             definir_nome_pc,
             atualizar_catalogo,
             reconhecer_pasta,
+            escolher_candidato_catalogo,
             varrer_pasta,
+            primeiro_backup,
+            sair_app,
             converter_caminho,
             descobrir_save,
             candidatos_save,

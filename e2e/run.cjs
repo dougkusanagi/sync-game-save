@@ -62,6 +62,103 @@ teste("adicionar jogo: reconhece, marca o save e o jogo aparece na lista", async
   await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor();
 });
 
+teste("varredura: revisa resultados e adiciona apenas jogo com save", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  await page.getByText("Acesso negado").waitFor();
+  await page.getByRole("button", { name: "Usar Outro candidato" }).click();
+  await page.getByText("<base>/Saves").waitFor();
+  await page.getByRole("button", { name: "Usar Jogo encontrado" }).click();
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: "Adicionar Outro jogo" }).isDisabled(), true);
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText(/Adicionado .* biblioteca/).waitFor();
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("heading", { name: "Jogo encontrado" }).waitFor();
+});
+
+teste("varredura: erro parcial preserva os jogos adicionados e permite corrigir", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await outro.getByLabel("Nome do jogo").fill("Jogo encontrado");
+  await outro.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText("Já existe um jogo com este nome.").waitFor();
+  assert.equal(await page.getByText(/Adicionado .* biblioteca/).count(), 1);
+  await outro.getByLabel("Nome do jogo").fill("Outro jogo");
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("p")].filter((el) => el.textContent.includes("Adicionado à biblioteca")).length === 2);
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("button", { name: /Biblioteca/ }).first().click();
+  await page.getByRole("button", { name: /Jogo encontrado/ }).first().waitFor();
+  await page.getByRole("button", { name: /Outro jogo/ }).first().waitFor();
+});
+
+teste("varredura: primeiro backup informa o resultado de cada jogo sem abrir nada", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("checkbox", { name: "Adicionar Outro jogo" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText("Primeira cópia do save guardada na pasta de sincronização.").waitFor();
+  await page.getByText(/já tem outra versão deste save. Nada foi alterado/).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Tentar o backup de novo" }).count(), 0);
+});
+
+teste("varredura: backup recusado por outro PC pode ser repetido sem recriar o jogo", async (page) => {
+  await page.goto(BASE + "?cenario=backup-ocupado");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText(/PC-QUARTO está jogando agora/).waitFor();
+  await page.getByRole("button", { name: "Tentar o backup de novo" }).click();
+  await page.getByText("Primeira cópia do save guardada na pasta de sincronização.").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Tentar o backup de novo" }).count(), 0);
+  assert.equal(await page.getByText("Adicionado à biblioteca.").count(), 1);
+});
+
+teste("central rápida: F1 mostra o estado, envia os saves e devolve o foco", async (page) => {
+  await page.goto(BASE);
+  await page.getByRole("button", { name: /Jogar/ }).first().waitFor();
+  await page.keyboard.press("F1");
+  const dialogo = page.getByRole("dialog", { name: "Central rápida" });
+  await dialogo.waitFor();
+  await dialogo.getByText(/Sincronizado|Ainda não sincronizado/).first().waitFor();
+  await dialogo.getByRole("button", { name: "Sincronizar tudo agora" }).click();
+  await dialogo.getByText("Save enviado.").first().waitFor();
+  await dialogo.getByRole("checkbox", { name: /Música ambiente/ }).waitFor();
+  await page.keyboard.press("Escape");
+  await dialogo.waitFor({ state: "detached" });
+});
+
+teste("central rápida: no celular não rola para os lados", async (page) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(BASE);
+  await page.getByRole("button", { name: /Jogar/ }).first().waitFor();
+  await page.keyboard.press("F1");
+  await page.getByRole("dialog", { name: "Central rápida" }).waitFor();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+});
+
 teste("adicionar jogo: nome vazio bloqueia o envio", async (page) => {
   await page.goto(`${BASE}?cenario=vazio`);
   await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
@@ -223,7 +320,7 @@ teste("sobre: mostra a versão e procura atualização", async (page) => {
   await page.getByRole("button", { name: "Configurações" }).click();
   await page.getByRole("dialog", { name: "Configurações" }).getByRole("button", { name: "Sobre" }).click();
   const dlg = page.getByRole("dialog", { name: "Sobre" });
-  await dlg.getByText(/Versão 1\.0\.0/).waitFor();
+  await dlg.getByText(/Versão 1.1.0/).waitFor();
   await dlg.getByText("Você está na versão mais recente.").waitFor();
 });
 

@@ -598,15 +598,17 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ### 5. Varredura em lote, menu e central rápida
 
+- Em andamento: a interface mostra resultados agrupados e erros por pasta; permite corrigir nome, executável, caminhos e candidato do catálogo, e preserva resultados em falhas parciais. O reconhecimento resolve `<base>` por jogo e respeita a profundidade para pastas de jogos e pastas técnicas comuns. Testes de catálogo e E2E cobrem escolha e falha parcial; capturas mobile/desktop foram verificadas. O primeiro backup foi implementado (2026-11-14): `Ctx::first_backup` (núcleo), `Service::first_backup` e comando `primeiro_backup`; a varredura o chama após adicionar cada jogo, mostra o resultado real por jogo e oferece "Tentar o backup de novo" sem recriar o jogo. A central rápida também foi feita (F1/R3): estado real por jogo, "Sincronizar tudo agora" (reusa `first_backup`, só envia o que mudou neste PC), volumes e "Sair do app" (recusado pelo backend se houver jogo aberto ou sincronizando). 33 E2E passam; capturas 390×844 e 1280×720 sem rolagem horizontal. Fora da central, por falta de dado real: notificações (só há avisos temporários) e "Voltar ao jogo" (não há janela do jogo para focar). O menu principal (M) continua coberto pela barra lateral.
 - Varredura: reutilizar `sgs-service::scan_library_folder` e comando `varrer_pasta`; criar resultado selecionável com confirmação dos candidatos, caminhos de save e erros por jogo. Não adicionar registros sem saves válidos.
+- Primeiro backup (feito; requisitos originais): projetar e testar uma operação de primeiro backup que recuse jogo em execução e não restaure nem substitua uma versão existente sem decisão do usuário. O `before_launch` não pode ser chamado cegamente: ele pode restaurar a nuvem e deixa uma trava para a sessão de jogo. A guarda `operacoes` atual vale só dentro de uma instância do serviço; revisar também CLI e outras instâncias antes de iniciar backups em lote. Informar progresso real e permitir repetir falhas sem recriar jogos já cadastrados. Limite conhecido: a checagem da trava e a escrita dela não são atômicas; dois PCs começando no mesmo instante podem passar pela checagem. A trava só vale entre quem a respeita (app e CLI); o `lock.json` próprio de um app que caiu faz o backup recusar como "em uso" até a próxima abertura do jogo.
 - Menu/central: implementar as ações especificadas na seção de interface, usando estados reais do app. Sincronização não pode sobrescrever saves de jogo em execução. Preservar navegação por controle, teclado e retorno de foco.
 - Entregar cada fluxo separadamente com regressões E2E, capturas e README/changelog correspondentes.
 
 ### 6. Distribuição e fechamento da entrega
 
-- Ícones ainda precisam ser conferidos/substituídos conforme a marca do app; não tratar ícones do modelo Tauri como entrega final.
-- Conferir metadados e changelog juntos: `1.0.0` está no código, mas ainda há fragmentos unreleased. Consolidar apenas o escopo efetivamente entregue no próximo fechamento de versão, seguindo as regras do projeto; não afirmar release publicado.
-- Gerar e validar NSIS e AppImage nos respectivos sistemas. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
+- Ícones: substituídos em 2026-11-14 por um ícone próprio (`assets/icon.svg`, nuvem com setas de ida e volta), gerado com `bunx tauri icon`. Se houver uma marca definida pelo usuário, trocar o SVG e gerar de novo.
+- Versão `1.1.0` fechada em 2026-11-14 (commit `39a1879`, tag local anotada `v1.1.0`): metadados, `changelog/1.1.0.md` e fragmentos consolidados. A `1.0.0` nunca recebeu tag nem release. A tag ainda não foi enviada ao remoto e nenhum release foi publicado.
+- NSIS `1.1.0` gerado e assinado nesta máquina (`Sync Game Save_1.1.0_x64-setup.exe`, 3,84 MiB, com `.sig`); a instalação em máquina limpa e a atualização assinada não foram testadas. O `e2e:app` passou, exceto a checagem que depende de `E:GamesRogueLegacy`, ausente nesta máquina. AppImage não pode ser gerado no Windows: falta rodar no Linux. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
 
 ## Validações externas ainda abertas
 
@@ -618,7 +620,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Implementar o item 5: varredura em lote, menu e central rápida. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
+Itens 1–5 concluídos. Item 6: ícones, versão `1.1.0` e NSIS feitos; faltam, e dependem do usuário: autorizar o push do `main` e da tag `v1.1.0`, gerar/validar o AppImage no Linux e autorizar a publicação do release. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
 
 ### Acompanhamento de processos no Windows
 

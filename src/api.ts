@@ -108,10 +108,16 @@ export type Reconhecimento = {
   alternatives: { id: number; name: string }[];
 };
 
+export type ResultadoVarredura = { recognized: [string, Reconhecimento][]; needs_confirmation: [string, Reconhecimento][]; unknown: [string, Reconhecimento][]; errors: [string, string][] };
+
 export type ResultadoJogar =
   | { kind: "conflict" }
   | { kind: "locked"; pc: string }
   | { kind: "finished"; exit_code: number; synced: boolean; notice: string };
+
+export type ResultadoPrimeiroBackup =
+  | { kind: "created" | "already_synced" | "nothing_to_backup" | "needs_decision" | "in_use" }
+  | { kind: "locked"; pc: string };
 
 export type OpcoesJogar = { forcar?: boolean; conflito?: "local" | "nuvem"; sem_sincronizar?: boolean };
 
@@ -177,6 +183,10 @@ export const api = {
   definirPastaSync: (pasta: string) => call<VerificacaoPasta>("definir_pasta_sync", { pasta }),
   definirNomePc: (nome: string) => call<void>("definir_nome_pc", { nome }),
   atualizarCatalogo: () => call<number>("atualizar_catalogo"),
+  escolherCandidatoCatalogo: (pasta: string, id: number) => call<Reconhecimento>("escolher_candidato_catalogo", { pasta, id }),
+  varrerPasta: (pasta: string, profundidade: number) => call<ResultadoVarredura>("varrer_pasta", { pasta, profundidade }),
+  sairDoApp: () => call<void>("sair_app"),
+  primeiroBackup: (id: number) => call<ResultadoPrimeiroBackup>("primeiro_backup", { id }),
   reconhecerPasta: (pasta: string) => call<Reconhecimento>("reconhecer_pasta", { pasta }),
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),
   descobrirPastaSave: (exe: string) => call<number>("descobrir_save", { exe }),

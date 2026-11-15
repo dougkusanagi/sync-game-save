@@ -4,6 +4,7 @@ import type { Conquista, Conquistas, ConquistasHub, Game, Estado, MarcoHub, Reco
 
 const cenario = new URLSearchParams(location.search).get("cenario") ?? "jogos";
 let terminarJogo: (() => void) | undefined;
+let backupLiberado = false;
 
 const STEAM: Record<string, number> = { "Rogue Legacy": 241600, "Hollow Knight": 367520, Celeste: 504230, Hades: 1145360, "Animal Well": 813230, "Sea of Stars": 1244090 };
 
@@ -198,7 +199,7 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
   const r = (v: unknown) => v as T;
   switch (cmd) {
     case "sobre":
-      return r({ nome: "Sync Game Save", versao: "1.0.0", build: "local (teste)" });
+      return r({ nome: "Sync Game Save", versao: "1.1.0", build: "local (teste)" });
     case "estado":
       return r(estado);
     case "verificar_pasta_sync":
@@ -228,6 +229,12 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       };
       return r(rec);
     }
+    case "varrer_pasta": {
+      const rec: Reconhecimento = { name: "Jogo encontrado", catalog_id: 12, confidence: "High", exe: "C:/Games/Encontrado/game.exe", save_candidates: [{ logical: "<winDocuments>/Save", resolved: "C:/Save", exists: true, files: 3, selected: true }], alternatives: [{ id: 13, name: "Outro candidato" }] };
+      return r({ recognized: [["C:/Games/Encontrado", rec]], needs_confirmation: [], unknown: [["C:/Games/Outro", { ...rec, name: "Outro jogo", catalog_id: null, confidence: "None", save_candidates: [], alternatives: [] }]], errors: [["C:/Games/Protegido", "Acesso negado"]] });
+    }
+    case "escolher_candidato_catalogo":
+      return r({ name: args.id === 13 ? "Outro candidato" : "Jogo encontrado", catalog_id: args.id, confidence: "High", exe: "C:/Games/Encontrado/game.exe", save_candidates: [{ logical: "<base>/Saves", resolved: "C:/Games/Encontrado/Saves", exists: true, files: 1, selected: true }], alternatives: [] });
     case "converter_caminho":
       return r(String(args.caminho));
     case "descobrir_save":
@@ -245,6 +252,14 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "listar_jogos":
       return r(jogos);
+    case "sair_app":
+      return r(undefined);
+    case "primeiro_backup": {
+      await espera(200);
+      const g = jogos.find((j) => j.id === args.id);
+      if (cenario === "backup-ocupado" && !backupLiberado) { backupLiberado = true; return r({ kind: "locked", pc: "PC-QUARTO" }); }
+      return r(g?.name === "Outro jogo" ? { kind: "needs_decision" } : { kind: "created" });
+    }
     case "adicionar_jogo": {
       const g = args.jogo as Game;
       if (jogos.some((j) => j.name.toLowerCase() === g.name.toLowerCase())) throw "Já existe um jogo com este nome.";

@@ -128,9 +128,12 @@ pub fn recognize(cat: &Catalog, dir: &Path, env: &Env, windows: bool) -> Result<
     }
 
     // Entre vários jogos com a mesma pasta, prefere o que tem save existente no disco.
+    let mut base_env = env.clone();
+    base_env.vars.retain(|(k, _)| k != "base");
+    base_env.vars.push(("base".into(), dir.to_path_buf()));
     let mut scored: Vec<(usize, Hit, Vec<SaveCandidate>)> = Vec::new();
     for h in &hits {
-        let cands = save_candidates(cat, h.id, env, windows)?;
+        let cands = save_candidates(cat, h.id, &base_env, windows)?;
         let score = cands.iter().filter(|c| c.selected).count();
         scored.push((score, h.clone(), cands));
     }
@@ -163,6 +166,28 @@ pub fn recognize(cat: &Catalog, dir: &Path, env: &Env, windows: bool) -> Result<
     let exe = exe.or_else(|| guess_exe(dir));
     let alternatives = scored.into_iter().skip(1).map(|(_, h, _)| h).collect();
     Ok(Recognition { name, catalog_id, confidence, exe, save_candidates, alternatives })
+}
+
+/// Aplica uma escolha explícita do catálogo à pasta selecionada.
+pub fn recognize_choice(cat: &Catalog, dir: &Path, env: &Env, windows: bool, id: i64) -> Result<Option<Recognition>> {
+    let Some(hit) = cat.game(id)? else { return Ok(None) };
+    let mut base_env = env.clone();
+    base_env.vars.retain(|(k, _)| k != "base");
+    base_env.vars.push(("base".into(), dir.to_path_buf()));
+    let mut exe = None;
+    for path in cat.launch_paths(id)? {
+        if let Some(p) = resolve(&path, &base_env) {
+            if p.is_file() && (p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) || !windows) {
+                exe = Some(p);
+                break;
+            }
+        }
+    }
+    let folder = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let cleaned = clean_folder_name(&folder);
+    let name = if hit.name.chars().all(|c| c.is_ascii_digit()) && !cleaned.is_empty() { cleaned } else { hit.name };
+    Ok(Some(Recognition { name, catalog_id: Some(id), confidence: Confidence::High,
+        exe: exe.or_else(|| guess_exe(dir)), save_candidates: save_candidates(cat, id, &base_env, windows)?, alternatives: vec![] }))
 }
 
 fn save_candidates(cat: &Catalog, id: i64, env: &Env, windows: bool) -> Result<Vec<SaveCandidate>> {
@@ -213,16 +238,46 @@ pub struct ScanResult {
     pub needs_confirmation: Vec<(PathBuf, Recognition)>,
     /// Pastas com executável que o catálogo não conhece.
     pub unknown: Vec<(PathBuf, Recognition)>,
+    /// Pastas que não puderam ser examinadas ou reconhecidas.
+    pub errors: Vec<(PathBuf, String)>,
 }
 
-fn has_exe(dir: &Path, depth: u32) -> bool {
-    let Ok(rd) = std::fs::read_dir(dir) else { return false };
-    rd.flatten().any(|e| {
-        let p = e.path();
-        if p.is_dir() {
-            depth < 2 && has_exe(&p, depth + 1)
+fn has_exe(dir: &Path, depth: u32, errors: &mut Vec<(PathBuf, String)>) -> bool {
+    let rd = match std::fs::read_dir(dir) {
+        Ok(rd) => rd,
+        Err(e) => { errors.push((dir.to_path_buf(), e.to_string())); return false; }
+    };
+    let mut found = false;
+    for entry in rd {
+        match entry {
+            Ok(e) => {
+                let p = e.path();
+                if p.is_dir() {
+                    if depth < 2 && has_exe(&p, depth + 1, errors) { found = true; }
+                } else if p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) && !is_bad_exe(&e.file_name().to_string_lossy()) {
+                    found = true;
+                }
+            }
+            Err(e) => errors.push((dir.to_path_buf(), e.to_string())),
+        }
+    }
+    found
+}
+
+// Pastas técnicas comuns podem conter o executável sem serem a pasta do jogo.
+fn has_exe_at_game_root(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else { return false };
+    entries.flatten().any(|entry| {
+        let path = entry.path();
+        if path.is_file() {
+            path.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe"))
+                && !is_bad_exe(&entry.file_name().to_string_lossy())
+        } else if path.is_dir() {
+            let name = entry.file_name().to_string_lossy().to_lowercase();
+            matches!(name.as_str(), "bin" | "binaries" | "binary" | "x64" | "x86" | "win64" | "win32")
+                && has_exe(&path, 0, &mut Vec::new())
         } else {
-            p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) && !is_bad_exe(&e.file_name().to_string_lossy())
+            false
         }
     })
 }
@@ -232,16 +287,33 @@ fn has_exe(dir: &Path, depth: u32) -> bool {
 pub fn scan_folder(cat: &Catalog, root: &Path, depth: u32, env: &Env, windows: bool) -> Result<ScanResult> {
     let mut out = ScanResult::default();
     fn walk(cat: &Catalog, dir: &Path, left: u32, env: &Env, windows: bool, out: &mut ScanResult) -> Result<()> {
-        let Ok(rd) = std::fs::read_dir(dir) else { return Ok(()) };
-        let mut dirs: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+        let rd = match std::fs::read_dir(dir) {
+            Ok(rd) => rd,
+            Err(e) => { out.errors.push((dir.to_path_buf(), e.to_string())); return Ok(()); }
+        };
+        let mut dirs = Vec::new();
+        for entry in rd {
+            match entry {
+                Ok(e) if e.path().is_dir() => dirs.push(e.path()),
+                Ok(_) => {},
+                Err(e) => out.errors.push((dir.to_path_buf(), e.to_string())),
+            }
+        }
         dirs.sort();
         for d in dirs {
-            if has_exe(&d, 0) {
-                let r = recognize(cat, &d, env, windows)?;
-                match r.confidence {
-                    Confidence::High => out.recognized.push((d, r)),
-                    Confidence::Low => out.needs_confirmation.push((d, r)),
-                    Confidence::None => out.unknown.push((d, r)),
+            if has_exe(&d, 0, &mut out.errors) {
+                let r = match recognize(cat, &d, env, windows) {
+                    Ok(r) => r,
+                    Err(e) => { out.errors.push((d, e.to_string())); continue; }
+                };
+                if r.confidence != Confidence::None || has_exe_at_game_root(&d) {
+                    match r.confidence {
+                        Confidence::High => out.recognized.push((d, r)),
+                        Confidence::Low => out.needs_confirmation.push((d, r)),
+                        Confidence::None => out.unknown.push((d, r)),
+                    }
+                } else if left > 1 {
+                    walk(cat, &d, left - 1, env, windows, out)?;
                 }
             } else if left > 1 {
                 walk(cat, &d, left - 1, env, windows, out)?;

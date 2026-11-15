@@ -167,6 +167,10 @@ impl Catalog {
         )?))
     }
 
+    pub fn game(&self, id: i64) -> Result<Option<Hit>> {
+        Ok(self.0.query_row("SELECT id, name FROM games WHERE id=?", [id], |r| Ok(Hit { id: r.get(0)?, name: r.get(1)? })).optional()?)
+    }
+
     /// Jogos cuja pasta de instalação tem este nome (sem acentos e sem diferenciar maiúsculas).
     pub fn by_install_dir(&self, dir: &str) -> Result<Vec<Hit>> {
         let mut q = self.0.prepare(

@@ -3,9 +3,9 @@
 
 use serde::Serialize;
 use sgs_achievements::{AchievementProvider, AchievementSet, GameRef, SteamCommunityProvider, SteamProvider, Summary, UreqHttp};
-use sgs_catalog::recognize::{recognize, scan_folder, Recognition, ScanResult};
+use sgs_catalog::recognize::{recognize, recognize_choice, scan_folder, Recognition, ScanResult};
 use sgs_catalog::Catalog;
-use sgs_core::engine::{Before, Choice, Ctx};
+use sgs_core::engine::{Before, Choice, Ctx, FirstBackup};
 use sgs_core::index::Root;
 use sgs_core::paths::{resolve, Env};
 use sgs_core::{journal, lock, snapshot};
@@ -108,6 +108,20 @@ pub enum Play {
     Finished { exit_code: i32, synced: bool, notice: String },
 }
 
+/// Resultado do primeiro backup de um jogo, para a interface mostrar o próximo passo.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum FirstBackupResult {
+    Created,
+    AlreadySynced,
+    NothingToBackup,
+    /// Já existe outra versão na pasta de sync; o usuário decide ao abrir o jogo.
+    NeedsDecision,
+    Locked { pc: String },
+    /// Jogo aberto ou sincronizando neste PC.
+    InUse,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct PlayOptions {
     pub force: bool,
@@ -174,6 +188,11 @@ impl Service {
             return Err(Error::Other("Este jogo está aberto ou sendo sincronizado. Aguarde terminar antes de tentar novamente.".into()));
         }
         Ok(Operacao { id, ativos: &self.operacoes })
+    }
+
+    /// Há jogo aberto ou sincronizando neste app.
+    pub fn ocupado(&self) -> bool {
+        self.operacoes.lock().map(|a| !a.is_empty()).unwrap_or(true)
     }
 
     fn lib(&self) -> std::sync::MutexGuard<'_, Library> {
@@ -314,6 +333,12 @@ impl Service {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn recognize_catalog_choice(&self, dir: &Path, id: i64) -> Result<Recognition> {
+        let env = (self.env)(Some(dir.to_path_buf()));
+        recognize_choice(&self.catalog()?, dir, &env, cfg!(windows), id)?
+            .ok_or_else(|| Error::Other("O jogo escolhido não está mais no catálogo. Procure novamente.".into()))
     }
 
     /// Troca um caminho real por um caminho com marcador (portátil entre PCs), se houver marcador.
@@ -587,6 +612,37 @@ impl Service {
             self.registrar_sync_erro();
         }
         resultado
+    }
+
+    /// Primeiro backup do save sem abrir o jogo. Recusa jogo aberto ou em sync, não restaura
+    /// nada e não troca uma versão existente na pasta de sync.
+    pub fn first_backup(&self, id: i64) -> Result<FirstBackupResult> {
+        let _operacao = match self.iniciar_operacao(id) {
+            Ok(o) => o,
+            Err(_) => return Ok(FirstBackupResult::InUse),
+        };
+        let game = self.lib().get(id)?;
+        if sgs_core::process::em_execucao(&game.exe).map_err(Error::Other)? {
+            return Ok(FirstBackupResult::InUse);
+        }
+        let ctx = self.ctx(&game)?;
+        let jdir = ctx.state_dir.join("journal");
+        journal::begin(&jdir, &game.name, "primeiro-backup", ctx.now)?;
+        let resultado = ctx.first_backup();
+        journal::end(&jdir, &game.name)?;
+        let resultado = match resultado? {
+            FirstBackup::Created => FirstBackupResult::Created,
+            FirstBackup::AlreadySynced => FirstBackupResult::AlreadySynced,
+            FirstBackup::NothingToBackup => FirstBackupResult::NothingToBackup,
+            FirstBackup::NeedsDecision => FirstBackupResult::NeedsDecision,
+            FirstBackup::LockedByOther(pc) => FirstBackupResult::Locked { pc },
+            FirstBackup::InUse => FirstBackupResult::InUse,
+        };
+        if matches!(resultado, FirstBackupResult::Created | FirstBackupResult::AlreadySynced) {
+            let digest = sgs_core::index::scan_roots(&ctx.roots).map(|i| i.digest()).unwrap_or_default();
+            self.lib().record_sync(id, &digest, (self.now)() as i64)?;
+        }
+        Ok(resultado)
     }
 
     /// Encerra o jogo aberto pelo app. O `play` em andamento termina e sincroniza o save como de costume.
