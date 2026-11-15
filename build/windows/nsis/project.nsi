@@ -37,6 +37,9 @@ Unicode true
 # do instalador do Tauri, para a versão Go atualizar uma instalação v1.x no lugar, sem duplicar
 # atalhos nem desinstaladores.
 !define UNINST_KEY_NAME "Sync Game Save"
+# O wails_tools.nsh traz 1.0.0 como padrão; sem isto, o Windows mostra a versão errada em Aplicativos instalados.
+# Atualize junto com as demais fontes de versão a cada release.
+!define INFO_PRODUCTVERSION "2.0.0"
 !include "wails_tools.nsh"
 
 # The version information for this two must consist of 4 parts
