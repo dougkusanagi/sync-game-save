@@ -97,7 +97,7 @@ async function aguardarDepurador(url, app) {
       const jogos = await runtime.Call.ByName("main.App.ListarJogos");
       return { ambiente: window._wails?.environment?.OS, versao: await runtime.Call.ByName("main.App.Versao"), evento: await evento, id, jogos };
     });
-    if (info.ambiente !== "windows" || info.versao !== "2.0.0") throw new Error(`Binding ou ambiente inesperado: ${JSON.stringify(info)}`);
+    if (info.ambiente !== "windows" || info.versao !== "2.0.1") throw new Error(`Binding ou ambiente inesperado: ${JSON.stringify(info)}`);
     console.log("ok   WebView Wails real reconhece o ambiente e chama o binding de versão");
     if (info.evento.id !== 17 || info.evento.estado !== "jogando") throw new Error(`Evento inesperado: ${JSON.stringify(info.evento)}`);
     if (info.jogos.length !== 2 || !info.jogos.some((j) => j.id === info.id && j.name === "Jogo de teste" && j.save_paths[0] === "<base>/save") || !info.jogos.some((j) => j.name === "Jogo Exemplo" && j.save_paths.length === 1)) throw new Error(`Biblioteca inesperada: ${JSON.stringify(info.jogos)}`);
