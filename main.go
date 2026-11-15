@@ -47,7 +47,6 @@ func main() {
 	arte := filepath.Join(pastaDados(), "art")
 	_ = os.MkdirAll(arte, 0o755)
 
-	var saindo bool
 	app := application.New(application.Options{
 		Name:     "Sync Game Save",
 		Windows:  opcoesWindowsTeste(),

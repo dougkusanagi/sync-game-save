@@ -142,6 +142,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Temas (`app_themes.go`): pacotes `themes/<id>/theme.json`, lista restrita de tokens e escolha persistida, com os testes do Rust portados. Diferença: `min_app_version` compara com a versão do app (1.0.0); o Rust comparava com a do crate (0.1.0), o que recusava qualquer mínimo acima disso.
 - [x] Descoberta de save por mudança (`app_discover.go`): `DescobrirSave` e `CandidatosSave`, com teste de ponta a ponta usando o binário de teste como jogo. A captura usa a mesma chave (sha256 do caminho) e o mesmo JSON da versão Rust; ainda falta teste com captura gerada pelo Rust.
 - [x] Pacote `internal/achievements`: provedores Steam (chave de API e perfil público), raridade, XML da comunidade e `loginusers.vdf`, com os testes do Rust portados e JSON compatível com o cache da biblioteca. Ligado ao app: `Conquistas` (cache de 10 minutos, cache antigo em caso de erro), `DefinirCredenciaisSteam`, `DefinirChaveSteamGridDB`, `ConquistasHub` (marcos do HUB, `app_hub.go`) e arte (`app_art.go`: Steam CDN, loja e SteamGridDB, só JPEG/PNG), com testes sem rede real. O SteamGridDB e a busca da loja ainda não têm teste contra a API real.
+- [x] Entrega 1.1.0 do `main` (varredura, central rápida, primeiro backup) trazida por merge e portada: `ScanFolder` com erros por pasta e raiz técnica `bin/`, `RecognizeChoice`, `<base>` nos candidatos de save, `Engine.FirstBackup`, e os comandos `VarrerPasta`, `EscolherCandidatoCatalogo`, `PrimeiroBackup` e `SairApp` (recusa com jogo aberto), com os testes do Rust portados; a varredura roda sobre o `catalog.db` gerado pelo Rust. `bun run e2e` (34 cenários com mock) passa com as telas novas.
 - [ ] Portar os testes de cada crate antes do código.
 
 ### 4. CLI
@@ -215,4 +216,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Ligar os comandos restantes (controle, notificações, atualização de conquistas em segundo plano); a varredura de pasta (`ScanFolder` já portado) depende de trazer o `main` ao branch, pois a interface de varredura só existe lá; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Ligar os comandos restantes (controle, notificações, atualização de conquistas em segundo plano);  validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

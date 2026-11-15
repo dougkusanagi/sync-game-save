@@ -370,3 +370,80 @@ func TestEngineProcessoComErroSincronizaDepoisDeEncerrar(t *testing.T) {
 		t.Fatal(lock, err)
 	}
 }
+
+func TestPrimeiroBackupCriaAPrimeiraVersaoESoltaATrava(t *testing.T) {
+	dir := t.TempDir()
+	a := enginePC(dir, "A", 1000)
+	if r, err := a.FirstBackup(); err != nil || r.Status != FirstBackupNothing {
+		t.Fatal(r, err)
+	}
+	enginePut(t, a, "v1")
+	if r, err := a.FirstBackup(); err != nil || r.Status != FirstBackupCreated {
+		t.Fatal(r, err)
+	}
+	if head, _ := ReadHead(a.GameDir); head == nil {
+		t.Fatal("sem head")
+	}
+	if _, err := os.Stat(filepath.Join(a.GameDir, "lock.json")); !os.IsNotExist(err) {
+		t.Fatal("a trava ficou")
+	}
+	// Repetir não cria outra versão.
+	if r, err := a.FirstBackup(); err != nil || r.Status != FirstBackupAlreadySynced {
+		t.Fatal(r, err)
+	}
+	if ids, _ := ListSnapshots(a.GameDir); len(ids) != 1 {
+		t.Fatal(ids)
+	}
+}
+
+func TestPrimeiroBackupNaoSubstituiVersaoExistenteDeOutroPC(t *testing.T) {
+	dir := t.TempDir()
+	a := enginePC(dir, "A", 1000)
+	enginePut(t, a, "da-nuvem")
+	if r, err := a.FirstBackup(); err != nil || r.Status != FirstBackupCreated {
+		t.Fatal(r, err)
+	}
+	b := enginePC(dir, "B", 2000)
+	enginePut(t, b, "local-diferente")
+	if r, err := b.FirstBackup(); err != nil || r.Status != FirstBackupNeedsDecision {
+		t.Fatal(r, err)
+	}
+	if engineGet(t, b) != "local-diferente" {
+		t.Fatal("o save local foi trocado")
+	}
+	if ids, _ := ListSnapshots(b.GameDir); len(ids) != 1 {
+		t.Fatal(ids)
+	}
+	// Mesmo conteúdo nos dois lados: só liga o PC à versão existente.
+	c := enginePC(dir, "C", 3000)
+	enginePut(t, c, "da-nuvem")
+	if r, err := c.FirstBackup(); err != nil || r.Status != FirstBackupAlreadySynced {
+		t.Fatal(r, err)
+	}
+}
+
+func TestPrimeiroBackupRecusaComTravaDeOutroPCOuDeste(t *testing.T) {
+	dir := t.TempDir()
+	a := enginePC(dir, "A", 1000)
+	enginePut(t, a, "v1")
+	if err := AcquireLock(a.GameDir, "A", 1000); err != nil {
+		t.Fatal(err)
+	}
+	if r, err := a.FirstBackup(); err != nil || r.Status != FirstBackupInUse {
+		t.Fatal(r, err)
+	}
+	b := enginePC(dir, "B", 1100)
+	enginePut(t, b, "v1")
+	if r, err := b.FirstBackup(); err != nil || r.Status != FirstBackupLockedByOther || r.Device != "A" {
+		t.Fatal(r, err)
+	}
+	if head, _ := ReadHead(b.GameDir); head != nil {
+		t.Fatal("criou versão com trava de outro PC")
+	}
+	// Trava antiga de outro PC é tratada como abandonada.
+	c := enginePC(dir, "C", 1000+3600)
+	enginePut(t, c, "v1")
+	if r, err := c.FirstBackup(); err != nil || r.Status != FirstBackupCreated {
+		t.Fatal(r, err)
+	}
+}
