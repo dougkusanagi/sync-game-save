@@ -363,6 +363,7 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
     if (testePonte) chamadas.push(chamada);
     const metodo = chamada.args?.methodName;
     const resposta = metodo === "main.App.Estado" ? { pasta_sync: null, nome_pc: "PC", catalogo_pronto: false, operacoes_interrompidas: [], steam_configurada: false, steam_id: null, steamgriddb_configurada: false }
+      : metodo === "main.App.Sobre" ? { nome: "Sync Game Save", versao: "1.1.0", build: "abc1234 (2026-11-14)" }
       : metodo === "main.App.AdicionarJogo" ? 42
       : metodo === "main.App.VerificarAtualizacao" ? { versao: "2.0.0", atual: "1.1.0", notas: null }
       : metodo === "main.App.ListarJogos" ? (testePonte ? [{ id: 42, name: "Jogo", save_paths: [] }] : [])
@@ -389,7 +390,7 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
   assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
   assert.equal(resultado.pasta, "C:/Jogos/Teste");
   assert.deepEqual(resultado.atualizacao, { versao: "2.0.0", atual: "1.1.0", notas: null });
-  assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.1.0", build: "" });
+  assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.1.0", build: "abc1234 (2026-11-14)" });
   assert.equal(resultado.id, 42);
   assert.equal(resultado.jogos[0].name, "Jogo");
   assert.equal(chamadas.length, 5);
@@ -399,6 +400,7 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
   assert.equal(chamadas[2].args.methodName, "main.App.ListarJogos");
   assert.equal(chamadas[3].args.CanChooseDirectories, true);
   assert.equal(chamadas[3].args.CanChooseFiles, false);
+  assert.equal(chamadas[4].args.methodName, "main.App.Sobre");
 });
 (async () => {
   const servidor = await subirServidor();

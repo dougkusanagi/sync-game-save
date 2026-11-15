@@ -177,8 +177,7 @@ export const api = {
   sobre: async () => {
     if (emWails) {
       const { Call } = await import("@wailsio/runtime");
-      const versao = await Call.ByName("main.App.Versao") as string;
-      return { nome: "Sync Game Save", versao, build: "" };
+      return await Call.ByName("main.App.Sobre") as { nome: string; versao: string; build: string };
     }
     return call<{ nome: string; versao: string; build: string }>("sobre");
   },
