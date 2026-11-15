@@ -56,15 +56,7 @@ func iniciarOperacao(id int64) (func(), error) {
 	}, nil
 }
 
-func nomeSeguro(name string) string {
-	s := strings.Map(func(c rune) rune {
-		if strings.ContainsRune(`<>:"/\|?*`, c) || c < 0x20 || (c >= 0x7f && c < 0xa0) {
-			return '_'
-		}
-		return c
-	}, name)
-	return strings.TrimRight(strings.TrimSpace(s), ".")
-}
+func nomeSeguro(name string) string { return core.SafeName(name) }
 
 func (App) Jogar(id int64, opcoes *OpcoesJogar) (ResultadoJogar, error) {
 	var o OpcoesJogar

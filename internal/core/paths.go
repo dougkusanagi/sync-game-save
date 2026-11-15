@@ -50,3 +50,14 @@ func ToLogical(path string, env Env) (string, bool) {
 	}
 	return "<" + name + ">/" + filepath.ToSlash(rel), true
 }
+
+// SafeName troca os caracteres que o Windows não aceita em nomes de pasta.
+func SafeName(name string) string {
+	s := strings.Map(func(c rune) rune {
+		if strings.ContainsRune(`<>:"/\|?*`, c) || c < 0x20 || (c >= 0x7f && c < 0xa0) {
+			return '_'
+		}
+		return c
+	}, name)
+	return strings.TrimRight(strings.TrimSpace(s), ".")
+}

@@ -34,7 +34,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
   - [x] Engine: cenários de nuvem incompleta, save ausente, alterações contínuas e abertura com trava de outro PC testados no Windows e Linux; escolha do save local em conflito testada no Windows.
   - [ ] Integrar o núcleo ao serviço e completar a paridade dos demais testes.
 - [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
-- [ ] **4. CLI:** porte pendente.
+- [x] **4. CLI:** portado.
 - [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
 - [ ] **6. Frontend:** diálogos, eventos e arte preparados; comandos, atualizador e E2E do aplicativo real dependem dos serviços Go.
 - [ ] **7. Distribuição e atualização:** instaladores e atualização a partir da v1 pendentes.
@@ -146,7 +146,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ### 4. CLI
 
-- [ ] Portar `sgs-cli` para `cmd/sgs`, com os mesmos comandos, saídas e códigos de saída.
+- [x] `sgs-cli` portado para `internal/cli` com `cmd/sgs/main.go`: mesmos comandos (`run`, `backup`, `restore`, `status`, `list`), opções, saídas e códigos de saída (2 cancelado, 3 travado). Testes cobrem run com código de erro, restauração em outro PC, trava de outro PC, conflito (cancelar e escolher a nuvem), backup, status e erros. Não portados: os testes de launcher intermediário e `--cwd` (só Windows, via PowerShell); o rastreamento de descendentes já tem teste no núcleo.
 
 ### 5. App Wails
 
