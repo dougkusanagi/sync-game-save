@@ -1,6 +1,7 @@
 package gamepad
 
 import (
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -46,13 +47,17 @@ type xinputPad struct {
 }
 
 // XInput lê até quatro controles Xbox (e compatíveis) pela API do Windows.
-type XInput struct{ pads [4]xinputPad }
+type XInput struct {
+	pads      [4]xinputPad
+	kind      string
+	checadoEm time.Time
+}
 
 func NewXInput() (*XInput, error) {
 	if err := xinputGetState.Find(); err != nil {
 		return nil, err
 	}
-	return &XInput{}, nil
+	return &XInput{kind: "xbox"}, nil
 }
 
 func norm(v int16) float32 {
@@ -63,6 +68,7 @@ func norm(v int16) float32 {
 }
 
 func (x *XInput) Poll() []Event {
+	x.atualizarTipo()
 	var out []Event
 	for i := range x.pads {
 		var st xinputState
@@ -83,7 +89,7 @@ func (x *XInput) Poll() []Event {
 				if is {
 					kind = ButtonPressed
 				}
-				out = append(out, Event{Kind: kind, Button: b.button, Device: "xbox"})
+				out = append(out, Event{Kind: kind, Button: b.button, Device: x.kind})
 			}
 		}
 		p.buttons = st.Buttons
@@ -99,7 +105,7 @@ func (x *XInput) Poll() []Event {
 				if is {
 					kind = ButtonPressed
 				}
-				out = append(out, Event{Kind: kind, Button: b, Device: "xbox"})
+				out = append(out, Event{Kind: kind, Button: b, Device: x.kind})
 				*was = is
 			}
 		}
@@ -107,12 +113,20 @@ func (x *XInput) Poll() []Event {
 		trigger(&p.rt, st.RightTrigger, RightTrigger2)
 		if lx := norm(st.ThumbLX); lx != p.lx {
 			p.lx = lx
-			out = append(out, Event{Kind: AxisChanged, Axis: LeftStickX, Value: lx, Device: "xbox"})
+			out = append(out, Event{Kind: AxisChanged, Axis: LeftStickX, Value: lx, Device: x.kind})
 		}
 		if ly := norm(st.ThumbLY); ly != p.ly {
 			p.ly = ly
-			out = append(out, Event{Kind: AxisChanged, Axis: LeftStickY, Value: ly, Device: "xbox"})
+			out = append(out, Event{Kind: AxisChanged, Axis: LeftStickY, Value: ly, Device: x.kind})
 		}
 	}
 	return out
+}
+
+// atualizarTipo reconfere o fabricante dos controles a cada 2 s: o usuário pode conectar um depois.
+func (x *XInput) atualizarTipo() {
+	if agora := time.Now(); agora.Sub(x.checadoEm) >= 2*time.Second {
+		x.kind = tipoDosControlesConectados()
+		x.checadoEm = agora
+	}
 }

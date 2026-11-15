@@ -238,3 +238,13 @@ func Loop(src Source, ready func() bool, emit func(Output), now func() time.Time
 		}
 	}
 }
+
+// KindFromHIDPath diz o tipo do controle pelo caminho do dispositivo HID do Windows
+// (`\?\HID#VID_054C&PID_0CE6#...`). Só a Sony (VID 054C) vira "ps"; o resto fica "xbox".
+// Dispositivos virtuais do XInput (`IG_`) e de outros fabricantes não mudam o resultado.
+func KindFromHIDPath(path string) string {
+	if strings.Contains(strings.ToLower(path), "vid_054c") {
+		return "ps"
+	}
+	return "xbox"
+}
