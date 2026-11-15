@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"sync-game-save/internal/achievements"
 	"sync-game-save/internal/core"
 	"sync-game-save/internal/library"
 )
@@ -129,35 +130,12 @@ func localSteamID() *string {
 	}
 	for _, dir := range dirs {
 		if data, err := os.ReadFile(filepath.Join(dir, "config", "loginusers.vdf")); err == nil {
-			if id := steamIDFromLoginUsers(string(data)); id != nil {
-				return id
+			if id := achievements.SteamIDFromLoginUsers(string(data)); id != "" {
+				return &id
 			}
 		}
 	}
 	return nil
-}
-func steamIDFromLoginUsers(vdf string) *string {
-	var first, current *string
-	for _, line := range strings.Split(vdf, "\n") {
-		value := strings.Trim(strings.TrimSpace(line), `"`)
-		if len(value) == 17 && strings.HasPrefix(value, "7656") && strings.Trim(value, "0123456789") == "" {
-			v := value
-			current = &v
-			if first == nil {
-				first = &v
-			}
-		}
-		var fields []string
-		for _, f := range strings.Split(line, `"`) {
-			if strings.TrimSpace(f) != "" {
-				fields = append(fields, f)
-			}
-		}
-		if len(fields) == 2 && strings.EqualFold(fields[0], "MostRecent") && fields[1] == "1" && current != nil {
-			return current
-		}
-	}
-	return first
 }
 func (App) DefinirNomePc(name string) error {
 	name = strings.TrimSpace(name)
