@@ -122,3 +122,19 @@ func TestLoopSoEmiteComAJanelaPronta(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestKindFromHIDPath(t *testing.T) {
+	casos := map[string]string{
+		`\?\HID#VID_054C&PID_0CE6&MI_03#8&2a&0&0000#{4d1e55b2}`: "ps",   // DualSense
+		`\?\hid#vid_054c&pid_09cc#7&1&0&0000#{4d1e55b2}`:        "ps",   // DualShock 4, minúsculas
+		`\?\HID#VID_045E&PID_0B13#7&2&0&0000#{4d1e55b2}`:        "xbox", // Xbox
+		`\?\HID#VID_057E&PID_2009#7&2&0&0000#{4d1e55b2}`:        "xbox", // Nintendo: sem ícone próprio
+		`\?\HID#VID_045E&PID_028E&IG_00#7&2&0&0000#{4d1e55b2}`:  "xbox", // dispositivo XInput
+		"": "xbox",
+	}
+	for path, want := range casos {
+		if got := KindFromHIDPath(path); got != want {
+			t.Errorf("KindFromHIDPath(%q) = %q, quero %q", path, got, want)
+		}
+	}
+}
