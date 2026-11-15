@@ -35,14 +35,6 @@ func init() {
 	application.RegisterEvent[gamepad.Output]("controle-acao")
 }
 
-func pastaDados() string {
-	if d := os.Getenv("SGS_DATA_DIR"); d != "" {
-		return d
-	}
-	base, _ := os.UserConfigDir()
-	return filepath.Join(base, "com.syncgamesave.app")
-}
-
 func main() {
 	arte := filepath.Join(pastaDados(), "art")
 	_ = os.MkdirAll(arte, 0o755)
