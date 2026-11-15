@@ -223,7 +223,10 @@ export type Atualizacao = {
 
 /** Procura uma atualização no canal configurado. No navegador simulado nunca há uma. */
 export async function verificarAtualizacao(): Promise<Atualizacao | null> {
-  if (emWails) throw new Error("A atualização ainda não está disponível nesta versão.");
+  if (emWails) {
+    const { Call } = await import("@wailsio/runtime");
+    return (await Call.ByName("main.App.VerificarAtualizacao")) as Atualizacao | null;
+  }
   if (emMock) return null;
   const { check } = await import("@tauri-apps/plugin-updater");
   const u = await check();
@@ -233,7 +236,11 @@ export async function verificarAtualizacao(): Promise<Atualizacao | null> {
 
 /** Baixa, instala e reabre o app. Só termina se algo der errado (o app reinicia). */
 export async function instalarAtualizacao(): Promise<void> {
-  if (emWails) throw new Error("A atualização ainda não está disponível nesta versão.");
+  if (emWails) {
+    const { Call } = await import("@wailsio/runtime");
+    await Call.ByName("main.App.InstalarAtualizacao");
+    return;
+  }
   if (emMock) return;
   const { check } = await import("@tauri-apps/plugin-updater");
   const { relaunch } = await import("@tauri-apps/plugin-process");

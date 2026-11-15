@@ -364,6 +364,7 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
     const metodo = chamada.args?.methodName;
     const resposta = metodo === "main.App.Estado" ? { pasta_sync: null, nome_pc: "PC", catalogo_pronto: false, operacoes_interrompidas: [], steam_configurada: false, steam_id: null, steamgriddb_configurada: false }
       : metodo === "main.App.AdicionarJogo" ? 42
+      : metodo === "main.App.VerificarAtualizacao" ? { versao: "2.0.0", atual: "1.0.0", notas: null }
       : metodo === "main.App.ListarJogos" ? (testePonte ? [{ id: 42, name: "Jogo", save_paths: [] }] : [])
       : chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste";
     await route.fulfill({ json: resposta });
@@ -379,7 +380,7 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
     window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "jogando" } });
     cancelar();
     window._wails.dispatchWailsEvent({ name: "jogo-estado", data: { id: 7, estado: "salvando" } });
-    const atualizacao = await ponte.verificarAtualizacao().then(() => "sem erro", (e) => e.message);
+    const atualizacao = await ponte.verificarAtualizacao();
     const jogo = { name: "Jogo", exe: "jogo.exe", install_dir: null, catalog_id: null, save_paths: [] };
     const id = await ponte.api.adicionarJogo(jogo);
     const jogos = await ponte.api.listarJogos();
@@ -387,16 +388,17 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
   });
   assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
   assert.equal(resultado.pasta, "C:/Jogos/Teste");
-  assert.equal(resultado.atualizacao, "A atualização ainda não está disponível nesta versão.");
+  assert.deepEqual(resultado.atualizacao, { versao: "2.0.0", atual: "1.0.0", notas: null });
   assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.0.0", build: "" });
   assert.equal(resultado.id, 42);
   assert.equal(resultado.jogos[0].name, "Jogo");
-  assert.equal(chamadas.length, 4);
-  assert.equal(chamadas[0].args.methodName, "main.App.AdicionarJogo");
-  assert.equal(chamadas[0].args.args[0].exe, "jogo.exe");
-  assert.equal(chamadas[1].args.methodName, "main.App.ListarJogos");
-  assert.equal(chamadas[2].args.CanChooseDirectories, true);
-  assert.equal(chamadas[2].args.CanChooseFiles, false);
+  assert.equal(chamadas.length, 5);
+  assert.equal(chamadas[0].args.methodName, "main.App.VerificarAtualizacao");
+  assert.equal(chamadas[1].args.methodName, "main.App.AdicionarJogo");
+  assert.equal(chamadas[1].args.args[0].exe, "jogo.exe");
+  assert.equal(chamadas[2].args.methodName, "main.App.ListarJogos");
+  assert.equal(chamadas[3].args.CanChooseDirectories, true);
+  assert.equal(chamadas[3].args.CanChooseFiles, false);
 });
 (async () => {
   const servidor = await subirServidor();

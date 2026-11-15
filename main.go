@@ -75,6 +75,7 @@ func main() {
 	bandeja := app.SystemTray.New().SetIcon(iconeBandeja).SetMenu(menu).OnClick(func() { mostrarJanela(win) })
 	bandeja.SetTooltip("Sync Game Save")
 
+	iniciarAtualizador(app)
 	iniciarControle(app, win)
 	iniciarTarefasEmSegundoPlano()
 
