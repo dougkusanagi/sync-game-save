@@ -141,6 +141,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [x] Temas (`app_themes.go`): pacotes `themes/<id>/theme.json`, lista restrita de tokens e escolha persistida, com os testes do Rust portados. Diferença: `min_app_version` compara com a versão do app (1.0.0); o Rust comparava com a do crate (0.1.0), o que recusava qualquer mínimo acima disso.
 - [x] Descoberta de save por mudança (`app_discover.go`): `DescobrirSave` e `CandidatosSave`, com teste de ponta a ponta usando o binário de teste como jogo. A captura usa a mesma chave (sha256 do caminho) e o mesmo JSON da versão Rust; ainda falta teste com captura gerada pelo Rust.
+- [x] Pacote `internal/achievements`: provedores Steam (chave de API e perfil público), raridade, XML da comunidade e `loginusers.vdf`, com os testes do Rust portados e JSON compatível com o cache da biblioteca. Falta ligar ao serviço (`Conquistas`, HUB).
 - [ ] Portar os testes de cada crate antes do código.
 
 ### 4. CLI
