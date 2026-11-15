@@ -222,7 +222,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - ~~O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão?~~ Sim, ver passo 3.
 - ~~O atualizador do Wails cobre o fluxo atual (verificar, baixar, reiniciar)?~~ Sim: provedor `endpoint` com manifesto assinado (ADR 0009). Em aberto: a ponte a partir da v1.x e a troca real do executável numa instalação de verdade.
 - ~~O Wails exige cgo no Linux?~~ Sim (ver passo 7): o build do AppImage precisa de toolchain C e das bibliotecas GTK/WebKit.
-- A instalação silenciosa do NSIS (`/S`) ficou parada: é um problema do instalador ou só do teste? Instalar com a interface e conferir.
+- ~~A instalação silenciosa do NSIS (`/S`) ficou parada?~~ Não: em 2026-11-15, com o instalador do 2.0.1 (`wails3 package` com o `makensis` 3.13 no PATH), `/S` terminou com código 0 em segundos, instalou em `%LOCALAPPDATA%Sync Game Save`, criou o atalho no menu Iniciar e a chave de desinstalação "Sync Game Save 2.0.1". A parada anterior foi do teste.
 - Como a v1.x (Tauri, atualizador minisign) entrega o instalador da versão Go? Precisa de uma última versão do Tauri publicada no GitHub, o que exige autorização e uma chave de assinatura do Tauri.
 
 ## Próximo passo
