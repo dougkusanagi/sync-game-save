@@ -33,6 +33,10 @@ Unicode true
 ####
 ## Include the wails tools
 ####
+# Mesma pasta (por usuário, definida pelo Taskfile com INSTALL_SCOPE=user) e mesma chave de desinstalação
+# do instalador do Tauri, para a versão Go atualizar uma instalação v1.x no lugar, sem duplicar
+# atalhos nem desinstaladores.
+!define UNINST_KEY_NAME "Sync Game Save"
 !include "wails_tools.nsh"
 
 # The version information for this two must consist of 4 parts
@@ -65,7 +69,7 @@ ManifestDPIAware true
 
 !insertmacro MUI_UNPAGE_INSTFILES # Uninstalling page
 
-!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "PortugueseBR" # Instalador em português do Brasil
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -74,7 +78,7 @@ ManifestDPIAware true
 Name "${INFO_PRODUCTNAME}"
 OutFile "..\..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
 !if "${WAILS_INSTALL_SCOPE}" == "user"
-    InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
+    InstallDir "$LOCALAPPDATA\${INFO_PRODUCTNAME}"
 !else
     InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
 !endif

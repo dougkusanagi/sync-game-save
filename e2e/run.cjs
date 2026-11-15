@@ -364,9 +364,9 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
     const metodo = chamada.args?.methodName;
     const resposta = metodo === "main.App.Estado" ? { pasta_sync: null, nome_pc: "PC", catalogo_pronto: false, operacoes_interrompidas: [], steam_configurada: false, steam_id: null, steamgriddb_configurada: false }
       : metodo === "main.App.AdicionarJogo" ? 42
-      : metodo === "main.App.VerificarAtualizacao" ? { versao: "2.0.0", atual: "1.0.0", notas: null }
+      : metodo === "main.App.VerificarAtualizacao" ? { versao: "2.0.0", atual: "1.1.0", notas: null }
       : metodo === "main.App.ListarJogos" ? (testePonte ? [{ id: 42, name: "Jogo", save_paths: [] }] : [])
-      : chamada.object === 0 ? "1.0.0" : "C:/Jogos/Teste";
+      : chamada.object === 0 ? "1.1.0" : "C:/Jogos/Teste";
     await route.fulfill({ json: resposta });
   });
   await page.goto(`${BASE}?cenario=jogos`);
@@ -388,8 +388,8 @@ teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (pag
   });
   assert.deepEqual(resultado.eventos, [[7, "jogando"]]);
   assert.equal(resultado.pasta, "C:/Jogos/Teste");
-  assert.deepEqual(resultado.atualizacao, { versao: "2.0.0", atual: "1.0.0", notas: null });
-  assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.0.0", build: "" });
+  assert.deepEqual(resultado.atualizacao, { versao: "2.0.0", atual: "1.1.0", notas: null });
+  assert.deepEqual(resultado.sobre, { nome: "Sync Game Save", versao: "1.1.0", build: "" });
   assert.equal(resultado.id, 42);
   assert.equal(resultado.jogos[0].name, "Jogo");
   assert.equal(chamadas.length, 5);
