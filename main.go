@@ -66,7 +66,7 @@ func main() {
 	})
 
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Sync Game Save", Width: 1280, Height: 720, URL: "/",
+		Title: "Sync Game Save", Width: 1280, Height: 720, URL: "/", X: posicaoJanelaTeste(), Y: posicaoJanelaTeste(), InitialPosition: posicaoInicialTeste(),
 	})
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		if !saindo {

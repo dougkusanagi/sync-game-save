@@ -22,3 +22,23 @@ func opcoesWindowsTeste() application.WindowsOptions {
 		WebviewUserDataPath:   filepath.Join(pastaDados(), "webview-e2e"),
 	}
 }
+
+func foraDaTela() bool {
+	return os.Getenv("SGS_E2E_VISIVEL") == "" && opcoesWindowsTeste().AdditionalBrowserArgs != nil
+}
+
+// No E2E a janela nasce fora da área visível: o WebView continua renderizando para as capturas
+// e o teste o controla pela porta de depuração, sem aparecer para quem usa o PC.
+func posicaoJanelaTeste() int {
+	if foraDaTela() {
+		return -32000
+	}
+	return 0
+}
+
+func posicaoInicialTeste() application.WindowStartPosition {
+	if foraDaTela() {
+		return application.WindowXY
+	}
+	return application.WindowCentered
+}

@@ -5,3 +5,9 @@ package main
 import "github.com/wailsapp/wails/v3/pkg/application"
 
 func opcoesWindowsTeste() application.WindowsOptions { return application.WindowsOptions{} }
+
+func posicaoJanelaTeste() int { return 0 }
+
+func posicaoInicialTeste() application.WindowStartPosition {
+	return application.WindowCentered
+}

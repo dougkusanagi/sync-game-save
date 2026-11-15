@@ -171,7 +171,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
 - [ ] Integrar o atualizador Wails quando o provedor e a ponte de atualização estiverem definidos na etapa 7.
 - [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
-- [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`.
+- [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`. A janela do teste nasce fora da área visível (x e y = -32000), para não atrapalhar quem usa o PC; `SGS_E2E_VISIVEL=1` a traz de volta. Janela oculta (`Hidden`) não serve: o WebView2 deixa de renderizar e a captura de tela expira.
 - [ ] Adaptar e executar os fluxos completos de `e2e/app-real.cjs` com os serviços Go reais.
 
 ### 7. Distribuição e atualização
