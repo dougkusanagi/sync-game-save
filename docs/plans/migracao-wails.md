@@ -25,7 +25,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - [x] **0. Medir a base:** medição do Tauri concluída (o tamanho do instalador do Tauri não foi medido).
 - [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; falta ver na tela a bandeja e o fechar para a bandeja.
-- [~] **2. Núcleo:** tudo portado e testado no Windows (e no WSL, nos testes de processo); falta `go test -race` (CGO desativado) e os demais testes de concorrência da parada.
+- [x] **2. Núcleo:** tudo portado e testado no Windows e no Linux (WSL), inclusive com `go test -race` (sem corridas).
 - [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
 - [x] **4. CLI:** portado (`cmd/sgs`).
 - [~] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle no Windows estão prontos; falta o controle no Linux (evdev) e ver na tela a bandeja e o toast.
@@ -115,7 +115,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Implementar a parada forçada no Linux com pidfd e verificar a identidade, com teste no WSL. O fechamento normal segue sem sinal, como no Rust.
 - [x] Testar o fechamento de uma janela real no Windows e confirmar que outra janela temporária permanece aberta.
 - [x] Testar o fechamento normal de uma janela rastreada fora do Job no Windows.
-- [ ] Completar os demais testes de integração e concorrência da parada; `go test -race` ainda não rodou porque CGO está desativado.
+- [x] `go test -race` rodou em 2026-11-15 no WSL (Ubuntu, gcc, CGO ligado) para `./internal/...`: todos os pacotes passam, sem corridas de dados, incluindo os testes do CLI, do engine e da parada de processos no Linux. No Windows continua sem CGO (não há compilador C). Achado no caminho: o `.gitattributes` tinha BOM e o `git archive` convertia a fixture do Rust para CRLF; corrigido.
 - [x] Testar em conjunto o engine, o processo real e a renovação da trava: um jogo com saída de erro ainda sincroniza e libera a trava após encerrar; validado no Windows e no WSL.
 - [x] Integrar o acompanhamento e a parada ao serviço Go: `Jogar`, `PararJogo` e `ForcarParadaJogo` (`app_play.go`), com testes de sync completo, jogo sem sync, trava de outro PC, pasta de sync ausente e abertura duplicada, usando o binário de teste como jogo. Conflito com escolha e emissão real do evento ainda sem teste próprio. `Versoes` e `RestaurarVersao` (`app_versions.go`) portados, com teste de restauração e backup.
 - [x] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
