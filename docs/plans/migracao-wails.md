@@ -28,7 +28,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] **2. Núcleo:** tudo portado e testado no Windows e no Linux (WSL), inclusive com `go test -race` (sem corridas).
 - [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
 - [x] **4. CLI:** portado (`cmd/sgs`).
-- [~] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle no Windows estão prontos; falta o controle no Linux (evdev) e ver na tela a bandeja e o toast.
+- [x] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle (Windows e Linux) estão prontos; falta ver na tela a bandeja e o toast.
 - [x] **6. Frontend:** todos os comandos, o atualizador e os E2E no app real ligados aos serviços Go; sem código Tauri.
 - [~] **7. Distribuição e atualização:** instalador NSIS por usuário e atualizador assinado prontos; faltam o AppImage, a instalação real sobre uma v1.x e a versão-ponte do Tauri.
 - [~] **8. Remoção do Tauri e documentação:** feitas; falta a versão 2.0.0 (depende da integração no `main` e da ponte).
@@ -150,7 +150,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Notificações (serviço do Wails): avisos só para erro, conflito e jogo sem sync, como no Tauri; atualização de conquistas após jogar e a cada hora (`app_background.go`); bandeja com "Abrir Sync Game Save", dica e clique que mostra, restaura e foca a janela; fechar vai para a bandeja; diálogos de pasta e executável pelo runtime. Falta conferir a bandeja e o toast com a interface aberta (passo 1) e saber se o toast funciona antes de instalar o app (o Windows exige um identificador de app).
 - [x] Capas locais pelo middleware `/capa/` (`app_capas.go`), restrito à pasta de arte. Teste cobre `..`, `%2e%2e`, `%2f`, barra invertida, caminho absoluto, unidade `C:` e `a/../..`: nenhum devolve arquivos fora de `art`.
 - [x] Controle no Windows: `internal/gamepad` (mapeamento de botões, zona morta do analógico, repetição, tipo xbox/ps) com os testes do Rust portados, leitura XInput (`xinput1_4.dll`) e evento `controle-acao` emitido só com a janela visível, sem minimizar e em primeiro plano (`GetForegroundWindow`/`GetAncestor`). Sem teste com controle físico, e o botão Guia (Mode) não existe no XInput; `quick` continua no clique do analógico direito. Controles PlayStation aparecem como xbox, a menos que um driver os exponha como XInput.
-- [ ] Controle no Linux (evdev): não portado; `gamepad.New` devolve erro e o app segue com teclado e mouse.
+- [x] Controle no Linux (evdev): `internal/gamepad/evdev_linux.go` lê `/dev/input/event*` (detecta controles pelo botão Sul, lê os intervalos dos eixos, reencontra controles a cada 2 s e trata a remoção), com o decodificador testado sem hardware (botões, direcional como eixo, analógico normalizado com cima positivo e gatilhos com histerese). Os testes passam no WSL com `-race`. Sem teste com controle físico (o WSL não tem dispositivos de entrada).
 
 ### 6. Frontend
 
