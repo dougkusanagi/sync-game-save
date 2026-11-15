@@ -7,9 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+
+	"sync-game-save/internal/gamepad"
 )
 
 //go:embed all:dist
@@ -29,7 +32,10 @@ type JogoEstado struct {
 	Estado string `json:"estado"`
 }
 
-func init() { application.RegisterEvent[JogoEstado]("jogo-estado") }
+func init() {
+	application.RegisterEvent[JogoEstado]("jogo-estado")
+	application.RegisterEvent[gamepad.Output]("controle-acao")
+}
 
 func pastaDados() string {
 	if d := os.Getenv("SGS_DATA_DIR"); d != "" {
@@ -81,7 +87,25 @@ func main() {
 	menu.Add("Sair").OnClick(func(*application.Context) { saindo = true; app.Quit() })
 	app.SystemTray.New().SetIcon(iconeBandeja).SetMenu(menu).OnClick(func() { win.Show() })
 
+	iniciarControle(app, win)
+
 	if err := app.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// iniciarControle lê o controle em segundo plano e envia as ações à interface. As ações só valem
+// com a janela visível e em primeiro plano: um controle usado dentro de um jogo nunca deve clicar
+// em "Remover" no launcher escondido. Sem suporte a controle, o app segue com teclado e mouse.
+func iniciarControle(app *application.App, win *application.WebviewWindow) {
+	src, err := gamepad.New()
+	if err != nil {
+		log.Printf("controle: %v", err)
+		return
+	}
+	pronta := func() bool {
+		return win.IsVisible() && !win.IsMinimised() && janelaEmPrimeiroPlano(win.NativeWindow(), win.IsFocused)
+	}
+	emitir := func(o gamepad.Output) { app.Event.Emit("controle-acao", o) }
+	go gamepad.Loop(src, pronta, emitir, time.Now, make(chan struct{}), 8*time.Millisecond)
 }

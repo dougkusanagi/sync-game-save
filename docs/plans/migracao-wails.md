@@ -154,7 +154,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] Eventos `jogo-estado` e `controle-acao`.
 - [ ] Bandeja, fechar para a bandeja, notificações, diálogo de pasta.
 - [ ] Capas locais pelo middleware `/capa/`, restrito à pasta de arte (equivale ao `asset_protocol_scope` atual). Conferir que não há como sair da pasta (`..`, caminhos absolutos).
-- [ ] Controle (`controle.rs`): XInput no Windows via `x/sys/windows`; evdev no Linux. Conferir os mapeamentos de botões atuais.
+- [x] Controle no Windows: `internal/gamepad` (mapeamento de botões, zona morta do analógico, repetição, tipo xbox/ps) com os testes do Rust portados, leitura XInput (`xinput1_4.dll`) e evento `controle-acao` emitido só com a janela visível, sem minimizar e em primeiro plano (`GetForegroundWindow`/`GetAncestor`). Sem teste com controle físico, e o botão Guia (Mode) não existe no XInput; `quick` continua no clique do analógico direito. Controles PlayStation aparecem como xbox, a menos que um driver os exponha como XInput.
+- [ ] Controle no Linux (evdev): não portado; `gamepad.New` devolve erro e o app segue com teclado e mouse.
 
 ### 6. Frontend
 
@@ -210,7 +211,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão?
 - O atualizador do Wails cobre o fluxo atual (verificar, baixar, reiniciar) e aceita a ponte a partir da v1.x?
-- O Wails exige cgo no Linux? Afeta o build do AppImage.
+- O Wails exige cgo no Linux? Resposta parcial: sim, `go vet` com `GOOS=linux` sem cgo falha em `internal/buildguard` ("requires CGO_ENABLED=1"). O build do AppImage precisa de toolchain C e das bibliotecas GTK/WebKit no Linux.
 
 ## Próximo passo
 
