@@ -24,7 +24,7 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 Painel visual: [progresso da migração](progresso-wails.html). As barras contam os itens marcados nos passos abaixo, com a etapa de processos dividida em entregas verificáveis. Os itens têm tamanhos diferentes e não representam uma estimativa de tempo. A mudança da contagem anterior (12 de 45) reflete essa divisão, não trabalho novo.
 
 - [x] **0. Medir a base:** medição do Tauri concluída (o tamanho do instalador do Tauri não foi medido).
-- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; o fechar para a bandeja, o ícone e o clique que restaura a janela foram conferidos no Windows em 2026-11-15.
+- [x] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; o fechar para a bandeja, o ícone e o clique que restaura a janela foram conferidos no Windows em 2026-11-15.
 - [x] **2. Núcleo:** tudo portado e testado no Windows e no Linux (WSL), inclusive com `go test -race` (sem corridas).
 - [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
 - [x] **4. CLI:** portado (`cmd/sgs`).
@@ -97,7 +97,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - [x] **Decisão (2026-11-14): Wails v3** — ver ADR 0008. Espaço e tempo empatam com o MyGo; o Wails ganha em maturidade, AppImage e mobile experimental. A recompilação incremental fica mais lenta que no Rust (21 s × 13 s); confirmar no passo 2 com o núcleo portado.
 - [x] PoC do Wails no branch (substitui a do MyGo): `main.go`, `Taskfile.yml`, `build/`. `wails3 build` e `wails3 package` passam; o app abre e cria a pasta `art`.
-- [~] Conferido pelo E2E no WebView real: capa em `/capa/<arquivo>` e binding `Versao`. Falta ver na tela a bandeja e o fechar para a bandeja. Antes: conferir com a interface aberta: bandeja, fechar para a bandeja, capa em `/capa/<arquivo>` e o binding `Versao` chamado pelo frontend.
+- [x] Conferido pelo E2E no WebView real: capa em `/capa/<arquivo>` e binding `Versao`. Falta ver na tela a bandeja e o fechar para a bandeja. Antes: conferir com a interface aberta: bandeja, fechar para a bandeja, capa em `/capa/<arquivo>` e o binding `Versao` chamado pelo frontend.
 
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
