@@ -140,6 +140,8 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
       restaurar_versao: { metodo: "RestaurarVersao", argumentos: [args?.id, args?.versao] },
       temas: { metodo: "Temas", argumentos: [] },
       definir_tema: { metodo: "DefinirTema", argumentos: [args?.id] },
+      descobrir_save: { metodo: "DescobrirSave", argumentos: [args?.exe] },
+      candidatos_save: { metodo: "CandidatosSave", argumentos: [args?.exe] },
       jogar: { metodo: "Jogar", argumentos: [args?.id, args?.opcoes ?? null] },
       parar_jogo: { metodo: "PararJogo", argumentos: [args?.id] },
       forcar_parada_jogo: { metodo: "ForcarParadaJogo", argumentos: [args?.id] },

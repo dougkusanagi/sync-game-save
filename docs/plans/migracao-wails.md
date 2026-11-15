@@ -140,6 +140,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Catálogo em `internal/catalog`: conversão do manifesto do Ludusavi (`gopkg.in/yaml.v3`) para SQLite com FTS5, consultas, reconhecimento de pasta e varredura, com os casos dos testes Rust portados e `ReconhecerPasta` ligado ao catálogo. Download do manifesto com ETag e `AtualizarCatalogo` ligados; importação do manifesto real (17,8 MB, 53.546 jogos) medida em 2026-11-14 no Windows: 28 s e ~585 MB de memória do processo, sem comparação com o Rust ainda (o app deve rodar a importação fora do caminho de abertura). Busca "half life" não acha "Half-Life", como no Rust (frase literal no trigram). O E2E Wails falhou uma vez por tempo no primeiro uso e passou na repetição.
 - [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [x] Temas (`app_themes.go`): pacotes `themes/<id>/theme.json`, lista restrita de tokens e escolha persistida, com os testes do Rust portados. Diferença: `min_app_version` compara com a versão do app (1.0.0); o Rust comparava com a do crate (0.1.0), o que recusava qualquer mínimo acima disso.
+- [x] Descoberta de save por mudança (`app_discover.go`): `DescobrirSave` e `CandidatosSave`, com teste de ponta a ponta usando o binário de teste como jogo. A captura usa a mesma chave (sha256 do caminho) e o mesmo JSON da versão Rust; ainda falta teste com captura gerada pelo Rust.
 - [ ] Portar os testes de cada crate antes do código.
 
 ### 4. CLI
@@ -212,4 +213,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Ligar os comandos restantes (arte, conquistas, descoberta de save, controle); a varredura de pasta (`ScanFolder` já portado) depende de trazer o `main` ao branch, pois a interface de varredura só existe lá; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Ligar os comandos restantes (arte, conquistas, controle); a varredura de pasta (`ScanFolder` já portado) depende de trazer o `main` ao branch, pois a interface de varredura só existe lá; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
