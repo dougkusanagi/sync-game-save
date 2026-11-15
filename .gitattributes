@@ -1,1 +1,3 @@
-﻿internal/core/testdata/rust/** -text
+﻿# As fixtures geradas pela versão Rust têm hashes dos bytes exatos: o git não pode converter fins de linha.
+internal/core/testdata/rust/** -text
+internal/testdata/rust/** -text
