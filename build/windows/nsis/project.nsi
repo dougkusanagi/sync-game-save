@@ -87,8 +87,27 @@ OutFile "..\..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the i
 !endif
 ShowInstDetails show # This will always show the installation details.
 
+!insertmacro GetParameters
+!insertmacro GetOptions
+
+Var ReabrirAoFim
+
 Function .onInit
    !insertmacro wails.checkArchitecture
+
+   # O atualizador do Tauri (versão 1.x) abre o instalador com "/P /UPDATE /R /ARGS": /P pede uma
+   # instalação sem perguntas e /R pede para reabrir o app ao fim. Sem tratar esses argumentos, o
+   # assistente completo apareceria e ficaria esperando cliques depois de o app antigo já ter fechado.
+   StrCpy $ReabrirAoFim "0"
+   ${GetParameters} $0
+   ClearErrors
+   ${GetOptions} $0 "/P" $1
+   IfErrors +2 0
+       SetSilent silent
+   ClearErrors
+   ${GetOptions} $0 "/R" $1
+   IfErrors +2 0
+       StrCpy $ReabrirAoFim "1"
 FunctionEnd
 
 Section
@@ -107,6 +126,9 @@ Section
     !insertmacro wails.associateCustomProtocols
     
     !insertmacro wails.writeUninstaller
+
+    StrCmp $ReabrirAoFim "1" 0 +2
+        Exec '"$INSTDIR\${PRODUCT_EXECUTABLE}"'
 SectionEnd
 
 Section "uninstall" 
