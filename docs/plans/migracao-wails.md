@@ -153,7 +153,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] Serviços com os 28 comandos, com os mesmos nomes de argumentos e formatos JSON.
 - [ ] Eventos `jogo-estado` e `controle-acao`.
 - [x] Notificações (serviço do Wails): avisos só para erro, conflito e jogo sem sync, como no Tauri; atualização de conquistas após jogar e a cada hora (`app_background.go`); bandeja com "Abrir Sync Game Save", dica e clique que mostra, restaura e foca a janela; fechar vai para a bandeja; diálogos de pasta e executável pelo runtime. Falta conferir a bandeja e o toast com a interface aberta (passo 1) e saber se o toast funciona antes de instalar o app (o Windows exige um identificador de app).
-- [ ] Capas locais pelo middleware `/capa/`, restrito à pasta de arte (equivale ao `asset_protocol_scope` atual). Conferir que não há como sair da pasta (`..`, caminhos absolutos).
+- [x] Capas locais pelo middleware `/capa/` (`app_capas.go`), restrito à pasta de arte. Teste cobre `..`, `%2e%2e`, `%2f`, barra invertida, caminho absoluto, unidade `C:` e `a/../..`: nenhum devolve arquivos fora de `art`.
 - [x] Controle no Windows: `internal/gamepad` (mapeamento de botões, zona morta do analógico, repetição, tipo xbox/ps) com os testes do Rust portados, leitura XInput (`xinput1_4.dll`) e evento `controle-acao` emitido só com a janela visível, sem minimizar e em primeiro plano (`GetForegroundWindow`/`GetAncestor`). Sem teste com controle físico, e o botão Guia (Mode) não existe no XInput; `quick` continua no clique do analógico direito. Controles PlayStation aparecem como xbox, a menos que um driver os exponha como XInput.
 - [ ] Controle no Linux (evdev): não portado; `gamepad.New` devolve erro e o app segue com teclado e mouse.
 

@@ -3,10 +3,8 @@ package main
 import (
 	"embed"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -48,7 +46,6 @@ func pastaDados() string {
 func main() {
 	arte := filepath.Join(pastaDados(), "art")
 	_ = os.MkdirAll(arte, 0o755)
-	capas := http.StripPrefix("/capa/", http.FileServer(http.Dir(arte)))
 
 	var saindo bool
 	app := application.New(application.Options{
@@ -56,17 +53,8 @@ func main() {
 		Windows:  opcoesWindowsTeste(),
 		Services: []application.Service{application.NewService(&App{}), application.NewService(notificador)},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-			// A interface só lê as artes baixadas (/capa/<arquivo>), não o resto dos dados.
-			Middleware: func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					if strings.HasPrefix(r.URL.Path, "/capa/") {
-						capas.ServeHTTP(w, r)
-						return
-					}
-					next.ServeHTTP(w, r)
-				})
-			},
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: middlewareCapas(arte),
 		},
 		OnShutdown: func() { saindo = true },
 	})
