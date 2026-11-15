@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -208,6 +209,61 @@ func (c *Catalog) saveCandidates(id int64, env core.Env, windows bool) ([]SaveCa
 	return out, nil
 }
 
+// envComBase devolve uma cópia do ambiente em que <base> é a pasta do jogo.
+func envComBase(env core.Env, dir string) core.Env {
+	out := core.Env{}
+	for k, v := range env {
+		out[k] = v
+	}
+	out["base"] = dir
+	return out
+}
+
+// exeDoLaunch devolve o executável das regras de launch do catálogo que existe na pasta.
+func (c *Catalog) exeDoLaunch(id int64, baseEnv core.Env, windows bool) (*string, error) {
+	launches, err := c.LaunchPaths(id)
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range launches {
+		p, ok := core.Resolve(l, baseEnv)
+		if !ok {
+			continue
+		}
+		if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() && (isExe(p) || !windows) {
+			return &p, nil
+		}
+	}
+	return nil, nil
+}
+
+// RecognizeChoice aplica uma escolha explícita do catálogo à pasta selecionada.
+// Devolve nil se o jogo não existe mais no catálogo.
+func (c *Catalog) RecognizeChoice(dir string, env core.Env, windows bool, id int64) (*Recognition, error) {
+	hit, err := c.Game(id)
+	if err != nil || hit == nil {
+		return nil, err
+	}
+	baseEnv := envComBase(env, dir)
+	exe, err := c.exeDoLaunch(id, baseEnv, windows)
+	if err != nil {
+		return nil, err
+	}
+	if exe == nil {
+		exe = GuessExe(dir)
+	}
+	cleaned := CleanFolderName(filepath.Base(filepath.Clean(dir)))
+	name := hit.Name
+	if cleaned != "" && strings.Trim(name, "0123456789") == "" {
+		name = cleaned
+	}
+	cands, err := c.saveCandidates(id, baseEnv, windows)
+	if err != nil {
+		return nil, err
+	}
+	return &Recognition{Name: name, CatalogID: &id, Confidence: ConfidenceHigh, Exe: exe, SaveCandidates: cands, Alternatives: []Hit{}}, nil
+}
+
 // Recognize reconhece a pasta de um jogo. windows escolhe as regras do Windows; senão, as do Linux.
 func (c *Catalog) Recognize(dir string, env core.Env, windows bool) (Recognition, error) {
 	folder := filepath.Base(filepath.Clean(dir))
@@ -231,6 +287,7 @@ func (c *Catalog) Recognize(dir string, env core.Env, windows bool) (Recognition
 			confidence = ConfidenceNone
 		}
 	}
+	baseEnv := envComBase(env, dir)
 	// Entre vários jogos com a mesma pasta, prefere o que tem save existente no disco.
 	type scored struct {
 		score int
@@ -239,7 +296,7 @@ func (c *Catalog) Recognize(dir string, env core.Env, windows bool) (Recognition
 	}
 	var all []scored
 	for _, h := range hits {
-		cands, err := c.saveCandidates(h.ID, env, windows)
+		cands, err := c.saveCandidates(h.ID, baseEnv, windows)
 		if err != nil {
 			return Recognition{}, err
 		}
@@ -270,25 +327,11 @@ func (c *Catalog) Recognize(dir string, env core.Env, windows bool) (Recognition
 	}
 	// Executável: o do launch do catálogo, se existir; senão, o maior .exe.
 	if rec.CatalogID != nil {
-		baseEnv := core.Env{}
-		for k, v := range env {
-			baseEnv[k] = v
-		}
-		baseEnv["base"] = dir
-		launches, err := c.LaunchPaths(*rec.CatalogID)
+		exe, err := c.exeDoLaunch(*rec.CatalogID, baseEnv, windows)
 		if err != nil {
 			return Recognition{}, err
 		}
-		for _, l := range launches {
-			p, ok := core.Resolve(l, baseEnv)
-			if !ok {
-				continue
-			}
-			if info, err := os.Stat(p); err == nil && info.Mode().IsRegular() && (isExe(p) || !windows) {
-				rec.Exe = &p
-				break
-			}
-		}
+		rec.Exe = exe
 	}
 	if rec.Exe == nil {
 		rec.Exe = GuessExe(dir)
@@ -296,18 +339,55 @@ func (c *Catalog) Recognize(dir string, env core.Env, windows bool) (Recognition
 	return rec, nil
 }
 
+// ScanEntry é uma pasta da varredura. No JSON vira a tupla [caminho, reconhecimento].
 type ScanEntry struct {
-	Path        string      `json:"path"`
-	Recognition Recognition `json:"recognition"`
+	Path        string
+	Recognition Recognition
 }
+
+func (e ScanEntry) MarshalJSON() ([]byte, error) {
+	return json.Marshal([]any{e.Path, e.Recognition})
+}
+
+// ScanError é uma pasta que não pôde ser examinada. No JSON vira a tupla [caminho, mensagem].
+type ScanError struct{ Path, Message string }
+
+func (e ScanError) MarshalJSON() ([]byte, error) { return json.Marshal([]string{e.Path, e.Message}) }
 
 type ScanResult struct {
 	Recognized        []ScanEntry `json:"recognized"`
 	NeedsConfirmation []ScanEntry `json:"needs_confirmation"`
 	Unknown           []ScanEntry `json:"unknown"`
+	// Errors lista as pastas que não puderam ser examinadas ou reconhecidas.
+	Errors []ScanError `json:"errors"`
 }
 
-func hasExe(dir string, depth int) bool {
+func hasExe(dir string, depth int, errs *[]ScanError) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		*errs = append(*errs, ScanError{dir, err.Error()})
+		return false
+	}
+	found := false
+	for _, e := range entries {
+		p := filepath.Join(dir, e.Name())
+		info, err := os.Stat(p)
+		if err != nil {
+			continue
+		}
+		if info.IsDir() {
+			if depth < 2 && hasExe(p, depth+1, errs) {
+				found = true
+			}
+		} else if isExe(p) && !isBadExe(e.Name()) {
+			found = true
+		}
+	}
+	return found
+}
+
+// hasExeAtGameRoot: pastas técnicas comuns podem conter o executável sem serem a pasta do jogo.
+func hasExeAtGameRoot(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return false
@@ -318,12 +398,17 @@ func hasExe(dir string, depth int) bool {
 		if err != nil {
 			continue
 		}
-		if info.IsDir() {
-			if depth < 2 && hasExe(p, depth+1) {
+		if !info.IsDir() {
+			if isExe(p) && !isBadExe(e.Name()) {
 				return true
 			}
-		} else if isExe(p) && !isBadExe(e.Name()) {
-			return true
+			continue
+		}
+		switch strings.ToLower(e.Name()) {
+		case "bin", "binaries", "binary", "x64", "x86", "win64", "win32":
+			if hasExe(p, 0, &[]ScanError{}) {
+				return true
+			}
 		}
 	}
 	return false
@@ -332,11 +417,12 @@ func hasExe(dir string, depth int) bool {
 // ScanFolder varre as subpastas de root até depth níveis (1 = filhas diretas). Cada pasta com
 // executável vira um jogo; não desce dentro de uma pasta já tratada como jogo.
 func (c *Catalog) ScanFolder(root string, depth int, env core.Env, windows bool) (ScanResult, error) {
-	out := ScanResult{Recognized: []ScanEntry{}, NeedsConfirmation: []ScanEntry{}, Unknown: []ScanEntry{}}
+	out := ScanResult{Recognized: []ScanEntry{}, NeedsConfirmation: []ScanEntry{}, Unknown: []ScanEntry{}, Errors: []ScanError{}}
 	var walk func(string, int) error
 	walk = func(dir string, left int) error {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
+			out.Errors = append(out.Errors, ScanError{dir, err.Error()})
 			return nil
 		}
 		var dirs []string
@@ -348,24 +434,37 @@ func (c *Catalog) ScanFolder(root string, depth int, env core.Env, windows bool)
 		}
 		sort.Strings(dirs)
 		for _, d := range dirs {
-			if hasExe(d, 0) {
-				r, err := c.Recognize(d, env, windows)
-				if err != nil {
+			descer := func() error {
+				if left > 1 {
+					return walk(d, left-1)
+				}
+				return nil
+			}
+			if !hasExe(d, 0, &out.Errors) {
+				if err := descer(); err != nil {
 					return err
 				}
-				entry := ScanEntry{Path: d, Recognition: r}
-				switch r.Confidence {
-				case ConfidenceHigh:
-					out.Recognized = append(out.Recognized, entry)
-				case ConfidenceLow:
-					out.NeedsConfirmation = append(out.NeedsConfirmation, entry)
-				default:
-					out.Unknown = append(out.Unknown, entry)
-				}
-			} else if left > 1 {
-				if err := walk(d, left-1); err != nil {
+				continue
+			}
+			r, err := c.Recognize(d, env, windows)
+			if err != nil {
+				out.Errors = append(out.Errors, ScanError{d, err.Error()})
+				continue
+			}
+			if r.Confidence == ConfidenceNone && !hasExeAtGameRoot(d) {
+				if err := descer(); err != nil {
 					return err
 				}
+				continue
+			}
+			entry := ScanEntry{Path: d, Recognition: r}
+			switch r.Confidence {
+			case ConfidenceHigh:
+				out.Recognized = append(out.Recognized, entry)
+			case ConfidenceLow:
+				out.NeedsConfirmation = append(out.NeedsConfirmation, entry)
+			default:
+				out.Unknown = append(out.Unknown, entry)
 			}
 		}
 		return nil

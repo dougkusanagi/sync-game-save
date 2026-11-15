@@ -4,6 +4,7 @@ package catalog
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -231,6 +232,19 @@ func (c *Catalog) hits(query string, args ...any) ([]Hit, error) {
 		out = append(out, h)
 	}
 	return out, rows.Err()
+}
+
+// Game devolve o jogo do catálogo com este id, ou nil se não existir.
+func (c *Catalog) Game(id int64) (*Hit, error) {
+	var h Hit
+	err := c.db.QueryRow("SELECT id, name FROM games WHERE id=?", id).Scan(&h.ID, &h.Name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &h, nil
 }
 
 // ByInstallDir lista os jogos cuja pasta de instalação tem este nome, sem acentos nem maiúsculas.

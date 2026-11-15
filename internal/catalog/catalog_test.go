@@ -1,10 +1,12 @@
 package catalog
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"sync-game-save/internal/core"
@@ -151,6 +153,8 @@ const recognizeYAML = `
       tags: [save]
       when:
         - os: linux
+    <base>/Saves:
+      tags: [save]
   installDir:
     Aggelos: {}
   launch:
@@ -190,10 +194,16 @@ func TestReconhecePelaPastaComSaveExistente(t *testing.T) {
 	if r.Confidence != ConfidenceHigh || r.Name != "Aggelos" || r.Exe == nil || filepath.Base(*r.Exe) != "Aggelos.exe" {
 		t.Fatal(r)
 	}
-	if len(r.SaveCandidates) != 1 {
+	// A regra de config e a do Linux ficam de fora; sobram a do Windows e a relativa à pasta do jogo.
+	if len(r.SaveCandidates) != 2 {
 		t.Fatal(r.SaveCandidates)
 	}
-	s := r.SaveCandidates[0]
+	var s SaveCandidate
+	for _, c := range r.SaveCandidates {
+		if strings.HasPrefix(c.Logical, "<winDocuments>") {
+			s = c
+		}
+	}
 	if s.Logical != "<winDocuments>/SavedGames/Aggelos" || !s.Exists || s.Files != 1 || !s.Selected {
 		t.Fatal(s)
 	}
@@ -204,8 +214,13 @@ func TestSaveInexistenteNaoVemMarcado(t *testing.T) {
 	game := filepath.Join(root, "Aggelos")
 	put(t, filepath.Join(game, "a.exe"), 3)
 	r, err := c.Recognize(game, env, true)
-	if err != nil || len(r.SaveCandidates) != 1 || r.SaveCandidates[0].Exists || r.SaveCandidates[0].Selected {
-		t.Fatal(r, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range r.SaveCandidates {
+		if c.Exists || c.Selected {
+			t.Fatal(r)
+		}
 	}
 }
 
@@ -229,15 +244,28 @@ func TestVarrePastaComVariosJogos(t *testing.T) {
 	put(t, filepath.Join(lib, "Aggelos", "Aggelos.exe"), 10)
 	put(t, filepath.Join(lib, "Desconhecido Total", "x.exe"), 10)
 	put(t, filepath.Join(lib, "Loja", "Dentro Do Nivel 2", "y.exe"), 10)
+	put(t, filepath.Join(lib, "Sem Catalogo", "bin", "Win64", "game.exe"), 10)
 	put(t, filepath.Join(lib, "Docs", "leia.txt"), 1)
 	r, err := c.ScanFolder(lib, 2, env, true)
-	if err != nil || len(r.Recognized) != 1 || len(r.Unknown) != 2 {
+	if err != nil || len(r.Recognized) != 1 || len(r.Unknown) != 3 {
 		t.Fatal(r, err)
 	}
-	// Uma pasta com .exe em subpasta já conta como jogo, e não se desce dentro dela.
+	achou := map[string]bool{}
+	for _, u := range r.Unknown {
+		achou[u.Path] = true
+	}
+	if !achou[filepath.Join(lib, "Loja", "Dentro Do Nivel 2")] || !achou[filepath.Join(lib, "Sem Catalogo")] {
+		t.Fatal(achou)
+	}
+	// O limite conta pastas de jogos, não a pasta técnica bin/.
 	r1, err := c.ScanFolder(lib, 1, env, true)
 	if err != nil || len(r1.Recognized) != 1 || len(r1.Unknown) != 2 {
 		t.Fatal(r1, err)
+	}
+	for _, u := range r1.Unknown {
+		if u.Path == filepath.Join(lib, "Loja") {
+			t.Fatal("Loja não é um jogo")
+		}
 	}
 }
 
@@ -278,5 +306,65 @@ func TestFetchErroMantemManifestoAntigo(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(manifest); string(got) != "antigo" {
 		t.Fatal(string(got))
+	}
+}
+
+func TestVarreduraResolveBaseParaCadaJogoEEscolhaDoCatalogo(t *testing.T) {
+	root, c, env := recognizeSetup(t)
+	lib := filepath.Join(root, "Biblioteca")
+	game := filepath.Join(lib, "Aggelos")
+	put(t, filepath.Join(game, "Aggelos.exe"), 10)
+	put(t, filepath.Join(game, "Saves", "slot.sav"), 4)
+	res, err := c.ScanFolder(lib, 1, env, true)
+	if err != nil || len(res.Recognized) != 1 {
+		t.Fatal(res, err)
+	}
+	r := res.Recognized[0].Recognition
+	var save *SaveCandidate
+	for i := range r.SaveCandidates {
+		if r.SaveCandidates[i].Logical == "<base>/Saves" {
+			save = &r.SaveCandidates[i]
+		}
+	}
+	if save == nil || save.Resolved != filepath.Join(game, "Saves") || !save.Selected {
+		t.Fatal(r.SaveCandidates)
+	}
+	escolhido, err := c.RecognizeChoice(game, env, true, *r.CatalogID)
+	if err != nil || escolhido == nil || escolhido.Name != r.Name {
+		t.Fatal(escolhido, err)
+	}
+	achou := false
+	for _, cand := range escolhido.SaveCandidates {
+		achou = achou || cand.Logical == "<base>/Saves" && cand.Selected
+	}
+	if !achou {
+		t.Fatal(escolhido.SaveCandidates)
+	}
+	if inexistente, err := c.RecognizeChoice(game, env, true, -1); err != nil || inexistente != nil {
+		t.Fatal(inexistente, err)
+	}
+}
+
+func TestVarreduraInformaPastaInacessivel(t *testing.T) {
+	root, c, env := recognizeSetup(t)
+	inexistente := filepath.Join(root, "nao-existe")
+	res, err := c.ScanFolder(inexistente, 2, env, true)
+	if err != nil || len(res.Errors) != 1 || res.Errors[0].Path != inexistente {
+		t.Fatal(res, err)
+	}
+	bruto, _ := json.Marshal(res)
+	if !strings.Contains(string(bruto), "\"errors\":[[") {
+		t.Fatal("o JSON deve usar a tupla [caminho, mensagem]:", string(bruto))
+	}
+}
+
+func TestVarreduraUsaTuplasNoJSON(t *testing.T) {
+	root, c, env := recognizeSetup(t)
+	lib := filepath.Join(root, "Biblioteca")
+	put(t, filepath.Join(lib, "Aggelos", "Aggelos.exe"), 10)
+	res, _ := c.ScanFolder(lib, 1, env, true)
+	bruto, _ := json.Marshal(res)
+	if !strings.Contains(string(bruto), "\"recognized\":[[\"") {
+		t.Fatal(string(bruto))
 	}
 }
