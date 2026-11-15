@@ -164,6 +164,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Integrar listagem e inclusão de jogos ao Wails com biblioteca SQLite temporária no E2E real e regressão da ponte.
 - [x] Integrar estado e configuração inicial ao Wails; primeiro uso verificado no WebView real, preservando a lista de PCs e recusando dados incompletos.
 - [x] Integrar cadastro manual sem catálogo, reconhecimento da pasta e conversão do caminho de save; fluxo verificado no WebView real. A consulta de catálogo existente ainda não foi portada.
+- [x] Integrar edição e remoção de jogos; testes no WebView real e no backend cobrem preservação dos saves, invalidação de base e rollback após edição inválida.
 - [ ] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
 - [ ] Integrar o atualizador Wails quando o provedor e a ponte de atualização estiverem definidos na etapa 7.
 - [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
@@ -210,4 +211,4 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-Portar consulta ao catálogo existente e os demais comandos do frontend; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+Portar consulta ao catálogo existente, sincronização e os demais comandos do frontend; validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).

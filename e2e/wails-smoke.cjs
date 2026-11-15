@@ -32,6 +32,8 @@ async function aguardarDepurador(url, app) {
   const saveDir = path.join(pasta, "saves");
   fs.mkdirSync(jogoDir);
   fs.mkdirSync(saveDir);
+  const save = path.join(saveDir, "slot.sav");
+  fs.writeFileSync(save, "progresso preservado");
   const executavel = path.join(jogoDir, "jogo.exe");
   fs.writeFileSync(executavel, "executável de teste");
   const porta = await portaLivre();
@@ -48,20 +50,23 @@ async function aguardarDepurador(url, app) {
     const context = browser.contexts()[0];
     let page = context.pages()[0];
     if (!page) page = await context.waitForEvent("page", { timeout: 10000 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.getByRole("heading", { name: "Vamos guardar seus saves com segurança" }).waitFor({ timeout: 15000 });
     for (const [nome, width, height] of [["mobile", 390, 844], ["desktop", 1280, 720]]) {
       await page.setViewportSize({ width, height });
       if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error(`Rolagem horizontal inesperada: ${nome}`);
       await page.screenshot({ path: path.join(pasta, `${nome}.png`) });
     }
+    const chamadasDialogo = [];
     await page.route("**/wails/runtime", async (route) => {
       const request = route.request().postDataJSON();
+      if (request.object === 5) chamadasDialogo.push(request);
       if (request.object === 5 && request.method === 4) await route.fulfill({ json: request.args.Title.includes("executável") ? executavel : request.args.Title.includes("onde o jogo guarda o save") ? saveDir : nuvem });
       else await route.continue();
     });
     await page.getByRole("button", { name: "Escolher a pasta" }).click();
     await page.getByRole("button", { name: "Escolher pasta…" }).click();
-    await page.getByText("Pasta pronta").waitFor({ timeout: 10000 }).catch(async (err) => { throw new Error(`${err.message} Tela: ${(await page.locator("body").innerText()).slice(0, 500)}`); });
+    await page.getByText("Pasta pronta").waitFor({ timeout: 10000 }).catch(async (err) => { throw new Error(`${err.message} Tela: ${(await page.locator("body").innerText()).slice(0, 500)}; diálogos: ${JSON.stringify(chamadasDialogo)}`); });
     await page.getByRole("button", { name: "Continuar" }).click();
     await page.getByLabel("Nome deste PC").fill("PC-TESTE");
     await page.getByRole("button", { name: "Concluir" }).click();
@@ -101,6 +106,26 @@ async function aguardarDepurador(url, app) {
     await page.reload();
     await page.getByRole("heading", { name: "Jogo de teste" }).waitFor({ timeout: 15000 });
     console.log("ok   jogo salvo aparece na interface após recarregar");
+    await page.getByRole("button", { name: /^Jogo Exemplo/ }).hover();
+    await page.getByRole("button", { name: "Mais opções" }).click();
+    await page.getByRole("button", { name: "Editar jogo" }).click();
+    const editar = page.getByRole("dialog", { name: "Editar Jogo Exemplo" });
+    await editar.getByLabel("Nome do jogo").fill("Jogo Editado");
+    for (const [nome, width, height] of [["editar-mobile", 390, 844], ["editar-desktop", 1280, 720]]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(500);
+      if (await page.evaluate(() => document.querySelector(".dialogo-corpo").scrollWidth > document.querySelector(".dialogo-corpo").clientWidth)) throw new Error(`Rolagem horizontal inesperada: ${nome}`);
+      await page.screenshot({ path: path.join(pasta, `${nome}.png`) });
+    }
+    await editar.getByRole("button", { name: "Salvar alterações" }).click();
+    await page.getByRole("heading", { name: "Jogo Editado" }).waitFor();
+    console.log("ok   edição é salva e exibida pela interface Wails");
+    await page.getByRole("button", { name: "Mais opções" }).click();
+    await page.getByRole("button", { name: "Remover da biblioteca" }).click();
+    await page.getByRole("button", { name: "Remover", exact: true }).click();
+    await page.getByText(/continuam onde estavam/).waitFor();
+    if (fs.readFileSync(save, "utf8") !== "progresso preservado") throw new Error("O save foi alterado ao remover o jogo.");
+    console.log("ok   remoção preserva o save fora da biblioteca");
 
     console.log(`Capturas: ${pasta}`);
   } finally {

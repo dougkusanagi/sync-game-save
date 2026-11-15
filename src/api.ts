@@ -136,6 +136,8 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
       converter_caminho: { metodo: "ConverterCaminho", argumentos: [args?.caminho] },
       listar_jogos: { metodo: "ListarJogos", argumentos: [] },
       adicionar_jogo: { metodo: "AdicionarJogo", argumentos: [args?.jogo] },
+      editar_jogo: { metodo: "EditarJogo", argumentos: [args?.id, args?.jogo] },
+      remover_jogo: { metodo: "RemoverJogo", argumentos: [args?.id] },
     };
     const comando = comandos[cmd];
     if (comando) {

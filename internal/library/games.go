@@ -132,6 +132,11 @@ func (l *Library) List() ([]Game, error) {
 	return games, nil
 }
 func (l *Library) UpdateGame(id int64, g NewGame) error {
+	return l.UpdateGameReset(id, g, false)
+}
+
+// UpdateGameReset altera o jogo e invalida o estado de sync na mesma transação.
+func (l *Library) UpdateGameReset(id int64, g NewGame, reset bool) error {
 	name := strings.TrimSpace(g.Name)
 	if name == "" {
 		return ErrEmptyName
@@ -158,6 +163,19 @@ func (l *Library) UpdateGame(id int64, g NewGame) error {
 	for _, p := range g.SavePaths {
 		if _, err := tx.Exec("INSERT OR IGNORE INTO save_paths(game_id,path) VALUES(?,?)", id, p); err != nil {
 			return err
+		}
+	}
+	if reset {
+		result, err := tx.Exec("UPDATE sync_state SET base_digest=NULL,last_sync_at=NULL WHERE game_id=?", id)
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return ErrNotFound
 		}
 	}
 	return tx.Commit()
