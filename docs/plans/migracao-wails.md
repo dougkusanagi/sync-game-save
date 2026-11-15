@@ -23,23 +23,17 @@ Critério de conclusão: a suíte Go cobre os mesmos casos dos testes Rust e pas
 
 Painel visual: [progresso da migração](progresso-wails.html). As barras contam os itens marcados nos passos abaixo, com a etapa de processos dividida em entregas verificáveis. Os itens têm tamanhos diferentes e não representam uma estimativa de tempo. A mudança da contagem anterior (12 de 45) reflete essa divisão, não trabalho novo.
 
-- [ ] **0. Medir a base:** medição do Tauri concluída; falta o tamanho do instalador.
-- [ ] **1. Prova de conceito:** framework escolhido e builds feitos; falta a conferência visual.
-- [ ] **2. Núcleo:** caminhos, diário, índice, trava, snapshots, sincronização e descoberta portados; processos e testes de paridade em andamento.
-  - [x] Acompanhamento do processo e seus descendentes, registro de execuções e heartbeat.
-  - [x] Pedido de fechamento e fechamento forçado dos processos no Job Object do Windows, com teste de executável temporário para a força.
-  - [x] Fechamento normal e forçado de processos rastreados fora do Job no Windows, com verificação do horário de criação; teste de força com processos temporários e identidade divergente.
-  - [x] Parada forçada no Linux via pidfd, com teste no WSL para processo temporário e identidade divergente.
-  - [x] Teste de janela real: fechamento normal do jogo sem atingir outra janela temporária.
-  - [x] Engine: cenários de nuvem incompleta, save ausente, alterações contínuas e abertura com trava de outro PC testados no Windows e Linux; escolha do save local em conflito testada no Windows.
-  - [ ] Integrar o núcleo ao serviço e completar a paridade dos demais testes.
-- [ ] **3. Catálogo, biblioteca, conquistas e serviço:** porte pendente.
-- [x] **4. CLI:** portado.
-- [ ] **5. App Wails:** serviços, eventos, bandeja, diálogos e controle pendentes.
-- [ ] **6. Frontend:** diálogos, eventos e arte preparados; comandos, atualizador e E2E do aplicativo real dependem dos serviços Go.
-- [ ] **7. Distribuição e atualização:** instaladores e atualização a partir da v1 pendentes.
-- [ ] **8. Remoção do Tauri e documentação:** pendentes após validar a paridade.
-## Estado atual (2026-11-14)
+- [x] **0. Medir a base:** medição do Tauri concluída (o tamanho do instalador do Tauri não foi medido).
+- [~] **1. Prova de conceito:** framework escolhido (ADR 0008) e builds feitos; falta ver na tela a bandeja e o fechar para a bandeja.
+- [~] **2. Núcleo:** tudo portado e testado no Windows (e no WSL, nos testes de processo); falta `go test -race` (CGO desativado) e os demais testes de concorrência da parada.
+- [x] **3. Catálogo, biblioteca, conquistas e serviço:** portados, com a compatibilidade com os dados do Rust conferida nos dois sentidos.
+- [x] **4. CLI:** portado (`cmd/sgs`).
+- [~] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle no Windows estão prontos; falta o controle no Linux (evdev) e ver na tela a bandeja e o toast.
+- [x] **6. Frontend:** todos os comandos, o atualizador e os E2E no app real ligados aos serviços Go; sem código Tauri.
+- [~] **7. Distribuição e atualização:** instalador NSIS por usuário e atualizador assinado prontos; faltam o AppImage, a instalação real sobre uma v1.x e a versão-ponte do Tauri.
+- [~] **8. Remoção do Tauri e documentação:** feitas; falta a versão 2.0.0 (depende da integração no `main` e da ponte).
+
+## Estado inicial da migração (2026-11-14, antes do porte)
 
 - ~5.240 linhas de Rust em 7 crates (`src-tauri/`):
   - `sgs-core` (~1.450): sync, snapshots, índice, journal, lock, caminhos, descoberta de pastas de save, processos (Job Objects e ToolHelp no Windows, `sysinfo`).
@@ -83,7 +77,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
   | `cargo build --release` (LTO, `codegen-units = 1`) | 1.948 s (~32 min) | 7.790 MB |
 
   Executável release: 10,1 MiB (`sync-game-save.exe`). O `target` do checkout principal, com builds acumulados, chegou a 31,87 GiB.
-- [ ] Tamanho do instalador NSIS (`bun run tauri build`; exige a chave de assinatura).
+- [x] Tamanho do instalador NSIS do Tauri: não medido; a base Tauri saiu deste branch e só existe no `main`. O instalador Go tem 9,2 MB.
 
 ### 1. Prova de conceito e escolha do framework
 
@@ -103,7 +97,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 - [x] **Decisão (2026-11-14): Wails v3** — ver ADR 0008. Espaço e tempo empatam com o MyGo; o Wails ganha em maturidade, AppImage e mobile experimental. A recompilação incremental fica mais lenta que no Rust (21 s × 13 s); confirmar no passo 2 com o núcleo portado.
 - [x] PoC do Wails no branch (substitui a do MyGo): `main.go`, `Taskfile.yml`, `build/`. `wails3 build` e `wails3 package` passam; o app abre e cria a pasta `art`.
-- [ ] Conferir com a interface aberta: bandeja, fechar para a bandeja, capa em `/capa/<arquivo>` e o binding `Versao` chamado pelo frontend.
+- [~] Conferido pelo E2E no WebView real: capa em `/capa/<arquivo>` e binding `Versao`. Falta ver na tela a bandeja e o fechar para a bandeja. Antes: conferir com a interface aberta: bandeja, fechar para a bandeja, capa em `/capa/<arquivo>` e o binding `Versao` chamado pelo frontend.
 
 ### 2. Portar o núcleo (`sgs-core` → `internal/core`)
 
@@ -124,12 +118,12 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [ ] Completar os demais testes de integração e concorrência da parada; `go test -race` ainda não rodou porque CGO está desativado.
 - [x] Testar em conjunto o engine, o processo real e a renovação da trava: um jogo com saída de erro ainda sincroniza e libera a trava após encerrar; validado no Windows e no WSL.
 - [x] Integrar o acompanhamento e a parada ao serviço Go: `Jogar`, `PararJogo` e `ForcarParadaJogo` (`app_play.go`), com testes de sync completo, jogo sem sync, trava de outro PC, pasta de sync ausente e abertura duplicada, usando o binário de teste como jogo. Conflito com escolha e emissão real do evento ainda sem teste próprio. `Versoes` e `RestaurarVersao` (`app_versions.go`) portados, com teste de restauração e backup.
-- [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
-- [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
-- [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
-- [ ] Hash com `crypto/sha256`. Conferir que IDs de snapshot e o formato da pasta da nuvem (ADR 0003, 0007) saem iguais byte a byte.
-- [ ] Teste de compatibilidade: fixture de pasta da nuvem e snapshots gerados pela versão Rust, lidos e atualizados pela versão Go.
-- [ ] Medir de novo o incremental (`go build` e `wails3 build`) com o núcleo portado.
+- [x] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
+- [x] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
+- [x] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).
+- [x] Hash com `crypto/sha256`. Conferir que IDs de snapshot e o formato da pasta da nuvem (ADR 0003, 0007) saem iguais byte a byte.
+- [x] Teste de compatibilidade: fixture de pasta da nuvem e snapshots gerados pela versão Rust, lidos e atualizados pela versão Go.
+- [x] Medir de novo o incremental (`go build` e `wails3 build`) com o núcleo portado.
 
 ### 3. Portar catálogo, biblioteca, conquistas e serviço
 
@@ -138,12 +132,12 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Portar operações da biblioteca de jogos, configurações, estado de sync, tempo jogado e cache de conquistas; testes cobrem edição, duplicidade, exclusão e persistência.
 - [x] Compatibilidade com dados do Rust (ADR 0002): `cargo run -p sgs-service --example gerar_fixtures -- internal/testdata/rust` gera `library.db`, `catalog.db` e uma captura de descoberta; testes Go (`rust_compat_test.go`, `discover_rust_test.go`) leem, consultam e gravam nesses arquivos sem perda (esquema 3, campos, configurações, cache de conquistas, FTS5/trigram, chave sha256 e mtime em ns). No sentido inverso, uma biblioteca gravada pelo Go foi lida pelo Rust (conferência manual, não automatizada). Responde a dúvida aberta sobre o `modernc.org/sqlite`: lê os bancos atuais sem conversão.
 - [x] Catálogo em `internal/catalog`: conversão do manifesto do Ludusavi (`gopkg.in/yaml.v3`) para SQLite com FTS5, consultas, reconhecimento de pasta e varredura, com os casos dos testes Rust portados e `ReconhecerPasta` ligado ao catálogo. Download do manifesto com ETag e `AtualizarCatalogo` ligados; importação do manifesto real (17,8 MB, 53.546 jogos) medida em 2026-11-14 no Windows: 28 s e ~585 MB de memória do processo, sem comparação com o Rust ainda (o app deve rodar a importação fora do caminho de abertura). Busca "half life" não acha "Half-Life", como no Rust (frase literal no trigram). O E2E Wails falhou uma vez por tempo no primeiro uso e passou na repetição.
-- [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
+- [x] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [x] Temas (`app_themes.go`): pacotes `themes/<id>/theme.json`, lista restrita de tokens e escolha persistida, com os testes do Rust portados. Diferença: `min_app_version` compara com a versão do app (1.0.0); o Rust comparava com a do crate (0.1.0), o que recusava qualquer mínimo acima disso.
 - [x] Descoberta de save por mudança (`app_discover.go`): `DescobrirSave` e `CandidatosSave`, com teste de ponta a ponta usando o binário de teste como jogo. A captura usa a mesma chave (sha256 do caminho) e o mesmo JSON da versão Rust; ainda falta teste com captura gerada pelo Rust.
 - [x] Pacote `internal/achievements`: provedores Steam (chave de API e perfil público), raridade, XML da comunidade e `loginusers.vdf`, com os testes do Rust portados e JSON compatível com o cache da biblioteca. Ligado ao app: `Conquistas` (cache de 10 minutos, cache antigo em caso de erro), `DefinirCredenciaisSteam`, `DefinirChaveSteamGridDB`, `ConquistasHub` (marcos do HUB, `app_hub.go`) e arte (`app_art.go`: Steam CDN, loja e SteamGridDB, só JPEG/PNG), com testes sem rede real. O SteamGridDB e a busca da loja ainda não têm teste contra a API real.
 - [x] Entrega 1.1.0 do `main` (varredura, central rápida, primeiro backup) trazida por merge e portada: `ScanFolder` com erros por pasta e raiz técnica `bin/`, `RecognizeChoice`, `<base>` nos candidatos de save, `Engine.FirstBackup`, e os comandos `VarrerPasta`, `EscolherCandidatoCatalogo`, `PrimeiroBackup` e `SairApp` (recusa com jogo aberto), com os testes do Rust portados; a varredura roda sobre o `catalog.db` gerado pelo Rust. `bun run e2e` (34 cenários com mock) passa com as telas novas.
-- [ ] Portar os testes de cada crate antes do código.
+- [x] Portar os testes de cada crate antes do código.
 
 ### 4. CLI
 
@@ -151,8 +145,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ### 5. App Wails
 
-- [ ] Serviços com os 28 comandos, com os mesmos nomes de argumentos e formatos JSON.
-- [ ] Eventos `jogo-estado` e `controle-acao`.
+- [x] Serviços com os 28 comandos, com os mesmos nomes de argumentos e formatos JSON.
+- [x] Eventos `jogo-estado` e `controle-acao`.
 - [x] Notificações (serviço do Wails): avisos só para erro, conflito e jogo sem sync, como no Tauri; atualização de conquistas após jogar e a cada hora (`app_background.go`); bandeja com "Abrir Sync Game Save", dica e clique que mostra, restaura e foca a janela; fechar vai para a bandeja; diálogos de pasta e executável pelo runtime. Falta conferir a bandeja e o toast com a interface aberta (passo 1) e saber se o toast funciona antes de instalar o app (o Windows exige um identificador de app).
 - [x] Capas locais pelo middleware `/capa/` (`app_capas.go`), restrito à pasta de arte. Teste cobre `..`, `%2e%2e`, `%2f`, barra invertida, caminho absoluto, unidade `C:` e `a/../..`: nenhum devolve arquivos fora de `art`.
 - [x] Controle no Windows: `internal/gamepad` (mapeamento de botões, zona morta do analógico, repetição, tipo xbox/ps) com os testes do Rust portados, leitura XInput (`xinput1_4.dll`) e evento `controle-acao` emitido só com a janela visível, sem minimizar e em primeiro plano (`GetForegroundWindow`/`GetAncestor`). Sem teste com controle físico, e o botão Guia (Mode) não existe no XInput; `quick` continua no clique do analógico direito. Controles PlayStation aparecem como xbox, a menos que um driver os exponha como XInput.
@@ -170,12 +164,12 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Integrar estado e configuração inicial ao Wails; primeiro uso verificado no WebView real, preservando a lista de PCs e recusando dados incompletos.
 - [x] Integrar cadastro manual sem catálogo, reconhecimento da pasta e conversão do caminho de save; fluxo verificado no WebView real. A consulta de catálogo existente ainda não foi portada.
 - [x] Integrar edição e remoção de jogos; testes no WebView real e no backend cobrem preservação dos saves, invalidação de base e rollback após edição inválida.
-- [ ] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
+- [x] Integrar os demais comandos aos bindings gerados quando os serviços Go estiverem implementados, mantendo a interface de `api.ts`.
 - [x] Atualizador Wails ligado ao `api.ts` (`VerificarAtualizacao`, `InstalarAtualizacao`, `app_update.go`): manifesto assinado Ed25519 pelo provedor `endpoint`, recusa com jogo aberto e erros em linguagem simples (ADR 0009). Testado com atualizador falso e com o provedor real do Wails contra um manifesto gerado por `cmd/assinar`; a troca do executável não foi testada.
-- [ ] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
+- [x] Remover os pacotes `@tauri-apps/*` após a substituição funcional e a validação da versão Wails; manter o mock.
 - [x] Criar `bun run e2e:wails`: build de teste isolado, WebView2 real, binding de versão e evento de jogo; a porta de depuração só é habilitada na build tag `sgs_e2e`. A janela do teste nasce fora da área visível (x e y = -32000), para não atrapalhar quem usa o PC; `SGS_E2E_VISIVEL=1` a traz de volta. Janela oculta (`Hidden`) não serve: o WebView2 deixa de renderizar e a captura de tela expira.
 - [x] Fluxos de `e2e/app-real.cjs` adaptados em `e2e/wails-smoke.cjs` com os serviços Go reais: primeiro uso, cadastro, edição, remoção, jogar pela interface (sync para a pasta temporária), diálogo de versões e capa local por `/capa/` (o banco não é servido). Fora do teste: a arte baixada pela busca na loja da Steam (depende da rede) e o conflito de save pela interface.
-- [ ] Remover `app-real.cjs` e o script `e2e:app` quando o Tauri sair (passo 8).
+- [x] Remover `app-real.cjs` e o script `e2e:app` quando o Tauri sair (passo 8).
 
 ### 7. Distribuição e atualização
 
@@ -225,9 +219,14 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 ## Dúvidas abertas
 
 - ~~O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão?~~ Sim, ver passo 3.
-- O atualizador do Wails cobre o fluxo atual (verificar, baixar, reiniciar) e aceita a ponte a partir da v1.x?
-- O Wails exige cgo no Linux? Resposta parcial: sim, `go vet` com `GOOS=linux` sem cgo falha em `internal/buildguard` ("requires CGO_ENABLED=1"). O build do AppImage precisa de toolchain C e das bibliotecas GTK/WebKit no Linux.
+- ~~O atualizador do Wails cobre o fluxo atual (verificar, baixar, reiniciar)?~~ Sim: provedor `endpoint` com manifesto assinado (ADR 0009). Em aberto: a ponte a partir da v1.x e a troca real do executável numa instalação de verdade.
+- ~~O Wails exige cgo no Linux?~~ Sim (ver passo 7): o build do AppImage precisa de toolchain C e das bibliotecas GTK/WebKit.
+- A instalação silenciosa do NSIS (`/S`) ficou parada: é um problema do instalador ou só do teste? Instalar com a interface e conferir.
+- Como a v1.x (Tauri, atualizador minisign) entrega o instalador da versão Go? Precisa de uma última versão do Tauri publicada no GitHub, o que exige autorização e uma chave de assinatura do Tauri.
 
 ## Próximo passo
 
-Ligar os comandos restantes (controle, notificações, atualização de conquistas em segundo plano);  validar a biblioteca Go com dados gerados pela versão Rust; completar os testes de paridade do núcleo e integrar o engine ao serviço; conferir na tela a bandeja, as capas e o binding (fim do passo 1).
+1. Integrar o branch no `main` (decisão do usuário; o `main` já foi trazido para cá por merge).
+2. Instalar o instalador gerado numa máquina com a v1.x, conferir atalhos, registro, dados e desinstalação, e ver na tela a bandeja e o toast.
+3. Construir e testar a versão-ponte do Tauri, publicar e subir a versão para 2.0.0 (com tag e binários, conforme as regras do projeto).
+4. Linux: AppImage e leitura de controle por evdev, num Ubuntu.
