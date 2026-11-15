@@ -108,6 +108,8 @@ export type Reconhecimento = {
   alternatives: { id: number; name: string }[];
 };
 
+export type ResultadoVarredura = { recognized: [string, Reconhecimento][]; needs_confirmation: [string, Reconhecimento][]; unknown: [string, Reconhecimento][]; errors: [string, string][] };
+
 export type ResultadoJogar =
   | { kind: "conflict" }
   | { kind: "locked"; pc: string }
@@ -129,6 +131,8 @@ export const api = {
   definirPastaSync: (pasta: string) => call<VerificacaoPasta>("definir_pasta_sync", { pasta }),
   definirNomePc: (nome: string) => call<void>("definir_nome_pc", { nome }),
   atualizarCatalogo: () => call<number>("atualizar_catalogo"),
+  escolherCandidatoCatalogo: (pasta: string, id: number) => call<Reconhecimento>("escolher_candidato_catalogo", { pasta, id }),
+  varrerPasta: (pasta: string, profundidade: number) => call<ResultadoVarredura>("varrer_pasta", { pasta, profundidade }),
   reconhecerPasta: (pasta: string) => call<Reconhecimento>("reconhecer_pasta", { pasta }),
   converterCaminho: (caminho: string) => call<string>("converter_caminho", { caminho }),
   descobrirPastaSave: (exe: string) => call<number>("descobrir_save", { exe }),

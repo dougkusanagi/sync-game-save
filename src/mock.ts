@@ -228,6 +228,12 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
       };
       return r(rec);
     }
+    case "varrer_pasta": {
+      const rec: Reconhecimento = { name: "Jogo encontrado", catalog_id: 12, confidence: "High", exe: "C:/Games/Encontrado/game.exe", save_candidates: [{ logical: "<winDocuments>/Save", resolved: "C:/Save", exists: true, files: 3, selected: true }], alternatives: [{ id: 13, name: "Outro candidato" }] };
+      return r({ recognized: [["C:/Games/Encontrado", rec]], needs_confirmation: [], unknown: [["C:/Games/Outro", { ...rec, name: "Outro jogo", catalog_id: null, confidence: "None", save_candidates: [], alternatives: [] }]], errors: [["C:/Games/Protegido", "Acesso negado"]] });
+    }
+    case "escolher_candidato_catalogo":
+      return r({ name: args.id === 13 ? "Outro candidato" : "Jogo encontrado", catalog_id: args.id, confidence: "High", exe: "C:/Games/Encontrado/game.exe", save_candidates: [{ logical: "<base>/Saves", resolved: "C:/Games/Encontrado/Saves", exists: true, files: 1, selected: true }], alternatives: [] });
     case "converter_caminho":
       return r(String(args.caminho));
     case "descobrir_save":

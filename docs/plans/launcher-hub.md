@@ -598,8 +598,9 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ### 5. Varredura em lote, menu e central rápida
 
-- Em andamento: o resultado da varredura agora registra erros de leitura e reconhecimento por caminho, permitindo continuar com os demais jogos; testes de catálogo passaram. Falta expor esses erros e os resultados na interface, selecionar e adicionar os jogos, e validar os fluxos.
+- Em andamento: a interface mostra resultados agrupados e erros por pasta; permite corrigir nome, executável, caminhos e candidato do catálogo, e preserva resultados em falhas parciais. O reconhecimento resolve `<base>` por jogo e respeita a profundidade para pastas de jogos e pastas técnicas comuns. Testes de catálogo e E2E cobrem escolha e falha parcial; capturas mobile/desktop foram verificadas. A adição ainda não faz backup inicial; o primeiro sync acontece ao abrir o jogo. Falta implementar o primeiro backup com segurança diante de jogos em execução, trava e dados já existentes, além dos demais itens abaixo.
 - Varredura: reutilizar `sgs-service::scan_library_folder` e comando `varrer_pasta`; criar resultado selecionável com confirmação dos candidatos, caminhos de save e erros por jogo. Não adicionar registros sem saves válidos.
+- Próximo passo da varredura: projetar e testar uma operação de primeiro backup que recuse jogo em execução e não restaure nem substitua uma versão existente sem decisão do usuário. O `before_launch` não pode ser chamado cegamente: ele pode restaurar a nuvem e deixa uma trava para a sessão de jogo. A guarda `operacoes` atual vale só dentro de uma instância do serviço; revisar também CLI e outras instâncias antes de iniciar backups em lote. Informar progresso real e permitir repetir falhas sem recriar jogos já cadastrados.
 - Menu/central: implementar as ações especificadas na seção de interface, usando estados reais do app. Sincronização não pode sobrescrever saves de jogo em execução. Preservar navegação por controle, teclado e retorno de foco.
 - Entregar cada fluxo separadamente com regressões E2E, capturas e README/changelog correspondentes.
 

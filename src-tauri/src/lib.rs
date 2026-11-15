@@ -97,6 +97,11 @@ async fn reconhecer_pasta(svc: Svc<'_>, pasta: String) -> Result<Recognition, St
 }
 
 #[tauri::command]
+async fn escolher_candidato_catalogo(svc: Svc<'_>, pasta: String, id: i64) -> Result<Recognition, String> {
+    blocking(&svc, move |s| s.recognize_catalog_choice(&PathBuf::from(pasta), id)).await
+}
+
+#[tauri::command]
 async fn varrer_pasta(svc: Svc<'_>, pasta: String, profundidade: u32) -> Result<ScanResult, String> {
     blocking(&svc, move |s| s.scan_library_folder(&PathBuf::from(pasta), profundidade)).await
 }
@@ -364,6 +369,7 @@ pub fn run() {
             definir_nome_pc,
             atualizar_catalogo,
             reconhecer_pasta,
+            escolher_candidato_catalogo,
             varrer_pasta,
             converter_caminho,
             descobrir_save,

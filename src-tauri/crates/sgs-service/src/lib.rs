@@ -3,7 +3,7 @@
 
 use serde::Serialize;
 use sgs_achievements::{AchievementProvider, AchievementSet, GameRef, SteamCommunityProvider, SteamProvider, Summary, UreqHttp};
-use sgs_catalog::recognize::{recognize, scan_folder, Recognition, ScanResult};
+use sgs_catalog::recognize::{recognize, recognize_choice, scan_folder, Recognition, ScanResult};
 use sgs_catalog::Catalog;
 use sgs_core::engine::{Before, Choice, Ctx};
 use sgs_core::index::Root;
@@ -314,6 +314,12 @@ impl Service {
             }
             Err(e) => Err(e),
         }
+    }
+
+    pub fn recognize_catalog_choice(&self, dir: &Path, id: i64) -> Result<Recognition> {
+        let env = (self.env)(Some(dir.to_path_buf()));
+        recognize_choice(&self.catalog()?, dir, &env, cfg!(windows), id)?
+            .ok_or_else(|| Error::Other("O jogo escolhido não está mais no catálogo. Procure novamente.".into()))
     }
 
     /// Troca um caminho real por um caminho com marcador (portátil entre PCs), se houver marcador.

@@ -62,6 +62,50 @@ teste("adicionar jogo: reconhece, marca o save e o jogo aparece na lista", async
   await page.getByRole("heading", { name: "Rogue Legacy" }).waitFor();
 });
 
+teste("varredura: revisa resultados e adiciona apenas jogo com save", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  await page.getByText("Acesso negado").waitFor();
+  await page.getByRole("button", { name: "Usar Outro candidato" }).click();
+  await page.getByText("<base>/Saves").waitFor();
+  await page.getByRole("button", { name: "Usar Jogo encontrado" }).click();
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).waitFor();
+  assert.equal(await page.getByRole("checkbox", { name: "Adicionar Outro jogo" }).isDisabled(), true);
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText(/Adicionado .* biblioteca/).waitFor();
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("heading", { name: "Jogo encontrado" }).waitFor();
+});
+
+teste("varredura: erro parcial preserva os jogos adicionados e permite corrigir", async (page) => {
+  await page.goto(BASE + "?cenario=vazio");
+  await page.getByRole("button", { name: "Adicionar jogo" }).first().click();
+  await page.getByRole("button", { name: /Procurar jogos em uma pasta/ }).click();
+  await page.getByRole("button", { name: /Escolher pasta e procurar/ }).click();
+  const outro = page.locator("fieldset").filter({ hasText: "C:/Games/Outro" });
+  await outro.getByRole("button", { name: /Adicionar pasta de save/ }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("input[type=checkbox]")].some((el) => el.closest("label")?.textContent.includes("Adicionar Outro jogo") && !el.disabled));
+  await page.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await outro.getByLabel("Nome do jogo").fill("Jogo encontrado");
+  await outro.getByRole("checkbox", { name: "Adicionar Jogo encontrado" }).check();
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.getByText("Já existe um jogo com este nome.").waitFor();
+  assert.equal(await page.getByText(/Adicionado .* biblioteca/).count(), 1);
+  await outro.getByLabel("Nome do jogo").fill("Outro jogo");
+  await page.getByRole("button", { name: "Adicionar selecionados" }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll("p")].filter((el) => el.textContent.includes("Adicionado à biblioteca")).length === 2);
+  await page.getByRole("button", { name: "Concluir" }).click();
+  await page.getByRole("button", { name: /Biblioteca/ }).first().click();
+  await page.getByRole("button", { name: /Jogo encontrado/ }).first().waitFor();
+  await page.getByRole("button", { name: /Outro jogo/ }).first().waitFor();
+});
+
 teste("adicionar jogo: nome vazio bloqueia o envio", async (page) => {
   await page.goto(`${BASE}?cenario=vazio`);
   await page.getByRole("button", { name: "Adicionar jogo" }).first().click();

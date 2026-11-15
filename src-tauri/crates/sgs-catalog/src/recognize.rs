@@ -128,9 +128,12 @@ pub fn recognize(cat: &Catalog, dir: &Path, env: &Env, windows: bool) -> Result<
     }
 
     // Entre vários jogos com a mesma pasta, prefere o que tem save existente no disco.
+    let mut base_env = env.clone();
+    base_env.vars.retain(|(k, _)| k != "base");
+    base_env.vars.push(("base".into(), dir.to_path_buf()));
     let mut scored: Vec<(usize, Hit, Vec<SaveCandidate>)> = Vec::new();
     for h in &hits {
-        let cands = save_candidates(cat, h.id, env, windows)?;
+        let cands = save_candidates(cat, h.id, &base_env, windows)?;
         let score = cands.iter().filter(|c| c.selected).count();
         scored.push((score, h.clone(), cands));
     }
@@ -163,6 +166,28 @@ pub fn recognize(cat: &Catalog, dir: &Path, env: &Env, windows: bool) -> Result<
     let exe = exe.or_else(|| guess_exe(dir));
     let alternatives = scored.into_iter().skip(1).map(|(_, h, _)| h).collect();
     Ok(Recognition { name, catalog_id, confidence, exe, save_candidates, alternatives })
+}
+
+/// Aplica uma escolha explícita do catálogo à pasta selecionada.
+pub fn recognize_choice(cat: &Catalog, dir: &Path, env: &Env, windows: bool, id: i64) -> Result<Option<Recognition>> {
+    let Some(hit) = cat.game(id)? else { return Ok(None) };
+    let mut base_env = env.clone();
+    base_env.vars.retain(|(k, _)| k != "base");
+    base_env.vars.push(("base".into(), dir.to_path_buf()));
+    let mut exe = None;
+    for path in cat.launch_paths(id)? {
+        if let Some(p) = resolve(&path, &base_env) {
+            if p.is_file() && (p.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe")) || !windows) {
+                exe = Some(p);
+                break;
+            }
+        }
+    }
+    let folder = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let cleaned = clean_folder_name(&folder);
+    let name = if hit.name.chars().all(|c| c.is_ascii_digit()) && !cleaned.is_empty() { cleaned } else { hit.name };
+    Ok(Some(Recognition { name, catalog_id: Some(id), confidence: Confidence::High,
+        exe: exe.or_else(|| guess_exe(dir)), save_candidates: save_candidates(cat, id, &base_env, windows)?, alternatives: vec![] }))
 }
 
 fn save_candidates(cat: &Catalog, id: i64, env: &Env, windows: bool) -> Result<Vec<SaveCandidate>> {
@@ -239,6 +264,24 @@ fn has_exe(dir: &Path, depth: u32, errors: &mut Vec<(PathBuf, String)>) -> bool 
     found
 }
 
+// Pastas técnicas comuns podem conter o executável sem serem a pasta do jogo.
+fn has_exe_at_game_root(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else { return false };
+    entries.flatten().any(|entry| {
+        let path = entry.path();
+        if path.is_file() {
+            path.extension().is_some_and(|x| x.eq_ignore_ascii_case("exe"))
+                && !is_bad_exe(&entry.file_name().to_string_lossy())
+        } else if path.is_dir() {
+            let name = entry.file_name().to_string_lossy().to_lowercase();
+            matches!(name.as_str(), "bin" | "binaries" | "binary" | "x64" | "x86" | "win64" | "win32")
+                && has_exe(&path, 0, &mut Vec::new())
+        } else {
+            false
+        }
+    })
+}
+
 /// Varre as subpastas de `root` até `depth` níveis (1 = filhas diretas). Cada pasta com
 /// executável vira um jogo; não desce dentro de uma pasta já tratada como jogo.
 pub fn scan_folder(cat: &Catalog, root: &Path, depth: u32, env: &Env, windows: bool) -> Result<ScanResult> {
@@ -263,10 +306,14 @@ pub fn scan_folder(cat: &Catalog, root: &Path, depth: u32, env: &Env, windows: b
                     Ok(r) => r,
                     Err(e) => { out.errors.push((d, e.to_string())); continue; }
                 };
-                match r.confidence {
-                    Confidence::High => out.recognized.push((d, r)),
-                    Confidence::Low => out.needs_confirmation.push((d, r)),
-                    Confidence::None => out.unknown.push((d, r)),
+                if r.confidence != Confidence::None || has_exe_at_game_root(&d) {
+                    match r.confidence {
+                        Confidence::High => out.recognized.push((d, r)),
+                        Confidence::Low => out.needs_confirmation.push((d, r)),
+                        Confidence::None => out.unknown.push((d, r)),
+                    }
+                } else if left > 1 {
+                    walk(cat, &d, left - 1, env, windows, out)?;
                 }
             } else if left > 1 {
                 walk(cat, &d, left - 1, env, windows, out)?;

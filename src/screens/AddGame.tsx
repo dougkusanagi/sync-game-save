@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Varredura } from "./Varredura";
 import { Dialog } from "../Dialog";
 import { api, escolherArquivoExe, escolherPasta, textoDoErro, type Reconhecimento, type SaveCandidate, type SaveDescoberto } from "../api";
 
@@ -14,6 +15,7 @@ const certeza = {
 
 /** Escolhe a pasta do jogo, mostra o que foi reconhecido e adiciona à biblioteca. */
 export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
+  const [varredura, setVarredura] = useState(false);
   const [pastaJogo, setPastaJogo] = useState<string | null>(null);
   const [rec, setRec] = useState<Reconhecimento | null>(null);
   const [nome, setNome] = useState("");
@@ -171,6 +173,8 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
     }
   }
 
+  if (varredura) return <Varredura onClose={onClose} onVoltar={() => setVarredura(false)} onAdicionado={onAdicionado} />;
+
   const semSave = itens.every((i) => !i.marcado);
 
   return (
@@ -181,6 +185,7 @@ export function AddGame({ catalogoPronto, onClose, onAdicionado }: Props) {
           <button className="btn primario" data-f data-autofocus onClick={escolherJogo} disabled={ocupado}>
             {ocupado ? "Procurando…" : "Escolher pasta do jogo…"}
           </button>
+          <button className="btn fraco" data-f onClick={() => setVarredura(true)} disabled={ocupado}>Procurar jogos em uma pasta…</button>
           <button className="btn fraco" data-f onClick={escolherExecutavel} disabled={ocupado}>
             Escolher executável…
           </button>

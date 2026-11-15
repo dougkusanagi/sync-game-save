@@ -800,6 +800,16 @@ select:focus-visible {
   scroll-padding: 1rem;
 }
 
+/* Espaço para o contorno e a ampliação do foco dentro da área rolável. */
+.varredura {
+  padding: 0.5rem 0.75rem;
+}
+
+.varredura .btn.is-focused:not(:disabled),
+.varredura .btn:focus-visible {
+  transform: none;
+}
+
 .lista {
   margin: 0.4rem 0;
   padding: 0;
