@@ -606,9 +606,9 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ### 6. Distribuição e fechamento da entrega
 
-- Ícones ainda precisam ser conferidos/substituídos conforme a marca do app; não tratar ícones do modelo Tauri como entrega final.
-- Conferir metadados e changelog juntos: `1.0.0` está no código, mas ainda há fragmentos unreleased. Consolidar apenas o escopo efetivamente entregue no próximo fechamento de versão, seguindo as regras do projeto; não afirmar release publicado.
-- Gerar e validar NSIS e AppImage nos respectivos sistemas. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
+- Ícones: substituídos em 2026-11-14 por um ícone próprio (`assets/icon.svg`, nuvem com setas de ida e volta), gerado com `bunx tauri icon`. Se houver uma marca definida pelo usuário, trocar o SVG e gerar de novo.
+- Versão `1.1.0` fechada em 2026-11-14 (commit `39a1879`, tag local anotada `v1.1.0`): metadados, `changelog/1.1.0.md` e fragmentos consolidados. A `1.0.0` nunca recebeu tag nem release. A tag ainda não foi enviada ao remoto e nenhum release foi publicado.
+- NSIS `1.1.0` gerado e assinado nesta máquina (`Sync Game Save_1.1.0_x64-setup.exe`, 3,84 MiB, com `.sig`); a instalação em máquina limpa e a atualização assinada não foram testadas. O `e2e:app` passou, exceto a checagem que depende de `E:GamesRogueLegacy`, ausente nesta máquina. AppImage não pode ser gerado no Windows: falta rodar no Linux. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
 
 ## Validações externas ainda abertas
 
@@ -620,7 +620,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Item 5 concluído (varredura em lote, primeiro backup e central rápida). Próximo: item 6, distribuição e fechamento da entrega (ícones, changelog 1.0.0 x fragmentos, NSIS/AppImage). Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
+Itens 1–5 concluídos. Item 6: ícones, versão `1.1.0` e NSIS feitos; faltam, e dependem do usuário: autorizar o push do `main` e da tag `v1.1.0`, gerar/validar o AppImage no Linux e autorizar a publicação do release. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
 
 ### Acompanhamento de processos no Windows
 
