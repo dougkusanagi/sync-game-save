@@ -5,6 +5,7 @@ go 1.27.3
 require (
 	github.com/wailsapp/wails/v3 v3.1.0
 	golang.org/x/sys v0.48.0
+	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.44.3
 )
 
