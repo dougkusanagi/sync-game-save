@@ -20,7 +20,9 @@ var iconeBandeja []byte
 
 type App struct{}
 
-func (App) Versao() string { return "1.0.0" }
+const versaoApp = "1.0.0"
+
+func (App) Versao() string { return versaoApp }
 
 type JogoEstado struct {
 	ID     int64  `json:"id"`
