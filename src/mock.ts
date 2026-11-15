@@ -199,7 +199,7 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
   const r = (v: unknown) => v as T;
   switch (cmd) {
     case "sobre":
-      return r({ nome: "Sync Game Save", versao: "1.1.0", build: "local (teste)" });
+      return r({ nome: "Sync Game Save", versao: "2.0.0", build: "local (teste)" });
     case "estado":
       return r(estado);
     case "verificar_pasta_sync":
