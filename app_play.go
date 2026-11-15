@@ -223,22 +223,9 @@ func jogarInterno(dados string, id int64, o OpcoesJogar, quiet, every time.Durat
 		return finalizado(code, false, "Jogo fechado. O save não foi sincronizado."), nil
 	}
 
-	if syncDir == nil {
-		return ResultadoJogar{}, errors.New("Escolha primeiro a pasta de sincronização, em Configurações.")
-	}
-	if info, err := os.Stat(*syncDir); err != nil || !info.IsDir() {
-		return ResultadoJogar{}, fmt.Errorf("A pasta de sincronização (%s) não está disponível. Confira se o OneDrive ou o serviço de nuvem está ativo, ou jogue sem sincronizar.", *syncDir)
-	}
-	roots, err := raizesDoJogo(game)
+	eng, err := montarEngine(dados, game, syncDir, nomeDoPC)
 	if err != nil {
 		return ResultadoJogar{}, err
-	}
-	eng := core.Engine{
-		GameDir:  filepath.Join(*syncDir, "SyncGameSave", "games", nomeSeguro(game.Name)),
-		Roots:    roots,
-		StateDir: filepath.Join(dados, "state", strconv.FormatInt(id, 10)),
-		Device:   nomeDoPC,
-		Now:      agora(),
 	}
 	jdir := filepath.Join(eng.StateDir, "journal")
 	emit("sincronizando")
@@ -273,6 +260,7 @@ func jogarInterno(dados string, id int64, o OpcoesJogar, quiet, every time.Durat
 	case core.UploadedLocal:
 		aoAbrir = "O save deste PC foi enviado antes de abrir. "
 	}
+	roots := eng.Roots
 	batida := func() { _ = core.HeartbeatLock(eng.GameDir, eng.Device, agora()) }
 	// Um erro de acompanhamento não garante que o grupo tenha terminado:
 	// a trava e os saves ficam como estão até ser possível confirmar o encerramento.
@@ -311,4 +299,25 @@ func jogarInterno(dados string, id int64, o OpcoesJogar, quiet, every time.Durat
 		aoFechar = "Save enviado para a pasta de sincronização."
 	}
 	return finalizado(code, true, aoAbrir+aoFechar), nil
+}
+
+// montarEngine reúne pasta de sync, saves e estado local de um jogo.
+func montarEngine(dados string, game library.Game, syncDir *string, device string) (core.Engine, error) {
+	if syncDir == nil {
+		return core.Engine{}, errors.New("Escolha primeiro a pasta de sincronização, em Configurações.")
+	}
+	if info, err := os.Stat(*syncDir); err != nil || !info.IsDir() {
+		return core.Engine{}, fmt.Errorf("A pasta de sincronização (%s) não está disponível. Confira se o OneDrive ou o serviço de nuvem está ativo, ou jogue sem sincronizar.", *syncDir)
+	}
+	roots, err := raizesDoJogo(game)
+	if err != nil {
+		return core.Engine{}, err
+	}
+	return core.Engine{
+		GameDir:  filepath.Join(*syncDir, "SyncGameSave", "games", nomeSeguro(game.Name)),
+		Roots:    roots,
+		StateDir: filepath.Join(dados, "state", strconv.FormatInt(game.ID, 10)),
+		Device:   device,
+		Now:      agora(),
+	}, nil
 }

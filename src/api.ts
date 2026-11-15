@@ -136,6 +136,8 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
       reconhecer_pasta: { metodo: "ReconhecerPasta", argumentos: [args?.pasta] },
       converter_caminho: { metodo: "ConverterCaminho", argumentos: [args?.caminho] },
       listar_jogos: { metodo: "ListarJogos", argumentos: [] },
+      versoes: { metodo: "Versoes", argumentos: [args?.id] },
+      restaurar_versao: { metodo: "RestaurarVersao", argumentos: [args?.id, args?.versao] },
       jogar: { metodo: "Jogar", argumentos: [args?.id, args?.opcoes ?? null] },
       parar_jogo: { metodo: "PararJogo", argumentos: [args?.id] },
       forcar_parada_jogo: { metodo: "ForcarParadaJogo", argumentos: [args?.id] },

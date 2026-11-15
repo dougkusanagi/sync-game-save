@@ -123,7 +123,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Testar o fechamento normal de uma janela rastreada fora do Job no Windows.
 - [ ] Completar os demais testes de integração e concorrência da parada; `go test -race` ainda não rodou porque CGO está desativado.
 - [x] Testar em conjunto o engine, o processo real e a renovação da trava: um jogo com saída de erro ainda sincroniza e libera a trava após encerrar; validado no Windows e no WSL.
-- [x] Integrar o acompanhamento e a parada ao serviço Go: `Jogar`, `PararJogo` e `ForcarParadaJogo` (`app_play.go`), com testes de sync completo, jogo sem sync, trava de outro PC, pasta de sync ausente e abertura duplicada, usando o binário de teste como jogo. Conflito com escolha e emissão real do evento ainda sem teste próprio.
+- [x] Integrar o acompanhamento e a parada ao serviço Go: `Jogar`, `PararJogo` e `ForcarParadaJogo` (`app_play.go`), com testes de sync completo, jogo sem sync, trava de outro PC, pasta de sync ausente e abertura duplicada, usando o binário de teste como jogo. Conflito com escolha e emissão real do evento ainda sem teste próprio. `Versoes` e `RestaurarVersao` (`app_versions.go`) portados, com teste de restauração e backup.
 - [ ] Portar primeiro os testes Rust de `sgs-core` para Go (`go test`); eles são a especificação.
 - [ ] Portar `paths`, `env`, `index`, `journal`, `lock`, `snapshot`, `sync`, `engine`, `discover`.
 - [ ] `process`: Job Objects, ToolHelp e `WM_CLOSE` com `golang.org/x/sys/windows`; listagem de processos sem `sysinfo` (x/sys ou `gopsutil`).

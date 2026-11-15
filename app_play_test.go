@@ -158,3 +158,36 @@ func lerConfiguracao(t *testing.T, chave string) string {
 	}
 	return *v
 }
+
+func TestVersoesERestauracaoDeSave(t *testing.T) {
+	c := novoCenario(t, "primeira")
+	// Duas versões: o save inicial sobe antes de abrir e o jogo grava outra ao fechar.
+	if _, err := c.jogar(OpcoesJogar{}); err != nil {
+		t.Fatal(err)
+	}
+	app := App{}
+	versoes, err := app.Versoes(c.id)
+	if err != nil || len(versoes) != 2 {
+		t.Fatal(versoes, err)
+	}
+	if _, err := app.RestaurarVersao(c.id, "inexistente"); err == nil {
+		t.Fatal("versão inexistente aceita")
+	}
+	// Restaura a mais antiga, que tem o save inicial.
+	antiga := versoes[0]
+	for _, v := range versoes {
+		if v < antiga {
+			antiga = v
+		}
+	}
+	backup, err := app.RestaurarVersao(c.id, antiga)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(c.save, "slot.sav")); string(got) != "primeira" {
+		t.Fatal("save não restaurado:", string(got))
+	}
+	if _, err := os.Stat(backup); err != nil {
+		t.Fatal("sem backup do save anterior", err)
+	}
+}
