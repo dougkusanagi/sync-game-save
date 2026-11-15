@@ -41,14 +41,17 @@ func nomePC(lib *library.Library) (string, error) {
 	if name != nil {
 		return *name, nil
 	}
-	nameEnv := os.Getenv("COMPUTERNAME")
-	if nameEnv == "" {
-		nameEnv = os.Getenv("HOSTNAME")
+	return nomePCPadrao(), nil
+}
+func nomePCPadrao() string {
+	name := os.Getenv("COMPUTERNAME")
+	if name == "" {
+		name = os.Getenv("HOSTNAME")
 	}
-	if nameEnv == "" {
-		nameEnv = "PC"
+	if name == "" {
+		name = "PC"
 	}
-	return nameEnv, nil
+	return name
 }
 func valorConfigurado(lib *library.Library, key string) (bool, error) {
 	v, err := lib.Setting(key)
