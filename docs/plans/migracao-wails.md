@@ -30,8 +30,8 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] **4. CLI:** portado (`cmd/sgs`).
 - [x] **5. App Wails:** os 28 comandos, os eventos, a bandeja, as notificações, os diálogos e o controle (Windows e Linux) estão prontos; falta ver na tela a bandeja e o toast.
 - [x] **6. Frontend:** todos os comandos, o atualizador e os E2E no app real ligados aos serviços Go; sem código Tauri.
-- [~] **7. Distribuição e atualização:** instalador NSIS por usuário e atualizador assinado prontos; faltam o AppImage, a instalação real sobre uma v1.x e a versão-ponte do Tauri.
-- [~] **8. Remoção do Tauri e documentação:** feitas; falta a versão 2.0.0 (depende da integração no `main` e da ponte).
+- [~] **7. Distribuição e atualização:** release 2.0.0 publicado (instalador, executável, AppImage GTK4, manifestos e somas). Falta: instalar com a interface sobre uma v1.x, abrir o AppImage num Ubuntu real e tornar o manifesto alcançável (o repositório é privado, ver Próximo passo).
+- [x] **8. Remoção do Tauri e documentação:** feitas; versão 2.0.0 lançada em 2026-11-15 (commit de versão `8b2d485`, tag `v2.0.0`).
 
 ## Estado inicial da migração (2026-11-14, antes do porte)
 
@@ -174,9 +174,9 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 ### 7. Distribuição e atualização
 
 - [~] Windows, medido e ajustado em 2026-11-14 (NSIS 3.13 do cache do MyGo, `wails3 package`, 57 s com cache do Go): instalador de 9,2 MB e executável de 17,8 MB. O padrão do Wails era instalar por máquina (administrador, `Program Files`), em inglês e com outra chave de desinstalação; agora é por usuário (`INSTALL_SCOPE=user`), em `%LOCALAPPDATA%\Sync Game Save`, com a chave `Sync Game Save` e em português (PortugueseBR), como o instalador do Tauri, para atualizar a v1.x no lugar. Os dados continuam em `%APPDATA%\com.syncgamesave.app` (mesmo identificador). NÃO verificado: uma instalação silenciosa (`/S /D=`) ficou parada sem instalar nada e foi encerrada; falta instalar com a interface sobre uma v1.x real, conferir atalhos, a chave no registro, a desinstalação e o que acontece se a v1 estiver aberta. Antes: NSIS do Wails (`build/windows/nsis/project.nsi`). Mesmo nome de produto e instalação por usuário, como o NSIS atual; conferir se o caminho de instalação muda e se os dados em `AppData` continuam no mesmo lugar. Definir como obter o `makensis` (instalar o NSIS na máquina de build).
-- [~] Linux, testado em 2026-11-15 no WSL (Ubuntu com WSLg): o app compila com `CGO_ENABLED=1 go build -tags production,gtk3` (o Wails 3.1 usa GTK4 e WebKitGTK 6.0 por padrão, e o Ubuntu do teste só tem GTK3 e WebKitGTK 4.1; o CLI `wails3` também precisa de `go install -tags gtk3`). O `wails3 generate appimage` gerou um AppImage de 86,5 MB (binário de 16,1 MB) e ele abriu, criou `art` e `library.db` em `SGS_DATA_DIR` e mostrou só avisos de GPU do WSL. O `PATH` do WSL precisa estar limpo (sem pastas `/mnt/c`) ou o `linuxdeploy` falha. O Taskfile do Linux agora usa `gtk3` por padrão (`TAGS_GTK`, trocável com `EXTRA_TAGS`); o Taskfile carrega e roda as etapas até exigir o `bun`, que o WSL não tem. Falta: confirmar que GTK3 serve ao Ubuntu das pessoas que vão instalar (o padrão do Wails é GTK4), abrir o AppImage em um Ubuntu real e testar o fluxo completo.
+- [x] Linux: decisão do usuário em 2026-11-15, GTK4 (o padrão do Wails 3.1; o Taskfile voltou a não fixar tag). Instalados no WSL (Ubuntu 26.04) `libgtk-4-dev`, `libwebkitgtk-6.0-dev` e `libsoup-3.0-dev`; `CGO_ENABLED=1 go build -tags production` gera um binário de 16,9 MB e o `wails3 generate appimage` um AppImage de 133 MB (publicado no release 2.0.0). O AppImage abriu no WSLg e criou `art` e `library.db` em `SGS_DATA_DIR`. O `PATH` do WSL precisa estar limpo (sem `/mnt/c`) ou o `linuxdeploy` falha. Falta abrir o AppImage num Ubuntu real e testar o fluxo completo.
 - [x] Pasta de dados igual à do Tauri em cada sistema (`app_datadir.go`): Windows `%APPDATA%\com.syncgamesave.app`, macOS `~/Library/Application Support/com.syncgamesave.app` e Linux `$XDG_DATA_HOME` ou `~/.local/share/com.syncgamesave.app`. O primeiro AppImage usava `~/.config`, que não era onde o Tauri guardava, e quem já tinha uma biblioteca no Linux a perderia de vista; corrigido e coberto por teste.
-- [ ] Atualizador (ponte v1.x → Go; o lado Go está na ADR 0009): o Tauri usa minisign + `latest.json`. Planejar a ponte: uma última versão Tauri (v1.x) cujo `latest.json`, assinado com a chave atual, entrega o instalador Go; a partir dela, o atualizador do Wails assume. Testar de ponta a ponta numa máquina com a v1.x instalada.
+- [x] Ponte da v1.x: não precisa de uma nova versão do Tauri. O atualizador do Tauri só lê o `latest.json` do último release; o release 2.0.0 traz um `latest.json` no formato do Tauri que aponta para o instalador Go, assinado com a chave minisign (`go run ./cmd/assinar ponte`, assinatura de `tauri signer sign`). Na verdade, nunca houve release da v1.x (só a tag `v1.1.0`), então só recebe a ponte quem instalou o 1.1.0 à mão. NÃO testado com uma v1.x instalada: o instalador do Wails pode não entender os argumentos que o Tauri passa ao instalador NSIS (modo passivo).
 - [x] Chave de assinatura do novo atualizador: gerada com `go run ./cmd/assinar chaves`; a privada fica em `C:\Users\dl_ag\.sgs\updater-ed25519.pem` (fora do repositório, registrada no `MEMORY.md`) e a pública em `build/updater-public.pem`. Falta guardar uma cópia da privada em local seguro (backup).
 
 ### 8. Remoção do Tauri e documentação
@@ -185,7 +185,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] ADR 0001 "Substituído por 0008", ADR 0008 "Aceito", ADR 0006 "Substituído por 0009 (atualização) e 0008" e ADR 0009 "Aceito".
 - [x] `README.md`, `MEMORY.md` e `docs/architecture.md` (com o diagrama Mermaid) atualizados.
 - [x] Fragmento em `changelog/unreleased/migracao-wails.md`.
-- [ ] Nova versão **major** (2.0.0), por causa da troca de atualizador e de instalador: só depois de integrar no branch principal, com a suíte local passando, e com a ponte da v1.x pronta (regra de versão). Ao subir a versão, atualizar `versaoApp` (`main.go`), `build/config.yml`, `build/windows/info.json`, `package.json` e o E2E.
+- [x] Versão **2.0.0** lançada depois de integrar no `main` (fast-forward, 71 commits), com a suíte local passando: commit de versão `8b2d485`, tag anotada `v2.0.0`, push do `main` e da tag, e release no GitHub com o instalador NSIS, o executável, o AppImage, `latest-wails.json`, `latest.json` (ponte), a assinatura minisign e `SHA256SUMS`. As fontes de versão atualizadas foram `main.go`, `build/config.yml`, `build/windows/info.json`, `package.json`, `src/mock.ts` e o E2E.
 - [x] Medições repetidas em 2026-11-15, Windows, com o backend Go completo (uma rodada cada; as de Rust são as do passo 0):
 
   | Etapa | Tauri (Rust) | Wails (Go) |
@@ -227,7 +227,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Próximo passo
 
-1. Integrar o branch no `main` (decisão do usuário; o `main` já foi trazido para cá por merge).
-2. Instalar o instalador gerado numa máquina com a v1.x, conferir atalhos, registro, dados e desinstalação, e ver na tela a bandeja e o toast.
-3. Construir e testar a versão-ponte do Tauri, publicar e subir a versão para 2.0.0 (com tag e binários, conforme as regras do projeto).
-4. Linux: AppImage e leitura de controle por evdev, num Ubuntu.
+1. **Repositório privado × atualizador.** `dougkusanagi/sync-game-save` é privado: a URL pública `releases/latest/download/latest-wails.json` responde 404 a quem não tem login, então nem o atualizador Go nem a ponte do Tauri alcançam o release. Decidir: tornar o repositório (ou só os releases) público, ou hospedar os manifestos e os arquivos num lugar público (por exemplo, um repositório só de releases). A ADR 0006 supôs hospedagem pública; registrar a decisão em uma ADR.
+2. Instalar o instalador 2.0.0 com a interface numa máquina com o 1.1.0, conferir atalhos, registro, dados e desinstalação, e ver na tela a bandeja e o toast.
+3. Abrir o AppImage num Ubuntu real.
+4. Testar a ponte com um Tauri 1.1.0 instalado, se alguém o tiver.

@@ -45,7 +45,7 @@ Só os tokens `--sgs-*` (listados em `src/tokens.css`) são aplicados. Nenhum CS
 
 ## Distribuição
 
-O app é distribuído em [releases no GitHub](https://github.com/dougkusanagi/sync-game-save/releases): instalador NSIS para Windows (português do Brasil, instalação por usuário em `%LOCALAPPDATA%`) e, a definir, AppImage para Linux. Ao abrir, o app procura uma versão nova e mostra o aviso; a instalação fica em Configurações → Sobre.
+O app é distribuído em [releases no GitHub](https://github.com/dougkusanagi/sync-game-save/releases): instalador NSIS para Windows (português do Brasil, instalação por usuário em `%LOCALAPPDATA%`) e AppImage para Linux (GTK4). Ao abrir, o app procura uma versão nova e mostra o aviso; a instalação fica em Configurações → Sobre.
 
 ```bash
 wails3 package   # Windows: bin/sync-game-save-amd64-installer.exe (o makensis precisa estar no PATH)
