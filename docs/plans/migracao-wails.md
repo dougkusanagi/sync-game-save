@@ -191,7 +191,19 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] `README.md`, `MEMORY.md` e `docs/architecture.md` (com o diagrama Mermaid) atualizados.
 - [x] Fragmento em `changelog/unreleased/migracao-wails.md`.
 - [ ] Nova versão **major** (2.0.0), por causa da troca de atualizador e de instalador: só depois de integrar no branch principal, com a suíte local passando, e com a ponte da v1.x pronta (regra de versão). Ao subir a versão, atualizar `versaoApp` (`main.go`), `build/config.yml`, `build/windows/info.json`, `package.json` e o E2E.
-- [ ] Repetir as medições e registrar o resultado.
+- [x] Medições repetidas em 2026-11-15, Windows, com o backend Go completo (uma rodada cada; as de Rust são as do passo 0):
+
+  | Etapa | Tauri (Rust) | Wails (Go) |
+  |---|---|---|
+  | Compilar do zero (cache isolado) | 225 s (debug) | 64 s (`go build -tags production`) |
+  | Recompilar após 1 linha | 13 s | 1,6 s |
+  | Build de release | 1.948 s (~32 min, LTO) | 9 s (`wails3 build`, cache quente, com frontend e bindings) |
+  | Instalador | não medido | 9,2 MB (NSIS por usuário, `wails3 package`, 57 s) |
+  | Executável de release | 10,1 MiB | 17,0 MiB (`-w -s`); 24,7 MiB sem remover símbolos |
+  | Espaço do build | 4,8–7,8 GB (`target`; 8,3 GB neste checkout) | 182 MB de cache do Go para este app |
+  | Testes | `cargo test --no-run` 30 s | `go test` dos pacotes de biblioteca em 10 s; `./...` com os testes de processo e de engine ~1 min |
+
+  O executável ficou maior que o do Tauri (SQLite em Go puro, atualizador, notificações). O objetivo de espaço e tempo foi atingido; a recompilação do dia a dia, que o plano temia ser mais lenta, ficou mais rápida que a do Rust.
 
 ## Riscos
 
