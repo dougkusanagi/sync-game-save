@@ -136,7 +136,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 - [x] Adicionar SQLite Go puro (`modernc.org/sqlite`) e testar FTS5 localmente.
 - [x] Abrir biblioteca SQLite e aplicar migrações atômicas 1–3; testes cobrem preservação de dados de esquema 1, persistência e recusa de esquema futuro.
 - [x] Portar operações da biblioteca de jogos, configurações, estado de sync, tempo jogado e cache de conquistas; testes cobrem edição, duplicidade, exclusão e persistência.
-- [ ] Testar leitura de bancos existentes gerados pela versão Rust e concluir a integração da biblioteca e do catálogo sem migração destrutiva (ADR 0002).
+- [x] Compatibilidade com dados do Rust (ADR 0002): `cargo run -p sgs-service --example gerar_fixtures -- internal/testdata/rust` gera `library.db`, `catalog.db` e uma captura de descoberta; testes Go (`rust_compat_test.go`, `discover_rust_test.go`) leem, consultam e gravam nesses arquivos sem perda (esquema 3, campos, configurações, cache de conquistas, FTS5/trigram, chave sha256 e mtime em ns). No sentido inverso, uma biblioteca gravada pelo Go foi lida pelo Rust (conferência manual, não automatizada). Responde a dúvida aberta sobre o `modernc.org/sqlite`: lê os bancos atuais sem conversão.
 - [x] Catálogo em `internal/catalog`: conversão do manifesto do Ludusavi (`gopkg.in/yaml.v3`) para SQLite com FTS5, consultas, reconhecimento de pasta e varredura, com os casos dos testes Rust portados e `ReconhecerPasta` ligado ao catálogo. Download do manifesto com ETag e `AtualizarCatalogo` ligados; importação do manifesto real (17,8 MB, 53.546 jogos) medida em 2026-11-14 no Windows: 28 s e ~585 MB de memória do processo, sem comparação com o Rust ainda (o app deve rodar a importação fora do caminho de abertura). Busca "half life" não acha "Half-Life", como no Rust (frase literal no trigram). O E2E Wails falhou uma vez por tempo no primeiro uso e passou na repetição.
 - [ ] `sgs-catalog` (com o registro de erros por pasta da varredura, já no `main`), `sgs-library`, `sgs-achievements` (`net/http` no lugar de `ureq`), `sgs-service` (arte, HUB, temas — ADR 0005).
 - [x] Temas (`app_themes.go`): pacotes `themes/<id>/theme.json`, lista restrita de tokens e escolha persistida, com os testes do Rust portados. Diferença: `min_app_version` compara com a versão do app (1.0.0); o Rust comparava com a do crate (0.1.0), o que recusava qualquer mínimo acima disso.
@@ -209,7 +209,7 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ## Dúvidas abertas
 
-- O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão?
+- ~~O `modernc.org/sqlite` lê os bancos atuais (FTS5, versão do esquema) sem conversão?~~ Sim, ver passo 3.
 - O atualizador do Wails cobre o fluxo atual (verificar, baixar, reiniciar) e aceita a ponte a partir da v1.x?
 - O Wails exige cgo no Linux? Resposta parcial: sim, `go vet` com `GOOS=linux` sem cgo falha em `internal/buildguard` ("requires CGO_ENABLED=1"). O build do AppImage precisa de toolchain C e das bibliotecas GTK/WebKit no Linux.
 
