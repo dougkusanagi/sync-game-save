@@ -185,7 +185,6 @@ tasks:
       - exclude: dist/**/*
       - exclude: e2e/**/*
       - exclude: prototype/**/*
-      - exclude: src-tauri/**/*
       - bindings/**/*  # Rerun when switching between dev/production mode causes changes in output
       - "**/*.go"
       - go.mod

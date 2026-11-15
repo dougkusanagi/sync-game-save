@@ -6,7 +6,7 @@ Launcher/HUB de jogos para PC que sincroniza o save com uma pasta de nuvem (OneD
 
 ## Estado
 
-Em desenvolvimento com Tauri 2 + React (ver [plano](docs/plans/launcher-hub.md) e [ADR 0001](docs/adr/0001-stack-tauri-react.md)). Estão prontos o núcleo de sync em Rust (`sgs-core`), o catálogo (`sgs-catalog`), a biblioteca local (`sgs-library`), o serviço (`sgs-service`), a CLI `sgs` e as telas: primeiro uso, Início (arte do jogo em destaque e faixa de jogos por seção), Biblioteca em grade de capas com busca, filtros e ordenação, adicionar jogo, conquistas do jogo e do HUB, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
+Em desenvolvimento com Wails v3 (Go) + React (ver [plano de migração](docs/plans/migracao-wails.md), [ADR 0008](docs/adr/0008-stack-wails-go.md) e a [arquitetura](docs/architecture.md)). O backend Go tem o núcleo de sync (`internal/core`), o catálogo (`internal/catalog`), a biblioteca local (`internal/library`), as conquistas (`internal/achievements`), o controle (`internal/gamepad`), a CLI `sgs` (`cmd/sgs`) e os serviços do app (`app_*.go`). As telas: primeiro uso, Início (arte do jogo em destaque e faixa de jogos por seção), Biblioteca em grade de capas com busca, filtros e ordenação, adicionar jogo, conquistas do jogo e do HUB, versões, conflito, configurações e Sobre. Os sons da interface são sintetizados em `src/som.ts`.
 
 As artes de cada jogo (capa, fundo, logo e capa vertical) vêm da Steam CDN. Quando o catálogo não conhece o jogo, o app procura o nome na loja da Steam. Sem arte, o app mostra as iniciais do jogo sobre uma cor. As conquistas da Steam usam a conta da Steam instalada neste PC e o perfil público, sem chave de API; o perfil precisa mostrar os detalhes dos jogos como públicos. Os temas trocam as cores e medidas da interface; o app traz o escuro (padrão) e o claro. A tela de adicionar jogo permite procurar jogos em uma pasta, revisar os resultados e selecionar os caminhos de save antes de adicioná-los. Depois de adicionar cada jogo, o app guarda a primeira cópia do save na pasta de sincronização, sem abrir o jogo. Ele recusa se o jogo estiver aberto ou se outro PC estiver jogando, e nunca restaura nem troca uma versão que já exista: nesse caso, a escolha fica para quando você abrir o jogo.
 
@@ -15,8 +15,6 @@ A Central rápida (tecla F1 ou R3 no controle) mostra o estado real de cada jogo
 Na tela de adicionar jogo, quando o catálogo não indica onde o jogo salva, o botão “Descobrir onde o jogo salva” abre o jogo, espera ele fechar e lista as pastas com arquivos novos ou alterados, ignorando caches e logs. O caminho só entra no jogo após a sua confirmação; nada é salvo por conta própria.
 
 No Windows, ao parar um jogo o app pede que ele feche normalmente. Se continuar aberto após 10 segundos, é possível confirmar o fechamento forçado, que pode danificar o save. O sync espera o grupo de processos terminar e verifica se os arquivos pararam de mudar antes de criar uma nova versão.
-
-A migração para Wails está em andamento neste branch; o aplicativo Go já abre a biblioteca e o primeiro uso, mas ainda não oferece todos os recursos da versão Tauri. O estado e os testes pendentes estão no [plano de migração](docs/plans/migracao-wails.md).
 
 ## Conquistas do HUB
 
@@ -47,14 +45,17 @@ Só os tokens `--sgs-*` (listados em `src/tokens.css`) são aplicados. Nenhum CS
 
 ## Distribuição
 
-O app é distribuído em [releases no GitHub](https://github.com/dougkusanagi/sync-game-save/releases): instalador NSIS para Windows (português do Brasil) e AppImage para Linux. Ao abrir, o app procura uma versão nova e mostra o aviso; a instalação fica em Configurações → Sobre.
+O app é distribuído em [releases no GitHub](https://github.com/dougkusanagi/sync-game-save/releases): instalador NSIS para Windows (português do Brasil, instalação por usuário em `%LOCALAPPDATA%`) e, a definir, AppImage para Linux. Ao abrir, o app procura uma versão nova e mostra o aviso; a instalação fica em Configurações → Sobre.
 
 ```bash
-bun run tauri build --bundles nsis   # Windows: src-tauri/target/release/bundle/nsis/
-bun run tauri build --bundles appimage   # Linux
+wails3 package   # Windows: bin/sync-game-save-amd64-installer.exe (o makensis precisa estar no PATH)
 ```
 
-O build gera os pacotes de atualização assinados quando `TAURI_SIGNING_PRIVATE_KEY` aponta para a chave privada (fora do repositório; a chave pública está em `src-tauri/tauri.conf.json`). O canal de atualização lê o `latest.json` do último release.
+A atualização usa um manifesto assinado com Ed25519 (`latest-wails.json`, [ADR 0009](docs/adr/0009-atualizador-wails-manifesto-assinado.md)). A chave pública fica em `build/updater-public.pem`; a privada fica fora do repositório. Para cada release:
+
+```bash
+go run ./cmd/assinar manifesto --chave <privada.pem> --versao X.Y.Z --arquivo bin/sync-game-save.exe --url <url do executável no release> --saida latest-wails.json
+```
 
 ## Protótipo da interface
 
@@ -68,23 +69,25 @@ Abra `http://localhost:5199`. Detalhes em [prototype/README.md](prototype/README
 
 ## Rodar o app e testar
 
+É preciso ter Go, bun e o CLI do Wails (`go install github.com/wailsapp/wails/v3/cmd/wails3@latest`).
+
 ```bash
 bun install
-bun run tauri dev          # app Tauri + React
-cd src-tauri && cargo test --workspace   # núcleo, catálogo, biblioteca, serviço e CLI
+wails3 dev                 # app Wails + React com recarga
+go test ./...              # núcleo, catálogo, biblioteca, conquistas, CLI e serviços do app
 bun run e2e                # testes E2E da interface (dados simulados)
-bun run e2e:wails          # Windows: smoke do WebView Wails real durante a migração
-(cd src-tauri && cargo build) && bun run e2e:app   # abre o app real e confere o fluxo (Windows)
+bun run e2e:wails          # Windows: app Wails real em WebView2, com a janela fora da tela (SGS_E2E_VISIVEL=1 mostra)
 ```
 
 `SGS_DATA_DIR` troca a pasta de dados do app (útil para testes sem mexer na sua biblioteca). Na primeira vez, instale o navegador dos testes E2E com `bunx playwright install chromium`. A interface também abre no navegador (`bun run dev`, `http://localhost:1420/?cenario=jogos`) com dados simulados; os cenários são `jogos`, `vazio`, `primeiro-uso`, `conflito` e `preview` (com arte, usado na miniatura do README).
 
+Os arquivos de `internal/testdata/rust` foram gerados pela versão Rust (ver o README da pasta) e garantem que o app Go lê os dados de quem já usa a v1.x.
+
 ## CLI `sgs`
 
 ```bash
-cd src-tauri
-cargo run -p sgs-cli -- help
-cargo run -p sgs-cli -- run --sync-dir <pasta da nuvem> --game "Nome" --save-dir <pasta do save> -- <jogo.exe>
+go run ./cmd/sgs help
+go run ./cmd/sgs run --sync-dir <pasta da nuvem> --game "Nome" --save-dir <pasta do save> -- <jogo.exe>
 ```
 
 O `run` sincroniza antes de abrir, abre o programa, espera ele fechar e envia o save. Uma queda ou um erro do jogo não perde o save: o formato da pasta da nuvem está no [ADR 0003](docs/adr/0003-formato-da-pasta-da-nuvem.md).

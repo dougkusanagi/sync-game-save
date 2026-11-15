@@ -1,6 +1,6 @@
 # 0008. Stack do app: Wails v3 + Go + React
 
-- Status: Proposto (branch `feat/migracao-mygo`; passa a Aceito e substitui a ADR 0001 quando a migração entrar no `main`)
+- Status: Aceito (substitui a ADR 0001)
 - Data: 2026-11-14
 
 ## Contexto

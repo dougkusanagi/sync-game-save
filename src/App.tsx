@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { api, aoMudarEstadoDoJogo, aoUsarControle, noTauri, textoDoErro, verificarAtualizacao, type Atualizacao, type Estado, type Game, type OpcoesJogar, type Temas } from "./api";
+import { api, aoMudarEstadoDoJogo, aoUsarControle, emMock, textoDoErro, verificarAtualizacao, type Atualizacao, type Estado, type Game, type OpcoesJogar, type Temas } from "./api";
 import { Icone } from "./Icone";
 import { useArte } from "./useCapa";
 import { GLYPHS } from "./nav/input.js";
@@ -137,7 +137,7 @@ export default function App() {
       } else acoes.current(acao);
     };
     // No app, o controle é lido no Rust (funciona mesmo sem foco no WebView); no navegador, pela Gamepad API.
-    initInput({ onDevice: (d: "keyboard" | "xbox" | "ps") => setDispositivo(d), onAction: tratar, gamepad: noTauri });
+    initInput({ onDevice: (d: "keyboard" | "xbox" | "ps") => setDispositivo(d), onAction: tratar, gamepad: emMock });
     void aoUsarControle((acao, d) => {
       setDispositivo(/ps|playstation|dualsense|dualshock/i.test(d) ? "ps" : "xbox");
       tratar(acao);

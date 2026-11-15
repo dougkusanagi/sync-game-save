@@ -186,10 +186,11 @@ Painel visual: [progresso da migração](progresso-wails.html). As barras contam
 
 ### 8. Remoção do Tauri e documentação
 
-- [ ] Remover `src-tauri/`, `Cargo.*` e os scripts `tauri` do `package.json`; ajustar `vite.config.ts` (comentários e variáveis do Tauri).
-- [ ] Marcar a ADR 0001 como "Substituído por 0008" e a ADR 0008 como "Aceito"; nova ADR se a distribuição mudar (ADR 0006).
-- [ ] Atualizar `README.md` (como rodar, testar e gerar build), `MEMORY.md` e `docs/architecture.md` (criar com o diagrama Mermaid).
-- [ ] Fragmento em `changelog/unreleased/` e nova versão **major** (2.0.0), por causa da troca de atualizador e de instalador.
+- [x] Removidos `src-tauri/` (liberou 8,3 GB de `target` neste checkout), os pacotes `@tauri-apps/*`, os scripts `tauri` e `e2e:app`, `e2e/app-real.cjs` e os caminhos Tauri do `src/api.ts` e do `useCapa.ts`; `vite.config.ts` simplificado. O `main` continua com o código Rust. Corrigido junto: no Wails o controle era tratado duas vezes (API web do WebView e evento `controle-acao`); a API web agora só vale no modo simulado.
+- [x] ADR 0001 "Substituído por 0008", ADR 0008 "Aceito", ADR 0006 "Substituído por 0009 (atualização) e 0008" e ADR 0009 "Aceito".
+- [x] `README.md`, `MEMORY.md` e `docs/architecture.md` (com o diagrama Mermaid) atualizados.
+- [x] Fragmento em `changelog/unreleased/migracao-wails.md`.
+- [ ] Nova versão **major** (2.0.0), por causa da troca de atualizador e de instalador: só depois de integrar no branch principal, com a suíte local passando, e com a ponte da v1.x pronta (regra de versão). Ao subir a versão, atualizar `versaoApp` (`main.go`), `build/config.yml`, `build/windows/info.json`, `package.json` e o E2E.
 - [ ] Repetir as medições e registrar o resultado.
 
 ## Riscos

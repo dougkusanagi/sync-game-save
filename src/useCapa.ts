@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { api, emWails, noTauri, type Game, type TipoArte } from "./api";
+import { api, emWails, type Game, type TipoArte } from "./api";
 import { urlArteWails } from "./arteWails";
 
 const cache = new Map<string, string | null>();
@@ -15,7 +14,7 @@ function buscar(id: number, tipo: TipoArte): Promise<string | null> {
     .arteDoJogo(id, tipo)
     .then((p) => {
       // No navegador (dados simulados), a arte já vem como URL.
-      const src = !p ? null : emWails ? urlArteWails(p) : noTauri ? (p.startsWith("https://") ? p : null) : convertFileSrc(p);
+      const src = !p ? null : emWails ? urlArteWails(p) : (p.startsWith("https://") ? p : null);
       cache.set(chave, src);
       return src;
     })

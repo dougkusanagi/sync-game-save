@@ -42,7 +42,6 @@ dev_mode:
       - src
       - dist
       - bindings
-      - src-tauri
       - e2e
       - prototype
       - bin

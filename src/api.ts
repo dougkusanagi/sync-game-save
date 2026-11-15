@@ -1,6 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/plugin-dialog";
 import { mock } from "./mock";
 
 export type Game = {
@@ -122,14 +119,14 @@ export type ResultadoPrimeiroBackup =
 export type OpcoesJogar = { forcar?: boolean; conflito?: "local" | "nuvem"; sem_sincronizar?: boolean };
 
 /** O WebView nativo pode estar disponível antes da configuração do runtime Wails. */
-export const noTauri = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
 const janelaNativa = typeof window === "undefined" ? undefined : window as Window & {
   _wails?: { environment?: unknown };
   chrome?: { webview?: unknown };
   webkit?: { messageHandlers?: { external?: unknown } };
 };
-export const emWails = noTauri && !!(janelaNativa?._wails?.environment || janelaNativa?.chrome?.webview || janelaNativa?.webkit?.messageHandlers?.external);
-const emMock = noTauri && !emWails;
+export const emWails = !!(janelaNativa?._wails?.environment || janelaNativa?.chrome?.webview || janelaNativa?.webkit?.messageHandlers?.external);
+/** Fora do app (navegador, testes), a interface usa dados simulados. */
+export const emMock = !emWails;
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (emWails) {
@@ -171,7 +168,7 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
     }
     return Promise.reject(new Error("Esta versão ainda não consegue abrir sua biblioteca."));
   }
-  return emMock ? mock<T>(cmd, args) : invoke<T>(cmd, args);
+  return mock<T>(cmd, args);
 }
 export const api = {
   sobre: async () => {
@@ -226,11 +223,7 @@ export async function verificarAtualizacao(): Promise<Atualizacao | null> {
     const { Call } = await import("@wailsio/runtime");
     return (await Call.ByName("main.App.VerificarAtualizacao")) as Atualizacao | null;
   }
-  if (emMock) return null;
-  const { check } = await import("@tauri-apps/plugin-updater");
-  const u = await check();
-  if (!u) return null;
-  return { versao: u.version, atual: u.currentVersion, notas: u.body ?? null };
+  return null;
 }
 
 /** Baixa, instala e reabre o app. Só termina se algo der errado (o app reinicia). */
@@ -240,13 +233,6 @@ export async function instalarAtualizacao(): Promise<void> {
     await Call.ByName("main.App.InstalarAtualizacao");
     return;
   }
-  if (emMock) return;
-  const { check } = await import("@tauri-apps/plugin-updater");
-  const { relaunch } = await import("@tauri-apps/plugin-process");
-  const u = await check();
-  if (!u) throw new Error("Nenhuma atualização disponível.");
-  await u.downloadAndInstall();
-  await relaunch();
 }
 
 /** Abre o seletor nativo de pasta. No navegador simulado devolve um caminho de exemplo. */
@@ -255,9 +241,7 @@ export async function escolherPasta(titulo: string): Promise<string | null> {
     const { Dialogs } = await import("@wailsio/runtime");
     return (await Dialogs.OpenFile({ Title: titulo, CanChooseDirectories: true, CanChooseFiles: false })) || null;
   }
-  if (emMock) return "C:/Exemplo/Pasta";
-  const r = await open({ directory: true, multiple: false, title: titulo });
-  return typeof r === "string" ? r : null;
+  return "C:/Exemplo/Pasta";
 }
 
 export async function escolherArquivoExe(titulo: string): Promise<string | null> {
@@ -265,9 +249,7 @@ export async function escolherArquivoExe(titulo: string): Promise<string | null>
     const { Dialogs } = await import("@wailsio/runtime");
     return (await Dialogs.OpenFile({ Title: titulo, CanChooseFiles: true, Filters: [{ DisplayName: "Programas", Pattern: "*.exe" }] })) || null;
   }
-  if (emMock) return "C:/Exemplo/jogo.exe";
-  const r = await open({ multiple: false, title: titulo, filters: [{ name: "Programas", extensions: ["exe"] }] });
-  return typeof r === "string" ? r : null;
+  return "C:/Exemplo/jogo.exe";
 }
 
 export function aoMudarEstadoDoJogo(fn: (id: number, estado: string) => void): Promise<() => void> {
@@ -277,22 +259,19 @@ export function aoMudarEstadoDoJogo(fn: (id: number, estado: string) => void): P
       fn(dados.id, dados.estado);
     }));
   }
-  if (emMock) {
-    const tratar = (e: Event) => { const { id, estado } = (e as CustomEvent<{ id: number; estado: string }>).detail; fn(id, estado); };
-    window.addEventListener("sgs:mock-jogo", tratar);
-    return Promise.resolve(() => window.removeEventListener("sgs:mock-jogo", tratar));
-  }
-  return listen<{ id: number; estado: string }>("jogo-estado", (e) => fn(e.payload.id, e.payload.estado));
+  const tratar = (e: Event) => { const { id, estado } = (e as CustomEvent<{ id: number; estado: string }>).detail; fn(id, estado); };
+  window.addEventListener("sgs:mock-jogo", tratar);
+  return Promise.resolve(() => window.removeEventListener("sgs:mock-jogo", tratar));
 }
 
-/** Mensagem de erro em português, venha do Rust (texto) ou do navegador. */
+/** Mensagem de erro em português, venha do Go (texto) ou do navegador. */
 export function textoDoErro(e: unknown): string {
   if (typeof e === "string") return e;
   if (e instanceof Error) return e.message;
   return "Algo deu errado. Tente de novo.";
 }
 
-/** Ações do controle lidas no Rust (só chegam com a janela visível e focada). */
+/** Ações do controle lidas no Go (só chegam com a janela visível e focada). */
 export function aoUsarControle(fn: (acao: string, dispositivo: string) => void): Promise<() => void> {
   if (emWails) {
     return import("@wailsio/runtime").then(({ Events }) => Events.On("controle-acao", (e) => {
@@ -300,6 +279,5 @@ export function aoUsarControle(fn: (acao: string, dispositivo: string) => void):
       fn(dados.acao, dados.dispositivo);
     }));
   }
-  if (emMock) return Promise.resolve(() => {});
-  return listen<{ acao: string; dispositivo: string }>("controle-acao", (e) => fn(e.payload.acao, e.payload.dispositivo));
+  return Promise.resolve(() => {});
 }

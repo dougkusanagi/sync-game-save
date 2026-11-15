@@ -1,6 +1,6 @@
 # 0001. Stack do app: Tauri 2 + React + TypeScript
 
-- Status: Aceito
+- Status: Substituído por 0008
 - Data: 2026-11-05
 
 ## Contexto

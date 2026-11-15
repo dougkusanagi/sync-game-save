@@ -1,6 +1,6 @@
 # 0009. Atualizador do app Go: manifesto assinado com Ed25519
 
-- Status: Proposto (branch `feat/migracao-mygo`; passa a Aceito junto com a ADR 0008)
+- Status: Aceito (substitui a ADR 0006 no que trata de atualização)
 - Data: 2026-11-14
 
 ## Contexto

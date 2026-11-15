@@ -1,6 +1,6 @@
 # 0006. Distribuição NSIS e AppImage com atualização assinada
 
-- Status: Aceito
+- Status: Substituído por 0009 (atualização) e 0008 (build com Tauri); NSIS e AppImage continuam valendo
 - Data: 2026-11-06
 
 ## Contexto
