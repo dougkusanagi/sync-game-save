@@ -21,7 +21,7 @@ var iconeBandeja []byte
 
 type App struct{}
 
-const versaoApp = "2.0.1"
+const versaoApp = "2.1.0"
 
 func (App) Versao() string { return versaoApp }
 
