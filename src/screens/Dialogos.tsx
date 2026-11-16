@@ -604,6 +604,19 @@ export function Sobre({ onClose }: { onClose: () => void }) {
           </p>
         )}
       </div>
+      <div className="campo">
+        Registros de sincronização
+        <div className="linha">
+          <span>Se um save não sincronizar, estes arquivos mostram o que aconteceu.</span>
+          <button
+            className="btn fraco"
+            data-f
+            onClick={() => api.abrirPastaDeLogs().then(() => setErro(null), (e) => setErro(textoDoErro(e)))}
+          >
+            Abrir pasta dos registros
+          </button>
+        </div>
+      </div>
       <p className="dica">
         O catálogo de caminhos de save vem do manifesto do projeto Ludusavi (licença MIT), de Matthew T. Kennerly.
       </p>

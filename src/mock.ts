@@ -252,6 +252,7 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "listar_jogos":
       return r(jogos);
+    case "abrir_pasta_de_logs":
     case "sair_app":
       return r(undefined);
     case "primeiro_backup": {

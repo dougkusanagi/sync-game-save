@@ -76,6 +76,7 @@ func atualizarConquistasEmSegundoPlano(http achievements.HTTP) error {
 // iniciarTarefasEmSegundoPlano repete a atualização das conquistas a cada hora, com cache de
 // 10 minutos; a rede fora do ar não afeta a interface.
 func iniciarTarefasEmSegundoPlano() {
+	go limparLogsAntigos(pastaDados(), time.Now())
 	go func() {
 		for {
 			_ = atualizarConquistasEmSegundoPlano(achievements.NetHTTP{})

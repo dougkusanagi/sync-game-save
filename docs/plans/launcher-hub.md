@@ -620,7 +620,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Itens 1–5 concluídos. Item 6: ícones, versão `1.1.0` e NSIS feitos; faltam, e dependem do usuário: autorizar o push do `main` e da tag `v1.1.0`, gerar/validar o AppImage no Linux e autorizar a publicação do release. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
+Itens 1–5 concluídos. O log de sync (P0 item 8) foi feito em 2026-11-16 (`app_log.go`; botão em Sobre). Item 6: ícones, versão `1.1.0` e NSIS feitos; faltam, e dependem do usuário: autorizar o push do `main` e da tag `v1.1.0`, gerar/validar o AppImage no Linux e autorizar a publicação do release. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
 
 ### Acompanhamento de processos no Windows
 

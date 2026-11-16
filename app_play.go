@@ -142,11 +142,32 @@ func jogar(dados string, id int64, o OpcoesJogar, quiet, every time.Duration, em
 		return ResultadoJogar{}, err
 	}
 	defer fim()
+	registrar(dados, "INFO", "jogo %d: abrindo (sem sincronizar: %t)", id, o.SemSincronizar)
 	r, err := jogarInterno(dados, id, o, quiet, every, emit)
 	if err != nil {
 		contagemSync(dados, false)
+		registrar(dados, "ERRO", "jogo %d: %v", id, err)
+	} else {
+		registrar(dados, "INFO", "jogo %d: %s", id, descreverResultado(r))
 	}
 	return r, err
+}
+
+func descreverResultado(r ResultadoJogar) string {
+	partes := []string{r.Kind}
+	if r.ExitCode != nil {
+		partes = append(partes, fmt.Sprintf("código de saída %d", *r.ExitCode))
+	}
+	if r.Synced != nil {
+		partes = append(partes, fmt.Sprintf("sincronizado: %t", *r.Synced))
+	}
+	if r.PC != nil {
+		partes = append(partes, "em uso em "+*r.PC)
+	}
+	if r.Notice != nil {
+		partes = append(partes, *r.Notice)
+	}
+	return strings.Join(partes, "; ")
 }
 
 func raizesDoJogo(game library.Game) ([]core.Root, error) {

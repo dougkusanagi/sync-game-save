@@ -47,6 +47,8 @@ Só os tokens `--sgs-*` (listados em `src/tokens.css`) são aplicados. Nenhum CS
 
 O app é distribuído em [releases no GitHub](https://github.com/dougkusanagi/sync-game-save/releases): instalador NSIS para Windows (português do Brasil, instalação por usuário em `%LOCALAPPDATA%`) e AppImage para Linux (GTK4). Ao abrir, o app procura uma versão nova e mostra o aviso; a instalação fica em Configurações → Sobre.
 
+Cada jogo aberto grava o resultado do sync em `logs/sync-AAAA-MM-DD.log`, dentro da pasta de dados do app (arquivos com mais de 30 dias são apagados). Configurações → Sobre → "Abrir pasta dos registros" abre essa pasta.
+
 ```bash
 wails3 package   # Windows: bin/sync-game-save-amd64-installer.exe (o makensis precisa estar no PATH)
 ```

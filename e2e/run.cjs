@@ -322,6 +322,8 @@ teste("sobre: mostra a versão e procura atualização", async (page) => {
   const dlg = page.getByRole("dialog", { name: "Sobre" });
   await dlg.getByText(/Versão 2.0.1/).waitFor();
   await dlg.getByText("Você está na versão mais recente.").waitFor();
+  await dlg.getByRole("button", { name: "Abrir pasta dos registros" }).click();
+  assert.equal(await dlg.getByRole("alert").count(), 0);
 });
 
 teste("layout: sem rolagem horizontal no celular, com nomes longos", async (page) => {
