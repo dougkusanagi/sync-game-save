@@ -141,6 +141,25 @@ async function aguardarDepurador(url, app) {
     for (let i = 0; i < 160 && !(fs.existsSync(snaps) && fs.readdirSync(snaps).length > 0); i++) await new Promise((r) => setTimeout(r, 500));
     if (!fs.existsSync(snaps) || fs.readdirSync(snaps).length === 0) throw new Error("Jogar pela interface não enviou o save para a nuvem.");
     console.log("ok   jogar pela interface envia o save para a pasta de sync");
+    // Registro do sync e central rápida no app real.
+    const logs = path.join(pasta, "dados", "logs");
+    const lerLog = () => (fs.existsSync(logs) ? fs.readdirSync(logs).filter((f) => /^sync-[0-9-]+.log$/.test(f)).map((f) => fs.readFileSync(path.join(logs, f), "utf8")).join("") : "");
+    for (let i = 0; i < 120 && !new RegExp(`jogo ${idReal}: finished`).test(lerLog()); i++) await new Promise((r) => setTimeout(r, 500));
+    const textoLog = lerLog();
+    if (!new RegExp(`jogo ${idReal}: abrindo`).test(textoLog) || !new RegExp(`jogo ${idReal}: finished`).test(textoLog)) throw new Error("O log de sync não registrou o jogo: " + textoLog);
+    console.log("ok   jogar grava o resultado do sync no log diário");
+    const central = await page.evaluate(async (id) => {
+      const runtime = await import("/wails/runtime.js");
+      return { avisos: await runtime.Call.ByName("main.App.Avisos"), voltar: await runtime.Call.ByName("main.App.VoltarAoJogo", id) };
+    }, idReal);
+    if (!Array.isArray(central.avisos) || central.voltar !== false) throw new Error("Central inesperada: " + JSON.stringify(central));
+    await page.keyboard.press("F1");
+    const dlgCentral = page.getByRole("dialog", { name: "Central rápida" });
+    await dlgCentral.getByRole("region", { name: "Avisos recentes" }).waitFor();
+    await page.screenshot({ path: path.join(pasta, "central-desktop.png") });
+    await page.keyboard.press("Escape");
+    console.log("ok   a central rápida abre no app real com os avisos e o foco sem jogo aberto devolve falso");
+
     await page.getByRole("button", { name: /^Jogo Real/ }).hover();
     await page.getByRole("button", { name: "Versões" }).first().click();
     await page.getByRole("button", { name: "Restaurar" }).waitFor({ timeout: 15000 });
