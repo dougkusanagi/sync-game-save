@@ -347,6 +347,7 @@ teste("parada: cancelar mantém o jogo e força exige confirmação", async (pag
   await dlg.getByRole("button", { name: "Continuar aguardando" }).click();
   await dlg.waitFor({ state: "detached" });
   assert.equal(await parar.isVisible(), true);
+  assert.equal(await parar.evaluate((el) => el === document.activeElement), true, "o foco deve voltar ao botão Parar");
   await parar.click();
   dlg = page.getByRole("dialog", { name: /^Parar / });
   await dlg.getByRole("button", { name: "Forçar fechamento" }).click();
