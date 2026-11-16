@@ -608,7 +608,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 - Ícones próprios (`assets/icon.svg`) desde 2026-11-14.
 - A distribuição passou pela migração para Wails (ver [plano de migração](migracao-wails.md)): as tags `v2.0.0` e `v2.0.1` estão no remoto e o release 2.0.1 está publicado no GitHub (NSIS e AppImage, com atualização assinada). A `1.1.0` do Tauri só existe como tag local antiga.
-- Aberto: abrir o AppImage num Ubuntu real e testar a instalação em máquina limpa (só um humano com o ambiente faz).
+- AppImage do release 2.0.1 conferido em 2026-11-16: o SHA-256 baixado bate com o `SHA256SUMS` e o app abre no Ubuntu 26.04 sob WSL2/WSLg (`APPIMAGE_EXTRACT_AND_RUN=1`, dados isolados): processo e WebKit sobem e o app cria `library.db`. Limites: o WSL tem GPU virtual (avisos do Mesa) e não olhei a janela nem o fluxo completo. Aberto: testar num Ubuntu com tela real e a instalação do NSIS em máquina limpa (só um humano com o ambiente faz).
 - Os commits posteriores à 2.0.1 (log de sync, avisos e "Voltar ao jogo" na central, testes) estão só no `main` local, 3 à frente do remoto. O push e uma versão nova (2.1.0, pela regra de SemVer) dependem de autorização.
 
 ## Validações externas ainda abertas
