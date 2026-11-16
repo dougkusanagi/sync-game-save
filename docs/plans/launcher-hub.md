@@ -604,11 +604,12 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 - Menu/central: implementar as ações especificadas na seção de interface, usando estados reais do app. Sincronização não pode sobrescrever saves de jogo em execução. Preservar navegação por controle, teclado e retorno de foco.
 - Entregar cada fluxo separadamente com regressões E2E, capturas e README/changelog correspondentes.
 
-### 6. Distribuição e fechamento da entrega
+### 6. Distribuição e fechamento da entrega — concluído (2026-11-16)
 
-- Ícones: substituídos em 2026-11-14 por um ícone próprio (`assets/icon.svg`, nuvem com setas de ida e volta), gerado com `bunx tauri icon`. Se houver uma marca definida pelo usuário, trocar o SVG e gerar de novo.
-- Versão `1.1.0` fechada em 2026-11-14 (commit `39a1879`, tag local anotada `v1.1.0`): metadados, `changelog/1.1.0.md` e fragmentos consolidados. A `1.0.0` nunca recebeu tag nem release. A tag ainda não foi enviada ao remoto e nenhum release foi publicado.
-- NSIS `1.1.0` gerado e assinado nesta máquina (`Sync Game Save_1.1.0_x64-setup.exe`, 3,84 MiB, com `.sig`); a instalação em máquina limpa e a atualização assinada não foram testadas. O `e2e:app` passou, exceto a checagem que depende de `E:GamesRogueLegacy`, ausente nesta máquina. AppImage não pode ser gerado no Windows: falta rodar no Linux. Configuração de AppImage não equivale a binário gerado/testado. Publicação continua dependendo de autorização específica.
+- Ícones próprios (`assets/icon.svg`) desde 2026-11-14.
+- A distribuição passou pela migração para Wails (ver [plano de migração](migracao-wails.md)): as tags `v2.0.0` e `v2.0.1` estão no remoto e o release 2.0.1 está publicado no GitHub (NSIS e AppImage, com atualização assinada). A `1.1.0` do Tauri só existe como tag local antiga.
+- Aberto: abrir o AppImage num Ubuntu real e testar a instalação em máquina limpa (só um humano com o ambiente faz).
+- Os commits posteriores à 2.0.1 (log de sync, avisos e "Voltar ao jogo" na central, testes) estão só no `main` local, 3 à frente do remoto. O push e uma versão nova (2.1.0, pela regra de SemVer) dependem de autorização.
 
 ## Validações externas ainda abertas
 
@@ -620,7 +621,7 @@ Ao receber “siga implementando”, começar pelo item 1 abaixo. Ler o fluxo in
 
 ## Próximo passo
 
-Itens 1–5 concluídos. O log de sync (P0 item 8) foi feito em 2026-11-16 (`app_log.go`; botão em Sobre). Item 6: ícones, versão `1.1.0` e NSIS feitos; faltam, e dependem do usuário: autorizar o push do `main` e da tag `v1.1.0`, gerar/validar o AppImage no Linux e autorizar a publicação do release. Itens 1–4 desta sequência já concluídos (Job Object em `a2ab3f9`; parada normal em `b38516b`; descoberta por mudança em `2b50137`; busca/filtros/ordenação em 2026-11-11).
+Itens 1–6 concluídos (2026-11-16). Resta só validação humana (lista abaixo) e a autorização do push dos 3 commits locais.
 
 ### Acompanhamento de processos no Windows
 
