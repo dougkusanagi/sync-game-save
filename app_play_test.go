@@ -16,6 +16,10 @@ func TestMain(m *testing.M) {
 		if err := os.WriteFile(save, []byte("progresso do jogo"), 0644); err != nil {
 			os.Exit(3)
 		}
+		if os.Getenv("SGS_PLAY_HOLD") != "" {
+			// Jogo que ignora o pedido de fechamento: só termina se for encerrado à força.
+			time.Sleep(5 * time.Minute)
+		}
 		os.Exit(5)
 	}
 	os.Exit(m.Run())
@@ -189,5 +193,70 @@ func TestVersoesERestauracaoDeSave(t *testing.T) {
 	}
 	if _, err := os.Stat(backup); err != nil {
 		t.Fatal("sem backup do save anterior", err)
+	}
+}
+
+func TestPararJogoQueIgnoraFechamentoExigeForcaESincronizaDepois(t *testing.T) {
+	if testing.Short() {
+		t.Skip("espera o prazo de 10 s do fechamento normal")
+	}
+	t.Setenv("SGS_PLAY_HOLD", "1")
+	c := novoCenario(t, "")
+	app := App{}
+	lib, _ := abrirBiblioteca()
+	game, _ := lib.Get(c.id)
+	lib.Close()
+
+	type saida struct {
+		r   ResultadoJogar
+		err error
+	}
+	fim := make(chan saida, 1)
+	go func() {
+		r, err := c.jogar(OpcoesJogar{})
+		fim <- saida{r, err}
+	}()
+	// Espera o jogo ser acompanhado.
+	limite := time.Now().Add(20 * time.Second)
+	for !core.ProcessRunning(game.Exe) {
+		if time.Now().After(limite) {
+			t.Fatal("o jogo não começou a ser acompanhado")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	// Força antes do prazo é recusada.
+	if _, err := app.ForcarParadaJogo(c.id); err == nil {
+		t.Fatal("a força antes do pedido normal deveria ser recusada")
+	}
+	inicio := time.Now()
+	resta, err := app.PararJogo(c.id)
+	if err != nil || resta == nil || !*resta {
+		t.Fatal("o jogo ignora o fechamento e deveria continuar aberto", resta, err)
+	}
+	if time.Since(inicio) < 10*time.Second {
+		t.Fatal("o prazo de 10 s não foi respeitado", time.Since(inicio))
+	}
+	select {
+	case s := <-fim:
+		t.Fatal("o sync não pode começar com o jogo aberto", s)
+	default:
+	}
+	if ok, err := app.ForcarParadaJogo(c.id); err != nil || !ok {
+		t.Fatal(ok, err)
+	}
+	select {
+	case s := <-fim:
+		if s.err != nil || s.r.Kind != "finished" || !*s.r.Synced {
+			t.Fatal(s)
+		}
+	case <-time.After(60 * time.Second):
+		t.Fatal("o jogo não terminou depois da força")
+	}
+	head, err := core.ReadHead(filepath.Join(c.nuvem, "SyncGameSave", "games", "Jogo"))
+	if err != nil || head == nil {
+		t.Fatal("o sync deveria ter rodado depois do fim do grupo", head, err)
+	}
+	if core.ProcessRunning(game.Exe) {
+		t.Fatal("ainda há processo do jogo")
 	}
 }
