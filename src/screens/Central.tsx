@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "../Dialog";
 import { api, textoDoErro, type Game } from "../api";
 import { haQuanto } from "../format";
@@ -22,6 +22,9 @@ export function Central({ jogos, estados, onClose, onMudou }: Props) {
   const [ocupado, setOcupado] = useState(false);
   const [resultados, setResultados] = useState<Record<number, string>>({});
   const [erro, setErro] = useState<string | null>(null);
+  const [avisos, setAvisos] = useState<{ quando: number; texto: string }[]>([]);
+  const [aviso, setAviso] = useState<string | null>(null);
+  useEffect(() => { api.avisos().then(setAvisos).catch(() => setAvisos([])); }, []);
   const jogando = Object.values(estados).some(Boolean);
   const comSave = jogos.filter((j) => j.save_paths.length > 0);
 
@@ -40,6 +43,15 @@ export function Central({ jogos, estados, onClose, onMudou }: Props) {
     onMudou();
   }
 
+  async function voltar(id: number) {
+    setAviso(null);
+    try {
+      const ok = await api.voltarAoJogo(id);
+      if (ok) onClose();
+      else setAviso("Não achei a janela do jogo. Se ele está em tela cheia ou minimizado, use Alt+Tab.");
+    } catch (e) { setAviso(textoDoErro(e)); }
+  }
+
   async function sair() {
     setErro(null);
     try { await api.sairDoApp(); } catch (e) { setErro(textoDoErro(e)); }
@@ -54,11 +66,19 @@ export function Central({ jogos, estados, onClose, onMudou }: Props) {
           {comSave.map((j) => <li key={j.id}>
             <strong>{j.name}</strong>
             <small>{estados[j.id] ? ROTULO_ESTADO[estados[j.id] as string] ?? "Ocupado" : j.last_sync_at === null ? "Ainda não sincronizado" : `Sincronizado ${haQuanto(j.last_sync_at)}`}</small>
+            {estados[j.id] === "jogando" && <button className="btn fraco" data-f onClick={() => void voltar(j.id)}>Voltar ao jogo</button>}
             {resultados[j.id] && <small role="status">{resultados[j.id]}</small>}
           </li>)}
         </ul>
         <button className="btn primario" data-f data-autofocus disabled={ocupado || comSave.length === 0} onClick={() => void sincronizarTudo()}>{ocupado ? "Sincronizando…" : "Sincronizar tudo agora"}</button>
         <small>Envia para a pasta de sincronização os saves que mudaram neste PC. Versões de outros PCs são recebidas ao abrir cada jogo. Nunca troca um save sozinho: se os dois lados mudaram, a escolha é sua.</small>
+      </section>
+      {aviso && <p className="erro" role="status">{aviso}</p>}
+      <section className="coluna" aria-label="Avisos recentes">
+        <h3>Avisos recentes</h3>
+        {avisos.length === 0 ? <p>Nenhum aviso desde que o app abriu.</p> : <ul className="lista-central">
+          {avisos.map((a, i) => <li key={i}><small>{haQuanto(a.quando)}</small><span>{a.texto}</span></li>)}
+        </ul>}
       </section>
       <SomConfig />
       <section className="coluna">

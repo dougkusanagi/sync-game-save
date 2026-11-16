@@ -357,6 +357,17 @@ teste("parada: cancelar mantém o jogo e força exige confirmação", async (pag
   await page.getByRole("button", { name: "Jogar" }).first().waitFor();
 });
 
+teste("central rápida: lista avisos e volta ao jogo aberto", async (page) => {
+  await page.goto(`${BASE}?cenario=parada`);
+  await page.getByRole("button", { name: "Jogar" }).first().click();
+  await page.getByRole("button", { name: "Parar jogo" }).waitFor();
+  await page.keyboard.press("F1");
+  const dialogo = page.getByRole("dialog", { name: "Central rápida" });
+  await dialogo.getByText(/O save deste PC e o da pasta de sincronização mudaram/).waitFor();
+  await dialogo.getByRole("button", { name: "Voltar ao jogo" }).click();
+  await dialogo.waitFor({ state: "detached" });
+});
+
 teste("Wails usa estado real e encaminha diálogos, eventos e jogos", async (page) => {
   await page.addInitScript(() => { window._wails = { environment: { OS: "windows", Arch: "amd64", Debug: true } }; });
   const chamadas = [];

@@ -22,11 +22,11 @@ func avisarResultadoDoJogo(r ResultadoJogar, err error) bool {
 	titulo := "Sync Game Save"
 	switch {
 	case err != nil:
-		enviarNotificacao(titulo, err.Error())
+		avisar(titulo, err.Error())
 	case r.Kind == "conflict":
-		enviarNotificacao(titulo, "O save deste PC e o da pasta de sincronização mudaram. Abra o app para escolher qual manter.")
+		avisar(titulo, "O save deste PC e o da pasta de sincronização mudaram. Abra o app para escolher qual manter.")
 	case r.Kind == "finished" && r.Synced != nil && !*r.Synced && r.Notice != nil:
-		enviarNotificacao(titulo, *r.Notice)
+		avisar(titulo, *r.Notice)
 	default:
 		return false
 	}

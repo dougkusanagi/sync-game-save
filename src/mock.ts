@@ -252,6 +252,10 @@ export async function mock<T>(cmd: string, args: Record<string, unknown> = {}): 
     }
     case "listar_jogos":
       return r(jogos);
+    case "avisos":
+      return r([{ quando: Math.floor(Date.now() / 1000) - 300, texto: "O save deste PC e o da pasta de sincronização mudaram. Abra o app para escolher qual manter." }]);
+    case "voltar_ao_jogo":
+      return r(args.id !== 2);
     case "abrir_pasta_de_logs":
     case "sair_app":
       return r(undefined);
